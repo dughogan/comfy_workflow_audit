@@ -1,0 +1,30 @@
+[project]
+name = "comfyaudit"
+description = "Audit a ComfyUI workflow: every model and its licence, prompt and asset provenance, how much human intervention it needs, and what will break in production."
+version = "0.3.0"
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Doug Hogan" }]
+keywords = ["comfyui", "vfx", "pipeline", "audit", "licensing", "clearance", "claude"]
+
+# Standard library only, so installing this cannot disturb a ComfyUI environment.
+dependencies = []
+
+[project.optional-dependencies]
+# The Claude Review node. Everything else works without it.
+claude = ["anthropic>=1.0"]
+dev = ["pytest>=7", "anthropic>=1.0"]
+
+[project.urls]
+Repository = "https://github.com/dughogan/comfyaudit"
+Issues = "https://github.com/dughogan/comfyaudit/issues"
+
+[tool.comfy]
+PublisherId = "dughogan"
+DisplayName = "ComfyAudit"
+Icon = ""
+includes = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

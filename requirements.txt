@@ -1,0 +1,10 @@
+# comfyaudit needs nothing beyond the Python standard library.
+#
+# The Claude Review node additionally needs the Anthropic SDK. It is deliberately
+# not listed here: ComfyUI-Manager installs this file automatically, and pulling a
+# model SDK into everyone's environment for one optional node is not a reasonable
+# default. If you want that node:
+#
+#     pip install anthropic
+#
+# Every other node works without it, and the review node says so if it is missing.

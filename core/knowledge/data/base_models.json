@@ -1,0 +1,489 @@
+{
+ "base_models": {
+  "Anima": {
+   "attribution": "Built on NVIDIA Cosmos",
+   "civitai_licence": "anima",
+   "licence_name": "Anima",
+   "licence_url": "https://huggingface.co/circlestone-labs/Anima/blob/main/LICENSE.md"
+  },
+  "AuraFlow": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Chroma": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "CogVideoX": {
+   "civitai_licence": "cogvideox license",
+   "licence_id": "cogvideox-license",
+   "licence_name": "CogVideoX License",
+   "licence_url": "https://huggingface.co/THUDM/CogVideoX-5b/blob/main/LICENSE"
+  },
+  "Flux.1 D": {
+   "attribution": "IN NO EVENT SHALL BLACK FOREST LABS, INC. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH USE OF THIS MODEL.",
+   "civitai_licence": "flux1D",
+   "licence_id": "flux1-dev-nc",
+   "licence_name": "FLUX.1 [dev] Non-Commercial License",
+   "licence_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md"
+  },
+  "Flux.1 Kontext": {
+   "attribution": "IN NO EVENT SHALL BLACK FOREST LABS, INC. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH USE OF THIS MODEL.",
+   "civitai_licence": "flux1D",
+   "licence_id": "flux1-dev-nc",
+   "licence_name": "FLUX.1 [dev] Non-Commercial License",
+   "licence_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md"
+  },
+  "Flux.1 Krea": {
+   "attribution": "IN NO EVENT SHALL BLACK FOREST LABS, INC. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH USE OF THIS MODEL.",
+   "civitai_licence": "flux1D",
+   "licence_id": "flux1-dev-nc",
+   "licence_name": "FLUX.1 [dev] Non-Commercial License",
+   "licence_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md"
+  },
+  "Flux.1 S": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Flux.2 D": {
+   "attribution": "IN NO EVENT SHALL BLACK FOREST LABS, INC. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH USE OF THIS MODEL.",
+   "civitai_licence": "flux1D",
+   "licence_id": "flux1-dev-nc",
+   "licence_name": "FLUX.1 [dev] Non-Commercial License",
+   "licence_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md"
+  },
+  "Flux.2 Klein 4B": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Flux.2 Klein 4B-base": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Flux.2 Klein 9B": {
+   "attribution": "IN NO EVENT SHALL BLACK FOREST LABS, INC. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH USE OF THIS MODEL.",
+   "civitai_licence": "flux1D",
+   "licence_id": "flux1-dev-nc",
+   "licence_name": "FLUX.1 [dev] Non-Commercial License",
+   "licence_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md"
+  },
+  "Flux.2 Klein 9B-base": {
+   "attribution": "IN NO EVENT SHALL BLACK FOREST LABS, INC. BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH USE OF THIS MODEL.",
+   "civitai_licence": "flux1D",
+   "licence_id": "flux1-dev-nc",
+   "licence_name": "FLUX.1 [dev] Non-Commercial License",
+   "licence_url": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md"
+  },
+  "HiDream": {
+   "civitai_licence": "mit",
+   "licence_id": "mit",
+   "licence_name": "MIT",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/mit.md"
+  },
+  "Hunyuan 1": {
+   "civitai_licence": "hunyuan community",
+   "licence_id": "tencent-hunyuan-community",
+   "licence_name": "Tencent Hunyuan Community License Agreement",
+   "licence_url": "https://github.com/Tencent/HunyuanDiT/blob/main/LICENSE.txt"
+  },
+  "Hunyuan Video": {
+   "attribution": "Powered by Tencent Hunyuan",
+   "civitai_licence": "hunyuan video",
+   "licence_id": "tencent-hunyuan-community",
+   "licence_name": "Tencent Hunyuan Community License Agreement",
+   "licence_url": "https://huggingface.co/tencent/HunyuanVideo/blob/main/LICENSE"
+  },
+  "Ideogram 4.0": {
+   "civitai_licence": "ideogram nc",
+   "licence_id": "cc-by-nc-4.0",
+   "licence_name": "Ideogram Non-Commercial Model Agreement",
+   "licence_url": "https://huggingface.co/ideogram-ai/ideogram-4-nf4/blob/main/LICENSE.md",
+   "non_commercial": true
+  },
+  "Illustrious": {
+   "civitai_licence": "illustrious license",
+   "licence_id": "faipl-1.0-sd",
+   "licence_name": "Illustrious License",
+   "licence_url": "https://freedevproject.org/faipl-1.0-sd/"
+  },
+  "Imagen4": {
+   "civitai_licence": "imagen4",
+   "licence_id": "proprietary-api",
+   "licence_name": "Imagen4",
+   "licence_url": "https://deepmind.google/about/responsibility-safety/"
+  },
+  "Kling": {
+   "civitai_licence": "kling",
+   "licence_id": "proprietary-api",
+   "licence_name": "Kling",
+   "licence_url": "https://klingai.com/terms-of-service"
+  },
+  "Kolors": {
+   "civitai_licence": "kolors license",
+   "licence_id": "kolors-license",
+   "licence_name": "Kolors License",
+   "licence_url": "https://raw.githubusercontent.com/Kwai-Kolors/Kolors/master/MODEL_LICENSE"
+  },
+  "LTXV": {
+   "civitai_licence": "ltxv license",
+   "licence_id": "ltx-community",
+   "licence_name": "LTX Video License",
+   "licence_url": "https://huggingface.co/Lightricks/LTX-Video/blob/8984fa25007f376c1a299016d0957a37a2f797bb/LTX-Video-Open-Weights-License-0.X.txt"
+  },
+  "LTXV 2.3": {
+   "civitai_licence": "ltxv2",
+   "licence_id": "ltx-community",
+   "licence_name": "LTX-2 Community License Agreement",
+   "licence_url": "https://huggingface.co/Lightricks/LTX-2.3/blob/6f3520585aa27248020550da2f453aa0c572398c/LICENSE"
+  },
+  "LTXV 2.5": {
+   "civitai_licence": "ltxv25",
+   "licence_id": "ltx-community",
+   "licence_name": "LTX-2.x Community License Agreement",
+   "licence_url": "https://github.com/Lightricks/LTX-2/blob/2362161611a61154d342e02724fb8fe58efd455d/LICENSE.md",
+   "share_alike": true
+  },
+  "LTXV2": {
+   "civitai_licence": "ltxv2",
+   "licence_id": "ltx-community",
+   "licence_name": "LTX-2 Community License Agreement",
+   "licence_url": "https://huggingface.co/Lightricks/LTX-2.3/blob/6f3520585aa27248020550da2f453aa0c572398c/LICENSE"
+  },
+  "Lumina": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "MiniMax H3": {
+   "attribution": "MiniMax H3",
+   "civitai_licence": "minimax h3",
+   "licence_id": "proprietary-api",
+   "licence_name": "MiniMax H3 Community License Agreement",
+   "licence_url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/42ed227ee7df40d41602854ae760620d6eb651fe/LICENSE"
+  },
+  "Mochi": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Nano Banana": {
+   "civitai_licence": "imagen4",
+   "licence_id": "proprietary-api",
+   "licence_name": "Imagen4",
+   "licence_url": "https://deepmind.google/about/responsibility-safety/"
+  },
+  "NoobAI": {
+   "civitai_licence": "noobAi",
+   "licence_id": "faipl-1.0-sd",
+   "licence_name": "NoobAI License",
+   "licence_url": "https://huggingface.co/Laxhar/noobai-XL-1.0/blob/main/README.md#model-license"
+  },
+  "ODOR": {},
+  "OpenAI": {
+   "civitai_licence": "openai",
+   "licence_id": "proprietary-api",
+   "licence_name": "OpenAI",
+   "licence_url": "https://openai.com/policies/"
+  },
+  "Other": {},
+  "PixArt E": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "PixArt a": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "Playground v2": {
+   "civitai_licence": "playground v2",
+   "licence_id": "playground-v2-community",
+   "licence_name": "Playground v2 Community License",
+   "licence_url": "https://huggingface.co/playgroundai/playground-v2-1024px-aesthetic/blob/main/LICENSE.md"
+  },
+  "Pony": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "Pony V7": {
+   "civitai_licence": "ponyV7",
+   "licence_id": "faipl-1.0-sd",
+   "licence_name": "Pony",
+   "licence_url": "https://purplesmart.ai/license"
+  },
+  "Qwen": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "SD 1.4": {
+   "civitai_licence": "openrail",
+   "licence_id": "creativeml-openrail-m",
+   "licence_name": "CreativeML Open RAIL-M",
+   "licence_url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license"
+  },
+  "SD 1.5": {
+   "civitai_licence": "openrail",
+   "licence_id": "creativeml-openrail-m",
+   "licence_name": "CreativeML Open RAIL-M",
+   "licence_url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license"
+  },
+  "SD 1.5 Hyper": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "SD 1.5 LCM": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "SD 2.0": {
+   "civitai_licence": "openrail",
+   "licence_id": "creativeml-openrail-m",
+   "licence_name": "CreativeML Open RAIL-M",
+   "licence_url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license"
+  },
+  "SD 2.0 768": {
+   "civitai_licence": "openrail",
+   "licence_id": "creativeml-openrail-m",
+   "licence_name": "CreativeML Open RAIL-M",
+   "licence_url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license"
+  },
+  "SD 2.1": {
+   "civitai_licence": "openrail",
+   "licence_id": "creativeml-openrail-m",
+   "licence_name": "CreativeML Open RAIL-M",
+   "licence_url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license"
+  },
+  "SD 2.1 768": {
+   "civitai_licence": "openrail",
+   "licence_id": "creativeml-openrail-m",
+   "licence_name": "CreativeML Open RAIL-M",
+   "licence_url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license"
+  },
+  "SD 2.1 Unclip": {
+   "civitai_licence": "openrail",
+   "licence_id": "creativeml-openrail-m",
+   "licence_name": "CreativeML Open RAIL-M",
+   "licence_url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license"
+  },
+  "SD 3": {
+   "attribution": "Powered by Stability AI",
+   "civitai_licence": "SAI CLA",
+   "licence_id": "stability-community",
+   "licence_name": "Stability AI Community License Agreement"
+  },
+  "SD 3.5": {
+   "attribution": "Powered by Stability AI",
+   "civitai_licence": "SAI CLA",
+   "licence_id": "stability-community",
+   "licence_name": "Stability AI Community License Agreement"
+  },
+  "SD 3.5 Large": {
+   "attribution": "Powered by Stability AI",
+   "civitai_licence": "SAI CLA",
+   "licence_id": "stability-community",
+   "licence_name": "Stability AI Community License Agreement"
+  },
+  "SD 3.5 Large Turbo": {
+   "attribution": "Powered by Stability AI",
+   "civitai_licence": "SAI CLA",
+   "licence_id": "stability-community",
+   "licence_name": "Stability AI Community License Agreement"
+  },
+  "SD 3.5 Medium": {
+   "attribution": "Powered by Stability AI",
+   "civitai_licence": "SAI CLA",
+   "licence_id": "stability-community",
+   "licence_name": "Stability AI Community License Agreement"
+  },
+  "SDXL 0.9": {
+   "civitai_licence": "sdxl 0.9",
+   "licence_id": "stability-nc-research",
+   "licence_name": "SDXL 0.9 research license",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL0.9"
+  },
+  "SDXL 1.0": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "SDXL 1.0 LCM": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "SDXL Distilled": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "SDXL Hyper": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "SDXL Lightning": {
+   "civitai_licence": "openrail++",
+   "licence_id": "creativeml-openrail-plus-plus-m",
+   "licence_name": "CreativeML Open RAIL++-M",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL1.0"
+  },
+  "SDXL Turbo": {
+   "civitai_licence": "sdxl turbo",
+   "licence_id": "stability-nc-research",
+   "licence_name": "Stability AI Non-Commercial Research Community License",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDXL-Turbo"
+  },
+  "SVD": {
+   "civitai_licence": "svd",
+   "licence_id": "stability-nc-research",
+   "licence_name": "Stable Video Diffusion Non-Commercial Research Community License",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDV"
+  },
+  "SVD XT": {
+   "civitai_licence": "svd",
+   "licence_id": "stability-nc-research",
+   "licence_name": "Stable Video Diffusion Non-Commercial Research Community License",
+   "licence_url": "https://github.com/Stability-AI/generative-models/blob/main/model_licenses/LICENSE-SDV"
+  },
+  "Seedance": {
+   "civitai_licence": "seedream",
+   "licence_id": "proprietary-api",
+   "licence_name": "Seedream",
+   "licence_url": "https://seed.bytedance.com/en/user-agreement"
+  },
+  "Seedream": {
+   "civitai_licence": "seedream",
+   "licence_id": "proprietary-api",
+   "licence_name": "Seedream",
+   "licence_url": "https://seed.bytedance.com/en/user-agreement"
+  },
+  "Sora 2": {
+   "civitai_licence": "openai",
+   "licence_id": "proprietary-api",
+   "licence_name": "OpenAI",
+   "licence_url": "https://openai.com/policies/"
+  },
+  "Stable Cascade": {
+   "civitai_licence": "SAI NC RC",
+   "licence_id": "stability-nc-research",
+   "licence_name": "SAI NC RC",
+   "licence_url": "https://huggingface.co/stabilityai/stable-cascade/blob/main/LICENSE"
+  },
+  "Veo 3": {
+   "civitai_licence": "veo3",
+   "licence_id": "proprietary-api",
+   "licence_name": "Veo 3",
+   "licence_url": "https://policies.google.com/terms"
+  },
+  "Vidu Q1": {
+   "civitai_licence": "vidu",
+   "licence_id": "proprietary-api",
+   "licence_name": "Vidu Q1",
+   "licence_url": "https://www.vidu.com/terms"
+  },
+  "Wan Video": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 1.3B t2v": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 14B i2v 480p": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 14B i2v 720p": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 14B t2v": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 2.2 I2V-A14B": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 2.2 T2V-A14B": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 2.2 TI2V-5B": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 2.5 I2V": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "Wan Video 2.5 T2V": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "ZImageBase": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  },
+  "ZImageTurbo": {
+   "civitai_licence": "apache 2.0",
+   "licence_id": "apache-2.0",
+   "licence_name": "Apache 2.0",
+   "licence_url": "https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md"
+  }
+ },
+ "note": "Base model to licence identity, taken from Civitai's own table. The commercial position comes from comfyaudit's licence definitions via licence_id; a base model with no licence_id is known but not classified.",
+ "source": "civitai/civitai src/server/common/constants.ts",
+ "unmapped_civitai_licences": [
+  "anima"
+ ]
+}
