@@ -84,11 +84,18 @@ table.log td.mono,table.log code{font-family:var(--mono);font-size:12px}
 .prompt.hidden{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
 .rule-card{border:1px solid var(--rule);border-radius:3px;padding:14px 18px;margin:10px 0;
   background:var(--surface)}
-.rule-card h4{margin:0 0 4px;font-family:var(--display);font-size:16px}
+.rule-card h4{margin:0 0 4px;font-family:var(--display);font-size:17px;font-weight:700;
+  color:var(--ink);text-transform:none;letter-spacing:-.005em}
 .rule-card .meta{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:.04em}
-.rule-card ul{margin:8px 0 0;padding-left:18px;font-size:14px}
+.rule-card ul{margin:6px 0 0;padding-left:0;list-style:none;font-size:14px}
+.rule-card ul li{padding-left:20px;text-indent:-20px;margin:3px 0}
+.rule-card ul.asks{padding-left:18px;list-style:disc}
+.rule-card code.tag{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);
+  background:var(--sunk);padding:1px 5px;border-radius:3px;white-space:nowrap}
+.rule-card ul.asks li{padding-left:0;text-indent:0}
 .rule-card li.have{color:var(--ok)} .rule-card li.need{color:var(--stop)}
 .rule-card li.na{color:var(--ink-3)}
+.rule-card ul.asks li{color:var(--ink);list-style:disc}
 h2.sec{font-family:var(--display);font-weight:900;font-size:24px;letter-spacing:-.01em;
   margin:44px 0 6px;padding-top:18px;border-top:1px solid var(--rule-2)}
 h2.sec small{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink-3);
@@ -265,20 +272,65 @@ def _body(history, lin, rows, v, checks) -> str:
     # -- compliance -----------------------------------------------------------
     w("<h2 class='sec'>Rules this shot may need to meet<small>"
       + f"{len(checks['rules'])} apply</small></h2>")
-    w(f"<p class='intro'>{_e(checks['intro'])}</p>")
+    w(f"<p class='intro'>{_e(checks['intro'])} Items only a person can attest (a "
+      "signed consent rider, a disclosure placed in the credits) are recorded as a note "
+      "carrying the grey tag shown beside them, so the attestation is signed into the "
+      "chain like everything else.</p>")
+    if checks["rules"]:
+        w("<table class='log'><thead><tr><th>Rule</th><th>Where</th><th>Status</th>"
+          "<th>Evidence on record</th></tr></thead><tbody>")
+        for r in checks["rules"]:
+            have = sum(1 for e in r["evidence"] if e["state"] == "have")
+            need = sum(1 for e in r["evidence"] if e["state"] == "need")
+            tone = "ok" if not need else ("warn" if have else "stop")
+            w(f"<tr><td><a href='#rule-{_e(r['id'])}'>{_e(r['title'])}</a></td>"
+              f"<td class='mono'>{_e(r['jurisdiction'])}</td><td>{_e(_short_status(r['status']))}</td>"
+              f"<td><span class='pill {tone}'>{have} of {have + need}</span></td></tr>")
+        w("</tbody></table>")
     for r in checks["rules"]:
-        w("<div class='rule-card'>")
+        w(f"<div class='rule-card' id='rule-{_e(r['id'])}'>")
         w(f"<h4>{_e(r['title'])}</h4><div class='meta'>{_e(r['jurisdiction'])} &middot; "
           f"{_e(r['authority'])} &middot; {_e(r['status'])} &middot; source dated "
-          f"{_e(r.get('source_date') or 'n/a')}</div>")
-        w(f"<p style='margin:8px 0 0;font-size:14.5px'>{_e(r['why'])}</p><ul>")
+          f"{_e(r.get('source_date') or 'undated - see note')} &middot; {_e(r.get('confidence', ''))} confidence</div>")
+        w(f"<p style='margin:8px 0 0;font-size:14.5px'>{_e(r['why'])}</p>")
+        if r.get("requires"):
+            w("<div class='meta' style='margin-top:10px'>WHAT IT ASKS</div><ul class='asks'>")
+            for item in r["requires"][:4]:
+                w(f"<li>{_e(item)}</li>")
+            if len(r["requires"]) > 4:
+                w(f"<li class='na'>and {len(r['requires']) - 4} more at the source</li>")
+            w("</ul>")
+        w("<div class='meta' style='margin-top:10px'>WHAT THIS RECORD SHOWS</div><ul>")
         for item in r["evidence"]:
-            w(f"<li class='{item['state']}'>{_e(item['text'])}</li>")
+            mark = {"have": "&#10003; ", "need": "&#10007; ", "na": "&ndash; "}[item["state"]]
+            tag = (f" <code class='tag'>{_e(item['tag'])}</code>"
+                   if item.get("tag") and item["state"] == "need" else "")
+            w(f"<li class='{item['state']}'>{mark}{_e(item['text'])}{tag}</li>")
         w("</ul>")
+        if r.get("human_in_loop"):
+            w(f"<p style='margin:8px 0 0;font-size:13.5px;color:var(--ink-2)'><strong>Human "
+              f"involvement:</strong> {_e(r['human_in_loop'])}</p>")
+        if r.get("notes"):
+            w(f"<p style='margin:8px 0 0;font-size:12.5px;color:var(--ink-3)'>"
+              f"<strong>Caveats:</strong> {_e(r['notes'])}</p>")
         if r.get("source"):
             w(f"<div class='meta' style='margin-top:8px'><a href='{_e(r['source'])}'>"
               f"{_e(r.get('source_title') or r['source'])}</a></div>")
         w("</div>")
+
+    if checks.get("clarifications"):
+        w("<h3 style='font-family:var(--display);font-size:17px;margin:26px 0 6px'>Often "
+          "assumed, but does not apply here</h3>")
+        for c in checks["clarifications"]:
+            w("<div class='rule-card' style='opacity:.85'>")
+            w(f"<h4>{_e(c['title'])}</h4><div class='meta'>{_e(c['jurisdiction'])} &middot; "
+              f"{_e(c['authority'])} &middot; source dated {_e(c.get('source_date') or 'n/a')}</div>")
+            w(f"<p style='margin:8px 0 0;font-size:14px'>{_e(c['summary'])} "
+              f"{_e(c.get('human_in_loop', ''))}</p>")
+            if c.get("source"):
+                w(f"<div class='meta' style='margin-top:8px'><a href='{_e(c['source'])}'>"
+                  f"{_e(c.get('source_title') or c['source'])}</a></div>")
+            w("</div>")
 
     # -- the log --------------------------------------------------------------
     w("<h2 class='sec'>Complete record<small>" + f"{len(rows)} entries</small></h2>")
@@ -500,6 +552,12 @@ def _describe_changes(changes: dict[str, Any], plain: bool = False) -> str:
     if plain:
         return "\n".join(lines)
     return "<br>".join(_e(line) for line in lines)
+
+
+def _short_status(status: str) -> str:
+    """The leading clause of a status: 'in force', 'proposed', 'in force from 2026-07-01'."""
+    head = status.split("(")[0].split(";")[0].strip(" ,")
+    return head or status
 
 
 def _clip(text: str, n: int) -> str:

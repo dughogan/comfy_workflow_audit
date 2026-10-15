@@ -141,8 +141,10 @@ def record(body: dict[str, Any]) -> dict[str, Any]:
     context = {"territory": cfg.get("territory", ""),
                "distribute_in": cfg.get("distribute_in", []),
                "likeness": cfg.get("likeness", False),
-               "union_performers": bool(body.get("union_performers")),
-               "advertising": bool(body.get("advertising"))}
+               "union_performers": bool(body.get("union_performers") or cfg.get("union_performers")),
+               "advertising": bool(body.get("advertising") or cfg.get("advertising")),
+               "feature": bool(body.get("feature") or cfg.get("feature")),
+               "youtube": bool(body.get("youtube"))}
     html = history_html.render(history, data=workflow, keys=keys(cfg),
                                ledger=cfg.get("ledger", ""),
                                reveal=bool(body.get("reveal")), context=context)

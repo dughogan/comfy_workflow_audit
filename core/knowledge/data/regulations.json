@@ -1,0 +1,1443 @@
+{
+ "_comment": [
+  "Regulatory knowledge base for comfyaudit shot history.",
+  "Built by tools/build_regulations.py from tools/research/regulations.research.json.",
+  "Data, not law: every rule carries its source and that source's date. Re-verify",
+  "anything that gates a delivery; union terms and EU guidance changed in 2026."
+ ],
+ "as_of": "2026-10-15",
+ "corrections": [
+  "The EU does not legally require proof that a human was in the loop for an AI-generated shot. AI Act Art. 14 (human oversight) applies only to high-risk AI systems (Annex I products and Annex III areas such as biometrics, employment, education, law enforcement and justice). Creative content generation is not in Annex III, and Annex III obligations are now deferred to 2027-12-02. What applies to creative work is Art. 50 transparency: providers mark output in machine-readable form, and deployers disclose deepfakes (lighter duty for evidently artistic or fictional works). Art. 50's human-review/editorial-responsibility exemption covers only AI-generated text on matters of public interest, not images or video.",
+  "Human involvement matters in the EU and elsewhere for copyright protectability, not for legality. Under the CJEU originality test (free and creative choices), the Czech 10 C 13/2023 ruling and the AG Munich February 2026 logos ruling, little or no human creative input means no copyright. Records of human creative choices are therefore valuable evidence, but they are not a regulatory compliance requirement.",
+  "In US film and TV, the closest thing to a 'human in the loop' duty is contractual: DGA terms (AI is not a person; consult the director, and under the 2026 deal AI footage falls under the director's creative control), SAG-AFTRA consent rules, and the Academy's 99th Oscars rule that human authorship be present, which lets the Academy request details. The US Copyright Office registration guidance requires disclosing AI material and describing the human contribution.",
+  "MPAA was renamed the Motion Picture Association (MPA) on 2019-09-18. The MPA is a trade association. It has no binding AI production rules; its AI output is policy advocacy (copyright and fair use, support for the NO FAKES Act). CARA/film ratings do not regulate AI use (no AI provision was found, though the rating rules PDF was not read).",
+  "The DGA's 2023 AI term requires consultation with the director, not the director's approval.",
+  "California SB 942 (AI Transparency Act) binds large GenAI providers (over 1M monthly users), not studios directly. Its operative date moved from 2026-01-01 to 2026-08-02 under AB 853. Studios are affected as licensees, who must not disable latent disclosures.",
+  "EU AI Act Art. 50(2) marking falls on providers of generative systems (model and tool vendors), not on every studio that uses them. A studio that builds or substantially modifies its own generative system may become a provider. Systems already on the market before 2026-08-02 have until 2026-12-02 under the Digital Omnibus (Reg. (EU) 2026/1744). Deployer deepfake disclosure under Art. 50(4) applied from 2026-08-02 without delay.",
+  "The EU Code of Practice on transparency of AI-generated content (final 2026-06-10) is voluntary and, per IPTC, does not name C2PA. It calls for signed, time-stamped metadata plus watermarking under 'relevant standards'.",
+  "Thaler v. Perlmutter settles only that an AI cannot be the author when there is no human contribution. It does not set how much human input is enough; that question is open (Allen v. Perlmutter was still pending when last checked).",
+  "The NO FAKES Act is not law (reintroduced 2026-05-20; committee stage). The TAKE IT DOWN Act is in force but limited to nonconsensual intimate imagery.",
+  "US Copyright Office Part 2 says AI used as an assistive tool (e.g. de-aging, color correction, crowd removal) does not undermine protection. Routine VFX uses of AI are treated differently from prompt-only generation, as are SAG-AFTRA's exempt post-production alterations."
+ ],
+ "not_found": [
+  "Full text of the 2026 SAG-AFTRA TV/Theatrical MOA and the union's 18-page summary (digital replica consent, compensation, minors and asset-security details unverified; press coverage only)",
+  "Full text of the 2026 WGA MBA AI provisions and the 2026 DGA contract summary (only press releases and law-firm summaries found)",
+  "C2PA specification 2.4 (URL referenced but fetch blocked; latest confirmed version is 2.3, December 2025)",
+  "Primary text of UK CDPA s9(3) (legislation.gov.uk fetch blocked) and of California AB 1836 (leginfo fetch blocked)",
+  "Primary CJEU Infopaq judgment text (BAILII blocked, IPPT paywalled); date and holding are from commentary",
+  "Any CJEU ruling on protectability of AI-generated outputs (none found; C-250/25 Like Company v Google concerns training/reproduction, ruling not expected before 2027)",
+  "A ruling in Allen v. Perlmutter (D. Colo. 1:24-cv-2665); last tracker check (2026-03-30) showed it pending",
+  "Any MPA binding guidance or CARA rating rule addressing AI-generated content",
+  "Exact year of the Prague Municipal Court 10 C 13/2023 decision (shown as 11 October; year not in fetched text)",
+  "Final (non-pre-publication) version of USCO Part 3 on training",
+  "Google Ads-specific AI disclosure rules for commercial (non-political) ads, and broadcaster clearance rules (e.g. Clearcast/BCAP/network S&P) on AI in ads; not researched in depth",
+  "Exact contents of China's GB 45438-2025 implicit metadata fields beyond provider name/code, content attributes and content ID"
+ ],
+ "rules": [
+  {
+   "id": "sag-aftra-tvt-2023-employment-based-replica",
+   "jurisdiction": "Industry",
+   "authority": "SAG-AFTRA / AMPTP",
+   "title": "2023 TV/Theatrical: employment-based digital replicas",
+   "kind": "collective-agreement",
+   "status": "in force as modified by 2026 agreement (see sag-aftra-tvt-2026)",
+   "effective": "",
+   "source": "https://sagaftra.org/files/sa_documents/DigitalReplicas.pdf",
+   "source_title": "Digital Replicas 101: What You Need to Know About the 2023 TV/Theatrical Contracts",
+   "source_date": "",
+   "confidence": "high",
+   "notes": "Union explainer is undated. The 2026 TV/Theatrical agreement (effective 2026-07-01) substantially revises these replica terms; check the 2026 MOA text before relying on the 2023 mechanics. Not checked here: the full 2023 contract text, the background-performer terms, and the exact compensation formulas.",
+   "summary": "Applies when a covered production creates or uses a digital replica of a performer it employs (voice or likeness in material the performer did not actually perform).",
+   "requires": [
+    "Give the performer at least 48 hours' notice of replica-creation services (or notice at engagement if engaged less than 48 hours ahead).",
+    "Obtain informed consent that is clear and conspicuous, separately signed or initialed, and includes a reasonably specific description of the intended use; it cannot be buried in boilerplate.",
+    "Consent is project-specific; use in another picture needs fresh consent and separately bargained pay (day-performer rate as floor).",
+    "Pay for replica use in the same picture based on the estimated in-person days the replica scenes would have required, plus residuals where applicable.",
+    "For a deceased performer, obtain consent from the estate or rights holder."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "union-performers"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Signed/initialed digital replica consent rider with the use description, linked to the shot/asset IDs it covers",
+     "check": "manual"
+    },
+    {
+     "text": "Notice timestamp showing 48-hour notice for scan/capture sessions",
+     "check": "manual"
+    },
+    {
+     "text": "Mapping of replica-generated shots to the consented project and use description",
+     "check": "external_id"
+    },
+    {
+     "text": "Payment calculation records for replica-generated scenes",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "sag-aftra-tvt-2023-independent-replica-and-alteration",
+   "jurisdiction": "Industry",
+   "authority": "SAG-AFTRA / AMPTP",
+   "title": "2023 TV/Theatrical: independently created replicas and digital alteration",
+   "kind": "collective-agreement",
+   "status": "in force as modified by 2026 agreement",
+   "effective": "",
+   "source": "https://www.loeb.com/en/insights/passle/2023/11/artificial-intelligence-terms-of-sagaftra-tv-theatrical-contract",
+   "source_title": "Artificial Intelligence Terms of SAG-AFTRA TV/Theatrical Contract (Loeb & Loeb)",
+   "source_date": "2023-11-13",
+   "confidence": "medium",
+   "notes": "This is a law-firm summary of the 2023 tentative agreement, not the contract text. The First Amendment carve-outs (comment, parody, docudrama, biography) apply to independently created replicas. The exempt-alteration list comes from the SAG-AFTRA explainer PDF.",
+   "summary": "Applies when a replica of a performer is made without an employment arrangement (e.g. from existing footage) and gives the impression it is that performer, or a performer's recorded performance is digitally altered beyond routine post.",
+   "requires": [
+    "Obtain explicit, signed or initialed consent with a reasonably specific use description, unless the content stays substantially as performed or scripted.",
+    "For a deceased performer, get consent from the estate, or from the union if no estate can be found.",
+    "Make pension and health contributions for independently created replicas.",
+    "Routine post changes (cosmetics, wardrobe, continuity, pitch, timing, VFX filters, ratings or S&P edits, foreign-language lip adjustments) do not require consent."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "union-performers"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Classification of each AI alteration as routine post (exempt) or beyond script/performance (consent needed)",
+     "check": "manual"
+    },
+    {
+     "text": "Source-material provenance for any replica built from existing footage",
+     "check": "sources_declared"
+    },
+    {
+     "text": "Consent document or estate/union authorization",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "sag-aftra-tvt-2023-synthetic-performers",
+   "jurisdiction": "Industry",
+   "authority": "SAG-AFTRA / AMPTP",
+   "title": "2023 TV/Theatrical: synthetic performers",
+   "kind": "collective-agreement",
+   "status": "superseded/expanded by 2026 agreement",
+   "effective": "",
+   "source": "https://www.loeb.com/en/insights/passle/2023/11/artificial-intelligence-terms-of-sagaftra-tv-theatrical-contract",
+   "source_title": "Artificial Intelligence Terms of SAG-AFTRA TV/Theatrical Contract (Loeb & Loeb)",
+   "source_date": "2023-11-13",
+   "confidence": "medium",
+   "notes": "Law-firm summary. See sag-aftra-tvt-2026 for the stricter 2026 standard.",
+   "summary": "Applies when a covered production uses a fully AI-generated, realistic human character in place of a human performer.",
+   "requires": [
+    "Notify the union and give it an opportunity to bargain in good faith over consideration when a synthetic performer replaces a human role.",
+    "If a synthetic performer's principal facial feature (eyes, nose, ears, mouth) is recognizable as a specific real performer, get that performer's consent and bargain.",
+    "Non-human characters are outside this rule."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "union-performers"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Record of union notice for synthetic human characters",
+     "check": "manual"
+    },
+    {
+     "text": "Prompt/reference-image log showing no real performer's features were used to generate the character (or consent if they were)",
+     "check": "prompt_authorship"
+    }
+   ]
+  },
+  {
+   "id": "sag-aftra-tvt-2026",
+   "jurisdiction": "Industry",
+   "authority": "SAG-AFTRA / AMPTP",
+   "title": "2026 TV/Theatrical Agreement AI terms",
+   "kind": "collective-agreement",
+   "status": "in force from 2026-07-01 (ratified 2026-06-04, 91.42%)",
+   "effective": "2026-07-01",
+   "source": "https://www.thewrap.com/industry-news/labor-unions/sag-aftra-members-ratify-new-contract/",
+   "source_title": "SAG-AFTRA Members Ratify New Contract With Over 91% Approval (TheWrap)",
+   "source_date": "2026-06-04",
+   "confidence": "medium",
+   "notes": "Press coverage only (TheWrap 2026-06-04; Shoot 2026-05-12; LA Mag 2026-06-05 gives term 2026-07-01 to 2030-06-30). The full MOA and 18-page union summary were not fetched. The scanning, strike and minors items come from Shoot/TheWrap deal-details coverage. Jackson Lewis (2026-07-22) says the deal also covers security and transfer of replica assets.",
+   "summary": "Applies when a SAG-AFTRA-covered film/TV production scans performers, uses digital replicas (including of minors), or uses synthetic performers in human roles.",
+   "requires": [
+    "Have an articulable business reason before scanning a performer to create a digital replica.",
+    "Do not use a performer's digital replica to replace them during a strike.",
+    "Apply new protections for replicas of minors (details not verified).",
+    "Do not use a synthetic performer in a human role unless it adds significant additional value compared with both a union performer and that performer's digital replica.",
+    "Be prepared for union bargaining over planned synthetic use, with arbitration and damages not capped at what a human performer would have earned.",
+    "Follow the revised consent, compensation, residual, security and transfer rules for replica assets (summarized, not verified in detail)."
+   ],
+   "human_in_loop": "Indirect: the synthetic-performer standard favors human performance, so keep records of which roles humans performed.",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice",
+     "training"
+    ],
+    "all": [
+     "union-performers"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Documented business justification for each scan session",
+     "check": "manual"
+    },
+    {
+     "text": "Replica asset register: who holds it, access controls, transfers",
+     "check": "manual"
+    },
+    {
+     "text": "Synthetic-performer value justification memo per role",
+     "check": "manual"
+    },
+    {
+     "text": "Flags for minors' likeness in any replica workflow",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "sag-aftra-commercials-2025",
+   "jurisdiction": "Industry",
+   "authority": "SAG-AFTRA / ANA-4A's Joint Policy Committee",
+   "title": "2025 Commercials Contracts (incl. Audio) AI terms",
+   "kind": "collective-agreement",
+   "status": "in force (ratified 2025-05-21, retroactive to 2025-04-01)",
+   "effective": "2025-04-01",
+   "source": "https://www.sagaftra.org/contracts-industry-resources/commercials/2025-commercials-contracts",
+   "source_title": "2025 Commercials Contracts (SAG-AFTRA)",
+   "source_date": "2025-05-21",
+   "confidence": "high",
+   "notes": "The union page's FAQ is a summary. Details are corroborated by DLA Piper (2025-04-28) and Davis+Gilbert (2025-06-11), and the effective date is from Davis+Gilbert. Check the MOA for exact definitions.",
+   "summary": "Applies when a union commercial creates or uses a performer's digital replica, uses synthetic performers, or uses performer data.",
+   "requires": [
+    "Give 48 hours' notice before creating or using a digital replica (less if the performer was engaged within 48 hours).",
+    "Obtain written informed consent via a Digital Replica Rider or separate signed writing, with a reasonably specific description of use; new consent is needed for uses outside that description, altered physical traits or nudity.",
+    "Pay at least 1.5x scale session fee per commercial generated with a replica, plus use and holding fees as if the performer had worked in person.",
+    "Destroy the replica after the Maximum Period of Use unless consent to retain is obtained; limit access and use commercially reasonable security.",
+    "Do not use performer data to train AI without union consent.",
+    "For synthetic performers, pay pension and health amounts set by the contract (or negotiated, for all-synthetic spots); synthetic use is acceptable if cost saving is not the primary motive.",
+    "Traditional VFX/CGI/mocap tools that incorporate AI remain allowed for past-practice purposes."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "advertising"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Digital Replica Rider per performer per spot, with use description",
+     "check": "manual"
+    },
+    {
+     "text": "MPU tracking and replica destruction/retention records",
+     "check": "manual"
+    },
+    {
+     "text": "Access log for stored replica assets (LoRAs, voice models, scans)",
+     "check": "manual"
+    },
+    {
+     "text": "Statement that performer footage was not used for model training, or union consent",
+     "check": "manual"
+    },
+    {
+     "text": "Synthetic-performer usage report for P&H calculation",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "sag-aftra-interactive-media-2025",
+   "jurisdiction": "Industry",
+   "authority": "SAG-AFTRA / video game employers",
+   "title": "2025 Interactive Media Agreement AI terms",
+   "kind": "collective-agreement",
+   "status": "in force (ratified July 2025; term through 2028-10-31)",
+   "effective": "2025-07-09",
+   "source": "https://technologylaw.fkks.com/post/102mewu/inside-the-new-sag-aftra-interactive-media-agreement-new-standards-for-ai-and-di",
+   "source_title": "Inside the New SAG-AFTRA Interactive Media Agreement (Frankfurt Kurnit)",
+   "source_date": "2026-01-29",
+   "confidence": "medium",
+   "notes": "Law-firm summary. The ratification announcement date of 2025-07-09 (95% approval) is from FKKS (2025-07-11). Traditional animation AI, noise reduction and rigging are excluded. Relevant to a commercial/film studio only for game cinematics or interactive work.",
+   "summary": "Applies when a covered game uses vocal or visual digital replicas of performers, or independently created replicas (including prompting a model with a performer's name).",
+   "requires": [
+    "Obtain clear and conspicuous written consent (separate document or specifically signed rider) with a reasonably specific use description.",
+    "Disclose whether the replica will be used for real-time generation and whether sensitive content (e.g. profanity, slurs) may be generated.",
+    "Generally obtain consent at the time of use rather than at hiring for future games.",
+    "Pay for vocal replica use by lines generated (about 10 words per line).",
+    "Provide a usage report within 90 days of release naming characters that used replicas and how pay was computed."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "voice"
+    ],
+    "all": [
+     "union-performers"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Consent rider with real-time and sensitive-content disclosures",
+     "check": "manual"
+    },
+    {
+     "text": "Generated-line counts per performer replica",
+     "check": "manual"
+    },
+    {
+     "text": "90-day usage report",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "wga-mba-ai",
+   "jurisdiction": "Industry",
+   "authority": "Writers Guild of America / AMPTP",
+   "title": "WGA MBA AI provisions (2023, carried into 2026)",
+   "kind": "collective-agreement",
+   "status": "in force (2026 MBA term 2026-05-02 to 2030-05-01)",
+   "effective": "2026-05-02",
+   "source": "https://www.wga.org/contracts/know-your-rights/artificial-intelligence",
+   "source_title": "Know Your Rights: Artificial Intelligence (WGA)",
+   "source_date": "2025-12-18",
+   "confidence": "medium",
+   "notes": "The 2026 MBA was ratified 2026-04-24 with 90.38% approval (WGA press release). The 2026 AI additions are from Jackson Lewis (2026-07-22), not the MBA text; the WGA 2026 summary was not fetched. Mostly relevant to writing, not pixels.",
+   "summary": "Applies when AI-generated text is given to a covered writer, or a writer uses AI, or literary material is licensed for AI training.",
+   "requires": [
+    "AI is not a writer, and AI-generated text is not literary material or source material for credit and pay purposes.",
+    "The company must tell the writer if material it provides was AI-generated or contains AI-generated content.",
+    "The company cannot require a writer to use AI; a writer may use AI only with company consent and in line with company policy.",
+    "2026 additions (reported): regular labor-management meetings on GenAI use, and written notice to the WGA when literary material is licensed to train public-facing commercial AI systems."
+   ],
+   "human_in_loop": "Credit and pay attach only to human writers, so keep records of who wrote what.",
+   "applies": {
+    "any": [
+     "llm"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Record of which scripts, treatments or prompts handed to writers were AI-generated, and the disclosure given",
+     "check": "manual"
+    },
+    {
+     "text": "Company AI-use policy and any consent given to writers",
+     "check": "manual"
+    },
+    {
+     "text": "Note: prompt text used in image/video workflows is not literary material under the MBA, but keep authorship records for scripts",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "dga-ai",
+   "jurisdiction": "Industry",
+   "authority": "Directors Guild of America / AMPTP",
+   "title": "DGA Basic Agreement AI terms (2023 and 2026)",
+   "kind": "collective-agreement",
+   "status": "in force (2026 agreement ratified 2026-06-26, four-year term)",
+   "effective": "2026-07-01",
+   "source": "https://www.dga.org/News/PressReleases/2026/260612_DGA_Board_Recommends_Ratification_of_New_Contract",
+   "source_title": "DGA Board Recommends Ratification of New Contract",
+   "source_date": "2026-06-12",
+   "confidence": "medium",
+   "notes": "The DGA release gives only summary terms (renewed 2023 safeguards, director control over AI footage, skills program). The 2023 terms are from TheWrap (2023-06-07). The 2026 transparency/training detail is from Jackson Lewis (2026-07-22). Ratification: DGA press release 2026-06-26, no vote count. Effective date 2026-07-01 is inferred from the prior term ending 2026-06-30 and was not stated in a fetched 2026 source.",
+   "summary": "Applies when generative AI is used on creative elements of a DGA-covered production.",
+   "requires": [
+    "Generative AI is not a person, and DGA members' duties cannot be assigned to it (2023).",
+    "Do not use GenAI on creative elements without consulting the director; the director's input must be considered in good faith. This is consultation, not approval (2023).",
+    "2026: AI-generated footage falls under the director's creative control; new transparency duties on GenAI use and on licensing covered work for training (reported)."
+   ],
+   "human_in_loop": "Directly relevant: this is the clearest contractual 'human creative control' duty in US film/TV. Capturing the director or approver per AI shot is the natural evidence.",
+   "applies": {
+    "any": [
+     "union-performers"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Record that the director was consulted, and signed off where 2026 terms require, on each AI-generated shot or element",
+     "check": "final_reviewed"
+    },
+    {
+     "text": "Director/approver identity attached to the shot's workflow history",
+     "check": "approved"
+    }
+   ]
+  },
+  {
+   "id": "ampas-99th-oscars-ai-rules",
+   "jurisdiction": "Industry",
+   "authority": "Academy of Motion Picture Arts and Sciences",
+   "title": "99th Oscars eligibility rules on generative AI",
+   "kind": "guidance",
+   "status": "in force for films released 2026-01-01 to 2026-12-31",
+   "effective": "2026-05-01",
+   "source": "https://press.oscars.org/news/awards-rules-and-campaign-promotional-regulations-approved-99th-oscarsr",
+   "source_title": "Awards Rules and Campaign Promotional Regulations Approved for 99th Oscars",
+   "source_date": "2026-05-01",
+   "confidence": "high",
+   "notes": "Private awards rule, not a legal obligation.",
+   "summary": "Applies when a film using generative AI is submitted for Academy Awards.",
+   "requires": [
+    "Acting nominations: performances must be by consenting humans in billed roles.",
+    "Screenplays must be human-authored.",
+    "Human authorship must be present in films that use GenAI.",
+    "The Academy may request information about GenAI use and the human authorship involved."
+   ],
+   "human_in_loop": "Yes. This is an awards-eligibility rule, not law, but it explicitly lets the Academy ask for proof of human authorship.",
+   "applies": {
+    "any": [
+     "feature"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Per-shot record of GenAI use and the human contributions (direction, selection, compositing, paint)",
+     "check": "human_breakpoints"
+    },
+    {
+     "text": "Performer consent records for any AI-modified performance",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "usco-part2-copyrightability",
+   "jurisdiction": "US",
+   "authority": "U.S. Copyright Office",
+   "title": "Copyright and AI, Part 2: Copyrightability",
+   "kind": "guidance",
+   "status": "guidance",
+   "effective": "2025-01-29",
+   "source": "https://www.copyright.gov/ai/Copyright-and-Artificial-Intelligence-Part-2-Copyrightability-Report.pdf",
+   "source_title": "Copyright and Artificial Intelligence, Part 2: Copyrightability",
+   "source_date": "2025-01-29",
+   "confidence": "high",
+   "notes": "This is agency guidance; courts decide case by case. Related: Part 3 on training was released as a pre-publication version on 2025-05-09 and concludes fair use is case by case. Its final status is uncertain after the Register's removal (Jenner). Allen v. Perlmutter (D. Colo. 1:24-cv-2665), a test of a heavily iterated Midjourney image, was still pending as of a 2026-03-30 tracker; no ruling was found.",
+   "summary": "Applies when a studio wants copyright protection in content that contains AI-generated material.",
+   "requires": [
+    "Only human authorship is protected; purely AI-generated material is not.",
+    "Prompts alone, including revised and resubmitted prompts, do not currently give enough control to make the user an author.",
+    "Human expressive inputs that remain perceptible in the output (e.g. an artist's own drawing, plate or model) stay protected.",
+    "Creative selection, coordination, arrangement or modification of AI output can be protected, case by case.",
+    "AI used as an assistive tool (e.g. de-aging, color correction, crowd removal) does not undermine protection of the human work.",
+    "No new legislation or sui generis right is recommended."
+   ],
+   "human_in_loop": "Central. Protection depends on the human's expressive contribution, so the workflow history should separate human inputs and edits from model output.",
+   "applies": {
+    "any": [
+     "always"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Human-made inputs per shot: plates, paintovers, 3D layouts, sketches, control maps, with author IDs",
+     "check": "sources_declared"
+    },
+    {
+     "text": "Record of human modifications after generation (comp, paint, roto, grading) with before/after versions",
+     "check": "human_breakpoints"
+    },
+    {
+     "text": "Selection and arrangement decisions (which takes were chosen and why, the edit)",
+     "check": "final_reviewed"
+    },
+    {
+     "text": "Prompt and seed history, which shows process but is not by itself evidence of authorship",
+     "check": "prompt_authorship"
+    }
+   ]
+  },
+  {
+   "id": "usco-registration-ai-disclosure",
+   "jurisdiction": "US",
+   "authority": "U.S. Copyright Office",
+   "title": "Registration guidance for works containing AI-generated material",
+   "kind": "guidance",
+   "status": "in force",
+   "effective": "2023-03-16",
+   "source": "https://www.federalregister.gov/documents/2023/03/16/2023-05321/copyright-registration-guidance-works-containing-material-generated-by-artificial-intelligence",
+   "source_title": "Copyright Registration Guidance: Works Containing Material Generated by Artificial Intelligence (88 FR, 2023-05321)",
+   "source_date": "2023-03-16",
+   "confidence": "high",
+   "notes": "Reaffirmed in Part 2 (2025).",
+   "summary": "Applies when a studio registers a work (film, spot, artwork) containing more than de minimis AI-generated material.",
+   "requires": [
+    "Disclose AI-generated content in the application and briefly describe the human author's contribution.",
+    "Use the Standard Application, and exclude more-than-de-minimis AI material under Limitation of Claim (Material Excluded).",
+    "Do not list an AI tool or its vendor as an author.",
+    "Correct pending applications, or file a supplementary registration for issued ones, if AI material was not disclosed.",
+    "Failure to disclose risks cancellation, or the registration being disregarded in litigation if inaccuracy was knowing."
+   ],
+   "human_in_loop": "Yes. The application must state the human contribution, so the workflow history should support that statement.",
+   "applies": {
+    "any": [
+     "production"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Inventory of AI-generated portions per work, enough to write the Material Excluded statement",
+     "check": "manual"
+    },
+    {
+     "text": "Description of human-authored contributions per work",
+     "check": "human_breakpoints"
+    }
+   ]
+  },
+  {
+   "id": "thaler-v-perlmutter",
+   "jurisdiction": "US",
+   "authority": "U.S. Court of Appeals for the D.C. Circuit; U.S. Supreme Court (cert. denied)",
+   "title": "Thaler v. Perlmutter",
+   "kind": "court-ruling",
+   "status": "final (cert denied 2026-03-02)",
+   "effective": "2025-03-18",
+   "source": "https://www.bakerdonelson.com/supreme-court-denies-certiorari-in-thaler-v-perlmutter-ai-cannot-be-an-author-under-the-copyright-act",
+   "source_title": "Supreme Court Denies Certiorari in Thaler v. Perlmutter (Baker Donelson)",
+   "source_date": "2026-03-05",
+   "confidence": "high",
+   "notes": "D.C. Cir. No. 23-5233, decided 2025-03-18; S. Ct. No. 25-449, cert denied 2026-03-02 (SCOTUSblog). The court opinion PDF was not fetched directly.",
+   "summary": "Applies when a work is claimed with an AI system as author or with no human authorial contribution.",
+   "requires": [
+    "The Copyright Act requires a human author in the first instance; a machine cannot be the author."
+   ],
+   "human_in_loop": "Sets the floor (zero human input means no protection) but does not decide how much human involvement is enough.",
+   "applies": {
+    "any": [
+     "production"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Identify human authors for every protected deliverable",
+     "check": "prompt_authorship"
+    }
+   ]
+  },
+  {
+   "id": "eu-ai-act-art50-2-provider-marking",
+   "jurisdiction": "EU",
+   "authority": "EU (Regulation (EU) 2024/1689, AI Act), as amended by Reg. (EU) 2026/1744",
+   "title": "AI Act Art. 50(2): machine-readable marking of synthetic output",
+   "kind": "regulation",
+   "status": "in force from 2026-08-02; systems already on the market before then have until 2026-12-02",
+   "effective": "2026-08-02",
+   "source": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+   "source_title": "Article 50: Transparency obligations for providers and deployers of certain AI systems (AI Act Service Desk)",
+   "source_date": "2026-07-27",
+   "confidence": "high",
+   "notes": "Source date is the date of the consolidated text shown. The 2026-12-02 grace period for pre-existing systems comes from the Digital Omnibus on AI (Reg. (EU) 2026/1744, OJ 2026-07-24, per Cuatrecasas). The watermark-detection interoperability measure applies from 2027-02-02 under the Code (Freshfields). Whether a studio running open models in ComfyUI internally is a 'provider' is a legal judgment; DLA Piper (2026-07-16) notes that building or substantially modifying generative tools can make a studio a provider. Fines for Art. 50 breaches: up to EUR 15m or 3% of turnover (Art. 99(4), per DLA Piper).",
+   "summary": "Applies when the studio is a provider of a generative AI system (built, or substantially modified, its own model/system and places it on the market or puts it into service) whose synthetic audio, image, video or text reaches the EU.",
+   "requires": [
+    "Mark outputs in a machine-readable format so they are detectable as AI-generated or manipulated.",
+    "Marking must be effective, interoperable, robust and reliable as far as technically feasible, considering the state of the art.",
+    "Exempt: systems that only assist standard editing or do not substantially alter the input or its meaning."
+   ],
+   "human_in_loop": "None. Art. 50 is about marking and disclosure, not human oversight.",
+   "applies": {
+    "any": [
+     "eu"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Whether the studio is acting as a provider (own fine-tuned model or tool offered to others) or only as a deployer of third-party tools",
+     "check": "manual"
+    },
+    {
+     "text": "Marking method applied per output (signed metadata / C2PA manifest, watermark), and verification that it survives the delivery pipeline",
+     "check": "manifest"
+    },
+    {
+     "text": "Vendor contract terms guaranteeing marking by upstream model providers",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "eu-ai-act-art50-4-deployer-deepfake",
+   "jurisdiction": "EU",
+   "authority": "EU (AI Act)",
+   "title": "AI Act Art. 50(4): deepfake disclosure by deployers",
+   "kind": "regulation",
+   "status": "in force from 2026-08-02 (no deferral)",
+   "effective": "2026-08-02",
+   "source": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+   "source_title": "Article 50 (AI Act Service Desk)",
+   "source_date": "2026-07-27",
+   "confidence": "high",
+   "notes": "Commission Art. 50 guidelines published 2026-07-20 (Stephenson Harwood, 2026-08-03). The deepfake definition is in Art. 3(60) and was paraphrased via DLA Piper rather than fetched. National laws may add requirements (e.g. French Penal Code Art. 226-8, per DLA Piper).",
+   "summary": "Applies when a studio uses an AI system to generate or manipulate image, audio or video that resembles real people, objects, places or events and could falsely appear authentic, and the content is shown in the EU.",
+   "requires": [
+    "Disclose that the content is artificially generated or manipulated, clearly and distinguishably, at the latest at first exposure, and accessibly.",
+    "For evidently artistic, creative, satirical or fictional works, the duty is limited to disclosing the existence of such content in a way that does not hamper display or enjoyment (e.g. credits or notes, per commentary).",
+    "The Commission reads the creative exception strictly; where content mixes informative and creative elements, the informative character prevails (relevant to ads making factual claims).",
+    "Content depicting impossible creatures or physics-defying scenes is not a deepfake (per Code commentary)."
+   ],
+   "human_in_loop": "No human-in-the-loop proof is required for audiovisual content. The human review / editorial responsibility exemption in Art. 50(4) applies only to AI-generated text published to inform the public.",
+   "applies": {
+    "any": [
+     "eu"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Per-deliverable flag: contains realistic AI-generated/manipulated depiction of real-seeming people, places or events (Y/N)",
+     "check": "manual"
+    },
+    {
+     "text": "Disclosure method and placement used (on-screen icon, credits, spoken disclaimer) and the territories where it was shown",
+     "check": "manual"
+    },
+    {
+     "text": "Rationale if the creative-work lighter regime was relied on",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "eu-code-of-practice-ai-content-transparency",
+   "jurisdiction": "EU",
+   "authority": "European Commission / AI Office",
+   "title": "Code of Practice on Transparency (marking and labelling) of AI-generated content",
+   "kind": "guidance",
+   "status": "final, voluntary (published 2026-06-10); assessed as adequate",
+   "effective": "2026-06-10",
+   "source": "https://digital-strategy.ec.europa.eu/en/news/commission-publishes-code-practice-marking-and-labelling-ai-generated-content",
+   "source_title": "Commission publishes Code of Practice on marking and labelling AI-generated content",
+   "source_date": "2026-06-10",
+   "confidence": "medium",
+   "notes": "Measure details come from Freshfields and IPTC summaries; the Code text itself was not read. Adherence is voluntary and not conclusive evidence of compliance. According to IPTC, the Code does not name C2PA and refers only to 'relevant standards'; IPTC's view that C2PA is the only technology meeting the criteria is its own commentary.",
+   "summary": "Applies when a provider or deployer wants a recognized way to show Art. 50(2)/(4) compliance.",
+   "requires": [
+    "Providers: use digitally signed, time-stamped, tamper-evident metadata plus imperceptible watermarking (multi-layer where one technique is insufficient); fingerprinting/logging is optional.",
+    "Providers: preserve existing metadata where feasible, bar users from stripping marks in terms of service, offer a free public detection tool, and implement detection interoperability by 2027-02-02.",
+    "Deployers: label deepfakes using the EU icon (fully generated / AI-modified / basic) or an equivalent label, recognizable without interaction at first exposure; use spoken disclaimers for audio-only content.",
+    "Deployers: adopt proportionate internal processes, awareness and review mechanisms for labelling."
+   ],
+   "human_in_loop": "Only for text: deployers relying on the editorial exemption must name the person with editorial responsibility and document review processes, though not each individual review.",
+   "applies": {
+    "any": [
+     "eu"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Labelling SOP and record of label/icon applied per deliverable",
+     "check": "manual"
+    },
+    {
+     "text": "Provenance metadata retained through delivery",
+     "check": "manifest"
+    },
+    {
+     "text": "Training/awareness records for staff who approve labelling",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "eu-ai-act-art14-human-oversight",
+   "jurisdiction": "EU",
+   "authority": "EU (AI Act)",
+   "title": "AI Act Art. 14: human oversight (high-risk systems only)",
+   "kind": "regulation",
+   "status": "Annex III high-risk obligations deferred to 2027-12-02 (Annex I to 2028-08-02) by Digital Omnibus",
+   "effective": "2027-12-02",
+   "source": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14",
+   "source_title": "Article 14: Human oversight (AI Act Service Desk)",
+   "source_date": "2026-07-27",
+   "confidence": "high",
+   "notes": "The Annex III list was checked at https://ai-act-service-desk.ec.europa.eu/en/ai-act/annex-3. Deferral dates are from Cuatrecasas (2026-07-24). Separately, amended Art. 4 (AI literacy) still requires providers/deployers to take measures for staff AI literacy.",
+   "summary": "Applies only when the AI system is high-risk (Annex I products or Annex III uses such as biometrics, employment, education, law enforcement, essential services, justice/elections); creative content generation is not an Annex III area.",
+   "requires": [
+    "Providers design high-risk systems so natural persons can understand, monitor, override and stop them; deployers apply those measures.",
+    "Does not apply to generative tools used for film, TV or advertising content unless used in a listed high-risk context (e.g. AI used to screen or hire performers would be employment-area high-risk)."
+   ],
+   "human_in_loop": "This is the AI Act's human-in-the-loop article, but it applies only to high-risk systems. There is no EU legal requirement to prove a human was in the loop for an AI-generated creative shot.",
+   "applies": {
+    "clarification": true
+   },
+   "evidence": [
+    {
+     "text": "Classification memo showing the creative pipeline is not a high-risk use",
+     "check": "manual"
+    },
+    {
+     "text": "Separate review if AI is used in casting/hiring decisions (employment area)",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "eu-cjeu-originality-standard",
+   "jurisdiction": "EU",
+   "authority": "Court of Justice of the EU",
+   "title": "Originality = author's own intellectual creation (Infopaq C-5/08; Painer C-145/10)",
+   "kind": "court-ruling",
+   "status": "binding EU case law",
+   "effective": "2011-12-01",
+   "source": "https://fra.europa.eu/en/caselaw-reference/cjeu-c-14510-judgment",
+   "source_title": "CJEU C-145/10 Painer, Judgment of 1 December 2011 (FRA case-law reference)",
+   "source_date": "2011-12-01",
+   "confidence": "medium",
+   "notes": "Infopaq (C-5/08, 16 July 2009) was not fetched from a primary source (BAILII was blocked, IPPT paywalled); the date is from search results and commentary. The CJEU has not ruled on AI-generated outputs. C-250/25 Like Company v Google (referred 2025-04-03) concerns training and outputs reproducing press content, not output protectability, and a ruling is not expected before 2027.",
+   "summary": "Applies when a studio claims copyright in AI-assisted content in an EU member state.",
+   "requires": [
+    "A work is protected only if it is the author's own intellectual creation reflecting their personality through free and creative choices (Painer: framing, angle, lighting and similar choices for photos).",
+    "Choices dictated by technical constraints that leave no room for creativity do not qualify (Football Dataco, per commentary)."
+   ],
+   "human_in_loop": "Central for protectability (not for legality). Evidence of free and creative human choices is what supports protection.",
+   "applies": {
+    "any": [
+     "eu"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Records of human creative choices visible in the final frame: composition, framing, lighting, layout, paintovers, edit decisions",
+     "check": "human_breakpoints"
+    },
+    {
+     "text": "Link between those choices and the output (e.g. control images, masks, comp scripts)",
+     "check": "sources_declared"
+    }
+   ]
+  },
+  {
+   "id": "de-ag-munich-ai-logos-2026",
+   "jurisdiction": "EU",
+   "authority": "Amtsgericht Muenchen (Local Court Munich), Germany",
+   "title": "AG Munich: AI-generated logos not protected",
+   "kind": "court-ruling",
+   "status": "first-instance decision",
+   "effective": "2026-02-13",
+   "source": "https://cms.law/en/ukr/publication/artificial-intelligence-and-copyright-case-tracker/germany-anonymous-creator-of-ai-generated-logos-and-operator-of-personal-website-v-anonymous-user-of-the-claimant-s-logos-on-his-own-personal-web",
+   "source_title": "CMS AI & copyright case tracker: Germany, AI-generated logos",
+   "source_date": "2026-02-13",
+   "confidence": "medium",
+   "notes": "Secondary source (CMS tracker); case number not stated. A lower-court ruling with limited precedential weight. Jurisdiction is Germany (EU member state).",
+   "summary": "Applies when a studio relies on prompting (even long or iterated prompts) to claim copyright in AI output in Germany.",
+   "requires": [
+    "AI output can be protected only if human input (carefully designed prompts, settings, selective revision) shapes the result in an objectively identifiable way, with the creative prompt elements dominating the output.",
+    "Merely selecting from AI options or iterating technical adjustments is not sufficient; a 1,700-character prompt was still too abstract, and effort alone does not count."
+   ],
+   "human_in_loop": "Yes for protectability. The court examined the prompts and iteration process in detail, so keeping that history matters, but it may show insufficient control.",
+   "applies": {
+    "any": [
+     "eu"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Prompt history together with evidence that specific human choices determine specific visual features",
+     "check": "prompt_authorship"
+    },
+    {
+     "text": "Human edits beyond selection",
+     "check": "human_breakpoints"
+    }
+   ]
+  },
+  {
+   "id": "cz-prague-municipal-court-ai-image",
+   "jurisdiction": "EU",
+   "authority": "Mestsky soud v Praze (Prague Municipal Court), Czech Republic",
+   "title": "Prague Municipal Court 10 C 13/2023: AI image not a work",
+   "kind": "court-ruling",
+   "status": "first-instance decision",
+   "effective": "",
+   "source": "https://merlin.obs.coe.int/article/10047",
+   "source_title": "IRIS Merlin (European Audiovisual Observatory) report on 10 C 13/2023",
+   "source_date": "",
+   "confidence": "medium",
+   "notes": "Decision dated 11 October; the year was not shown in the fetched text (commonly reported as 2023, with Bird & Bird's commentary in 2024). Facts are from Bird & Bird.",
+   "summary": "Applies when a claimant asserts authorship of a text-to-image output in Czechia.",
+   "requires": [
+    "Only a natural person can be an author; an AI-generated image that is not the result of a person's creative activity is not a work.",
+    "A prompt is at most an idea or theme and is not protected.",
+    "The claimant also failed to prove that his prompt produced the image, offering only his own statement."
+   ],
+   "human_in_loop": "Shows evidentiary risk: without a verifiable generation record, even authorship of the prompt could not be proven.",
+   "applies": {
+    "any": [
+     "eu"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Contemporaneous, verifiable records linking prompt, settings and output (the claimant lost partly for lack of such proof)",
+     "check": "signed"
+    }
+   ]
+  },
+  {
+   "id": "de-gema-v-openai",
+   "jurisdiction": "EU",
+   "authority": "Landgericht Muenchen I (Regional Court Munich I), Germany",
+   "title": "GEMA v OpenAI (42 O 14139/24)",
+   "kind": "court-ruling",
+   "status": "first instance, not final (appeal expected)",
+   "effective": "2025-11-11",
+   "source": "https://www.taylorwessing.com/de/insights-and-events/insights/2025/11/gema-v-openai",
+   "source_title": "GEMA v OpenAI: Regional Court of Munich I, 11 November 2025 (Taylor Wessing)",
+   "source_date": "2025-11-11",
+   "confidence": "medium",
+   "notes": "Concerns text lyrics and an LLM provider; extending it to image/video models is untested. It does not bear on human-in-the-loop evidence.",
+   "summary": "Applies when a model memorizes and reproduces protected works in outputs.",
+   "requires": [
+    "Memorization of works in model parameters is reproduction; outputs reproducing lyrics infringed reproduction and making-available rights.",
+    "The EU TDM exception does not cover memorizing whole works.",
+    "The model provider, not the user, was held responsible for infringing outputs."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "eu"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Model/checkpoint identity and provenance per shot (which provider is responsible)",
+     "check": "outputs_fingerprinted"
+    },
+    {
+     "text": "Output similarity checks against known third-party IP for final deliverables",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "de-kneschke-v-laion",
+   "jurisdiction": "EU",
+   "authority": "Hanseatisches Oberlandesgericht Hamburg (Higher Regional Court), Germany",
+   "title": "Kneschke v LAION (5 U 104/24)",
+   "kind": "court-ruling",
+   "status": "appeal decided; further appeal to BGH allowed",
+   "effective": "2025-12-10",
+   "source": "https://cm.twobirds.com/en/insights/2025/germany/higher-regional-court-hamburg-confirms-ai-training-was-permitted-(kneschke-v,-d-,-laion)",
+   "source_title": "Higher Regional Court Hamburg confirms AI training was permitted (Bird & Bird)",
+   "source_date": "2025-12-10",
+   "confidence": "medium",
+   "notes": "Judgment date and reference (10 Dec 2025, 5 U 104/24) are from search-result titles (Technology's Legal Edge); the Bird & Bird page did not state them. A commercial studio would not benefit from the research exception.",
+   "summary": "Applies when training datasets are built from scraped images (relevant if a studio builds training sets for LoRAs or fine-tunes).",
+   "requires": [
+    "A non-commercial research organisation may rely on the scientific-research TDM exception (s60d UrhG).",
+    "A natural-language reservation in website terms was not machine-readable in 2021 and so not a valid opt-out; the court treated this as time-dependent."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "training"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Training-data provenance and licence/opt-out checks for any studio-trained LoRA or fine-tune",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "uk-cdpa-s9-3-computer-generated-works",
+   "jurisdiction": "UK",
+   "authority": "UK Parliament (CDPA 1988); UK Government (IPO/DSIT) report",
+   "title": "CDPA s9(3) computer-generated works and the 2026 Copyright and AI report",
+   "kind": "statute",
+   "status": "in force; government proposes removal (no legislation yet)",
+   "effective": "",
+   "source": "https://www.hsfkramer.com/notes/ip/2026-03/uk-government-report-on-copyright-and-ai-concludes-more-evidence-is-needed-although-s9-3-cdpa-could-go",
+   "source_title": "UK Government report on copyright and AI concludes more evidence is needed, although s9(3) CDPA could go (HSF Kramer)",
+   "source_date": "2026-03-18",
+   "confidence": "medium",
+   "notes": "legislation.gov.uk was blocked during research; the statute text is paraphrased from Authors Alliance (2025-05-19). The report is titled 'Report on Copyright and Artificial Intelligence' (with an Impact Assessment).",
+   "summary": "Applies when a work is generated by computer with no human author and protection is claimed in the UK.",
+   "requires": [
+    "The author of a computer-generated work is the person who made the arrangements necessary for its creation; protection lasts 50 years and carries no moral rights.",
+    "The March 2026 government report proposes removing s9(3) protection after further monitoring, while AI-assisted human works remain protected.",
+    "The broad TDM exception with opt-out is no longer the preferred option; there are no concrete labelling or transparency proposals."
+   ],
+   "human_in_loop": "s9(3) uniquely protects works without a human author, but its future is uncertain; human authorship remains the safer basis.",
+   "applies": {
+    "any": [
+     "gb"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Who made the arrangements (producer/operator) for each generated asset, in case s9(3) is relied on",
+     "check": "prompt_authorship"
+    },
+    {
+     "text": "Human-authorship records, which are safer given the proposed repeal",
+     "check": "human_breakpoints"
+    }
+   ]
+  },
+  {
+   "id": "cn-ai-content-labeling-measures",
+   "jurisdiction": "CN",
+   "authority": "CAC, MIIT, Ministry of Public Security, NRTA; national standard GB 45438-2025",
+   "title": "Measures for Labeling AI-Generated Synthetic Content",
+   "kind": "regulation",
+   "status": "in force",
+   "effective": "2025-09-01",
+   "source": "https://www.chinalawtranslate.com/en/ai-labeling/",
+   "source_title": "Measures for Labeling of AI-Generated Synthetic Content (China Law Translate)",
+   "source_date": "2025-03-07",
+   "confidence": "high",
+   "notes": "Unofficial translation; source date is the promulgation date shown. The measures were publicly released 2025-03-14 alongside GB 45438-2025 (Covington/Loeb).",
+   "summary": "Applies when AI-generated or synthesized content is provided or published through services in China (providers, platforms, and users who publish).",
+   "requires": [
+    "Service providers add explicit labels (for video, a conspicuous label on the opening screen) and implicit metadata labels (content attributes, provider name/code, content reference number); watermarks are encouraged.",
+    "Exported or downloaded files must keep their labels.",
+    "Users who publish AI content must declare it and use the platform's labelling tools.",
+    "No one may maliciously delete, alter, forge or hide labels.",
+    "Providers that give unlabelled output on request must keep logs for at least 6 months."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "cn"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Labels and metadata present on deliverables released in China",
+     "check": "manifest"
+    },
+    {
+     "text": "Platform declaration records for published content",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "cn-li-v-liu-beijing-internet-court",
+   "jurisdiction": "CN",
+   "authority": "Beijing Internet Court",
+   "title": "Li v Liu (Stable Diffusion image)",
+   "kind": "court-ruling",
+   "status": "decided",
+   "effective": "2023-11-27",
+   "source": "https://legalblogs.wolterskluwer.com/copyright-blog/beijing-internet-court-grants-copyright-to-ai-generated-image-for-the-first-time/",
+   "source_title": "Beijing Internet Court Grants Copyright to AI-Generated Image for the First Time (Kluwer Copyright Blog)",
+   "source_date": "2024-02-02",
+   "confidence": "medium",
+   "notes": "Secondary source. A single court; later Chinese decisions were not surveyed. That the plaintiff reproduced the process in court is from general commentary and was not explicitly confirmed in the fetched text, so treat that evidence point as plausible but unverified.",
+   "summary": "Applies when copyright is claimed in AI-generated images in China.",
+   "requires": [
+    "An AI image can be a work where the user's intellectual input (selecting and ordering about 150 prompts, setting parameters, iterating to match a concept) shows personal choices and aesthetic judgment.",
+    "The user, not the model or its developers, is the author.",
+    "The court said AI use should be disclosed as a matter of good faith."
+   ],
+   "human_in_loop": "Yes. Recorded generation process evidence was decisive. More permissive than the US, Czech and German approaches.",
+   "applies": {
+    "any": [
+     "cn"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Full prompt, negative prompt, parameter and iteration history; the plaintiff proved authorship by reproducing the process",
+     "check": "signed"
+    }
+   ]
+  },
+  {
+   "id": "us-ca-ab2602-digital-replica-contracts",
+   "jurisdiction": "US-CA",
+   "authority": "California Legislature (Labor Code s927, AB 2602)",
+   "title": "AB 2602: unenforceable digital replica contract terms",
+   "kind": "statute",
+   "status": "in force",
+   "effective": "2025-01-01",
+   "source": "https://law.justia.com/codes/california/code-lab/division-2/part-3/chapter-1/section-927/",
+   "source_title": "California Labor Code s927 (Justia, 2025 Code)",
+   "source_date": "2024-09-17",
+   "confidence": "high",
+   "notes": "Source date is the signing date (Fenwick). Authorized sampling and remastering are excluded from the replica definition.",
+   "summary": "Applies when a personal/professional services contract (for new performances fixed on or after 2025-01-01) lets the producer use a digital replica in place of work the individual would otherwise do in person.",
+   "requires": [
+    "The provision is unenforceable if all three apply: it allows a replica to replace in-person work; it lacks a reasonably specific description of intended uses; and the individual was not represented by counsel (with commercial terms stated clearly in signed writing) or by a union whose CBA covers replicas."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "us"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Contract clause with a reasonably specific use description",
+     "check": "manual"
+    },
+    {
+     "text": "Proof of counsel or union representation",
+     "check": "manual"
+    },
+    {
+     "text": "Map of replica-generated shots to the contracted uses",
+     "check": "external_id"
+    }
+   ]
+  },
+  {
+   "id": "us-ca-ab1836-deceased-personality-replicas",
+   "jurisdiction": "US-CA",
+   "authority": "California Legislature (Civil Code s3344.1, AB 1836)",
+   "title": "AB 1836: digital replicas of deceased personalities",
+   "kind": "statute",
+   "status": "in force",
+   "effective": "2025-01-01",
+   "source": "https://cdas.com/california-expands-its-post-mortem-right-of-publicity-law-to-cover-ai-digital-replicas/",
+   "source_title": "California Expands Its Post-Mortem Right of Publicity Law to Cover AI Digital Replicas (CDAS)",
+   "source_date": "2024-10-30",
+   "confidence": "medium",
+   "notes": "leginfo.legislature.ca.gov was blocked; the statute text was not read. Signed 2024-09-17.",
+   "summary": "Applies when a production creates or distributes a digital replica of a deceased personality's voice or likeness in an audiovisual work or sound recording.",
+   "requires": [
+    "Obtain prior consent from the estate or rights holder.",
+    "Liability is the greater of $10,000 or actual damages.",
+    "Exempt: news/public affairs/sports; comment, criticism, satire, parody, scholarship; documentary, biographical or historical works (unless intended to falsely suggest the real person participated); fleeting or incidental use; advertising for exempt works."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "us"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Estate consent, or a documented exemption analysis, for any deceased person's likeness or voice",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "us-ca-sb942-ai-transparency-act",
+   "jurisdiction": "US-CA",
+   "authority": "California Legislature (SB 942 as amended by AB 853)",
+   "title": "California AI Transparency Act",
+   "kind": "statute",
+   "status": "operative from 2026-08-02 (platforms 2027-01-01; capture devices 2028-01-01)",
+   "effective": "2026-08-02",
+   "source": "https://morganlewis.com/pubs/2026/08/new-california-ai-disclosure-rules-become-operative",
+   "source_title": "New California AI Disclosure Rules Become Operative (Morgan Lewis)",
+   "source_date": "2026-08-01",
+   "confidence": "medium",
+   "notes": "Delay to 2026-08-02 was enacted by AB 853, signed 2025-10-13 (Orrick, 2025-10-17). Morgan Lewis lists an exclusion for products that are exclusively non-user-generated video game, TV, streaming, movie or interactive experiences. Pending SB 1000 and AB 2713 could change details. The source date is approximate: the article is from August 2026 and its exact day was not shown.",
+   "summary": "Applies when a covered provider (GenAI system with over 1 million monthly users, publicly accessible in California) generates image, video or audio; studios are mainly affected as licensees and users.",
+   "requires": [
+    "Providers embed latent disclosures in AI image/video/audio (system name and version, creation/alteration time, unique ID), durable and standards-consistent.",
+    "Providers offer users an option for a manifest (visible) disclosure and a free public detection tool.",
+    "Licensees must maintain latent disclosure capability; providers must revoke a licence within 96 hours of learning a licensee disabled it.",
+    "Large online platforms must surface provenance data from 2027-01-01.",
+    "Civil penalty $5,000 per violation per day; AG enforcement."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "us-ca"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Licence terms from GenAI vendors and confirmation that pipeline steps do not strip latent disclosures",
+     "check": "manual"
+    },
+    {
+     "text": "Record of which provider/system version produced each asset",
+     "check": "signed"
+    }
+   ]
+  },
+  {
+   "id": "us-tn-elvis-act",
+   "jurisdiction": "US-TN",
+   "authority": "Tennessee General Assembly (HB 2091)",
+   "title": "ELVIS Act (voice and likeness)",
+   "kind": "statute",
+   "status": "in force",
+   "effective": "2024-07-01",
+   "source": "https://www.reedsmith.com/articles/tennessee-efforts-protect-rop-against-genai-imitations-deepfakes/",
+   "source_title": "Tennessee efforts to protect ROP against GenAI imitations (Reed Smith)",
+   "source_date": "2024-05-08",
+   "confidence": "medium",
+   "notes": "Statute text was not fetched; remedies include injunctions, destruction and damages.",
+   "summary": "Applies when a person's name, image, voice (including a simulated voice) or likeness is used commercially without authorization, or a tool whose primary purpose is producing a specific person's likeness or voice is distributed.",
+   "requires": [
+    "Obtain authorization before commercially using any individual's voice (real or simulated) or likeness.",
+    "Liability extends to distributors of tools whose primary purpose is replicating a specific identifiable person, and to ad media that knew or should have known.",
+    "Exemptions cover First Amendment uses (comment, criticism, scholarship, satire, parody) and fleeting or incidental use."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "us"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Authorization for any sound-alike or look-alike, including AI voices 'in the style of' a person",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "us-ny-synthetic-performer-ad-disclosure",
+   "jurisdiction": "US-NY",
+   "authority": "New York Legislature (S.8420, General Business Law)",
+   "title": "Synthetic performer disclosure in advertising",
+   "kind": "statute",
+   "status": "in force from about 2026-06-09",
+   "effective": "2026-06-09",
+   "source": "https://www.skadden.com/insights/publications/2026/01/two-newly-enacted-new-york-laws-will-regulate",
+   "source_title": "Two Newly Enacted New York Laws Will Regulate Certain AI-Generated Images (Skadden)",
+   "source_date": "2026-01-01",
+   "confidence": "medium",
+   "notes": "Signed 2025-12-11; effective 180 days later (Skadden computes 2026-06-09). The source date is approximate: the article is from January 2026 and its exact day was not shown.",
+   "summary": "Applies when an ad producer or creator has actual knowledge that an ad includes a synthetic performer (an AI-created human-like performer not recognizable as a real person).",
+   "requires": [
+    "Conspicuously disclose the synthetic performer in the ad (the statute does not specify form).",
+    "Civil penalty is $1,000 for the first violation and $5,000 for subsequent ones.",
+    "Exempt: ads for expressive works (film/TV/games) consistent with the work; audio-only ads; AI used only for translation; media outlets that publish ads."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "us",
+     "us-ny"
+    ],
+    "all": [
+     "advertising"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Per-spot flag for synthetic humans and the disclosure used",
+     "check": "manual"
+    },
+    {
+     "text": "Distribution territories (NY)",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "us-ny-post-mortem-digital-replica",
+   "jurisdiction": "US-NY",
+   "authority": "New York Legislature (S.8882, Civil Rights Law)",
+   "title": "Post-mortem right of publicity and deceased-performer replicas",
+   "kind": "statute",
+   "status": "in force",
+   "effective": "2025-12-11",
+   "source": "https://www.skadden.com/insights/publications/2026/01/two-newly-enacted-new-york-laws-will-regulate",
+   "source_title": "Two Newly Enacted New York Laws Will Regulate Certain AI-Generated Images (Skadden)",
+   "source_date": "2026-01-01",
+   "confidence": "medium",
+   "notes": "Effective immediately on signing. The 2025-12-11 signing date is assumed to match S.8420 and is unverified. Liability for performer replicas requires knowledge that the use was unauthorized.",
+   "summary": "Applies when a deceased personality's name, voice, likeness etc. is used commercially, or a deceased performer's digital replica is used in an audiovisual work, sound recording or live music.",
+   "requires": [
+    "Obtain prior consent from the rights holders.",
+    "Damages are the greater of $2,000 or actual damages, plus profits and possible punitive damages.",
+    "Exempt: literary, artistic or newsworthy works, parody, commentary, documentary/biographical works, news, sports and political uses."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "us"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Rights-holder consent, or an exemption analysis",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "us-ny-gol-5-302-digital-replica-contracts",
+   "jurisdiction": "US-NY",
+   "authority": "New York Legislature (Gen. Oblig. Law s5-302, S.7676B)",
+   "title": "New York digital replica contract law",
+   "kind": "statute",
+   "status": "in force",
+   "effective": "2025-01-01",
+   "source": "https://www.littler.com/news-analysis/asap/new-yorks-digital-replica-law-and-its-impact-artificial-intelligence-and",
+   "source_title": "New York's Digital Replica Law and Its Impact on AI and the Entertainment Industry (Littler)",
+   "source_date": "2025-01-21",
+   "confidence": "medium",
+   "notes": "Effective date per Littler; the statute text was not fetched.",
+   "summary": "Applies when a contract allows a digital replica of an individual's voice or likeness to replace in-person work.",
+   "requires": [
+    "The provision is void if all three apply: replica replaces in-person work; no reasonably specific description of intended use; the individual had no counsel or union representation."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "us"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Same as California AB 2602: use description plus proof of representation",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "us-no-fakes-act",
+   "jurisdiction": "US",
+   "authority": "U.S. Congress (S.4591 / H.R.8915, 119th Congress)",
+   "title": "NO FAKES Act",
+   "kind": "statute",
+   "status": "proposed (reintroduced 2026-05-20; advanced by Senate Judiciary Committee, no floor vote reported)",
+   "effective": "",
+   "source": "https://manatt.com/insights/newsletters/client-alert/congress-reintroduces-the-no-fakes-act-what-s-new-in-the-2026-bill",
+   "source_title": "Congress Reintroduces the NO FAKES Act: What's New in the 2026 Bill (Manatt)",
+   "source_date": "2026-05-28",
+   "confidence": "high",
+   "notes": "Not law. Senate Judiciary advancement per Digital Music News (2026-06-18). The MPA publicly supports passage (MPA statement, 2026-03-20).",
+   "summary": "Applies when would apply to unauthorized digital replicas of any individual's voice or visual likeness.",
+   "requires": [
+    "Would create a federal, licensable property right in voice and visual likeness, with notice-and-takedown and (in 2026) a DMCA-style counter-notice process.",
+    "First Amendment carve-outs would be preserved."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "likeness",
+     "voice"
+    ],
+    "all": [
+     "us"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Likeness/voice licences, which already exist under state law practice",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "us-take-it-down-act",
+   "jurisdiction": "US",
+   "authority": "U.S. Congress; enforced by FTC",
+   "title": "TAKE IT DOWN Act",
+   "kind": "statute",
+   "status": "in force (platform duties from 2026-05-19)",
+   "effective": "2026-05-19",
+   "source": "https://wilmerhale.com/en/insights/client-alerts/20260615-the-take-it-down-act-goes-live",
+   "source_title": "The TAKE IT DOWN Act Goes Live (WilmerHale)",
+   "source_date": "2026-06-15",
+   "confidence": "high",
+   "notes": "Narrow: covers intimate imagery only, not general deepfakes. Signed May 2025.",
+   "summary": "Applies when nonconsensual intimate imagery, including AI digital forgeries, is published or hosted.",
+   "requires": [
+    "Knowingly publishing nonconsensual intimate depictions or digital forgeries is a crime.",
+    "Covered platforms must remove reported content within 48 hours and make reasonable efforts to remove copies; the FTC enforces (civil penalty about $53,088 per violation)."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "all": [
+     "intimate-imagery"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Policy prohibiting sexual/intimate generation of real people without consent; content-review logs",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "c2pa-content-credentials",
+   "jurisdiction": "Global",
+   "authority": "Coalition for Content Provenance and Authenticity (C2PA); IPTC (digital source type vocabulary)",
+   "title": "C2PA Content Credentials + IPTC digital source types",
+   "kind": "standard",
+   "status": "voluntary standard; spec 2.3 (Dec 2025) confirmed, 2.4 indicated but unverified",
+   "effective": "",
+   "source": "https://spec.c2pa.org/specifications/specifications/2.3/specs/C2PA_Specification",
+   "source_title": "Content Credentials: C2PA Technical Specification 2.3",
+   "source_date": "2025-12-01",
+   "confidence": "high",
+   "notes": "Source date is approximate: version history gives December 2025 with no day. IPTC codes and definitions are from https://cv.iptc.org/newscodes/digitalsourcetype/ (trainedAlgorithmicMedia modified 2024-10-23). How digitalSourceType is used on actions is from CAI open-source docs. The 2.4 spec page could not be fetched. The EU Code does not name C2PA (per IPTC).",
+   "summary": "Applies when a studio wants machine-readable provenance on deliverables (supports Art. 50, SB 942, China implicit labels, and platform auto-labelling).",
+   "requires": [
+    "A manifest is a signed claim bundling assertions (actions, ingredients, metadata, thumbnails, content bindings); the manifests together form the asset's Content Credentials.",
+    "Every manifest starts with a c2pa.created or c2pa.opened action; ingredients (source assets) are linked by ID.",
+    "Actions can carry a digitalSourceType from the IPTC vocabulary: trainedAlgorithmicMedia (created with GenAI), compositeWithTrainedAlgorithmicMedia (edited with GenAI, e.g. inpaint/outpaint), compositeSynthetic, algorithmicMedia, digitalCapture; softwareAgent names the tool.",
+    "Soft bindings (watermarks or fingerprints) can help recover provenance after metadata is stripped."
+   ],
+   "human_in_loop": "Not a legal rule, but its ingredient and action history is a natural vehicle for recording human inputs and edits alongside AI steps.",
+   "applies": {
+    "any": [
+     "always"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Signed manifest per deliverable listing ingredients (plates, generated elements), actions and digitalSourceType",
+     "check": "manifest"
+    },
+    {
+     "text": "Signing certificate/identity used by the studio",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "youtube-altered-synthetic-disclosure",
+   "jurisdiction": "Global",
+   "authority": "YouTube (Google)",
+   "title": "YouTube altered or synthetic content disclosure",
+   "kind": "platform-policy",
+   "status": "in force",
+   "effective": "",
+   "source": "https://support.google.com/youtube/answer/14328491",
+   "source_title": "Disclosing use of altered or synthetic content (YouTube Help)",
+   "source_date": "",
+   "confidence": "high",
+   "notes": "The help page is undated. It has no ads-specific rule; Google Ads policies were not researched.",
+   "summary": "Applies when realistic AI-generated or altered content is uploaded: real people saying or doing things they didn't, altered real events or places, realistic scenes that didn't happen, or AI music as the focus.",
+   "requires": [
+    "Set 'AI use' to Yes in YouTube Studio for realistic altered or synthetic content.",
+    "Not required for clearly unrealistic content or minor aesthetic edits (filters, color/lighting, upscaling, background blur, AI-extended backdrops).",
+    "YouTube may auto-label content carrying C2PA metadata, and such labels cannot be removed by the creator.",
+    "Persistent non-disclosure can lead to forced labels, removal or YPP suspension."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "youtube"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Per-upload disclosure setting and rationale",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "meta-ai-labels-ads",
+   "jurisdiction": "Global",
+   "authority": "Meta",
+   "title": "Meta AI disclosure for political/social-issue ads and AI info labels",
+   "kind": "platform-policy",
+   "status": "in force",
+   "effective": "",
+   "source": "https://transparency.meta.com/policies/ad-standards/siep-advertising/siep",
+   "source_title": "Meta Advertising Standards: Social issues, elections or politics",
+   "source_date": "",
+   "confidence": "medium",
+   "notes": "The policy page is undated and its list of specific alterations was truncated. AI info label behaviour is from ContentGrip (2026-07-10), a secondary source.",
+   "summary": "Applies when ads on Meta platforms are created or edited with GenAI; political, election or social-issue ads contain photorealistic or realistic-sounding digitally created/altered media.",
+   "requires": [
+    "Political, election and social-issue advertisers must disclose digitally created or altered photorealistic images/video or realistic audio; undisclosed ads are rejected and repeat failures penalized.",
+    "Meta auto-applies an 'AI info' label to ads made or significantly edited with its GenAI tools, and may do so when it detects C2PA-type metadata from third-party tools."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "any": [
+     "advertising"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Ad-level disclosure flag and the creative's provenance metadata",
+     "check": "manual"
+    }
+   ]
+  },
+  {
+   "id": "us-ftc-reviews-testimonials-rule",
+   "jurisdiction": "US",
+   "authority": "Federal Trade Commission",
+   "title": "FTC Consumer Reviews and Testimonials Rule + AI claims guidance",
+   "kind": "regulation",
+   "status": "in force",
+   "effective": "2024-10-21",
+   "source": "https://datamatters.sidley.com/2024/08/30/u-s-ftcs-new-rule-on-fake-and-ai-generated-reviews-and-social-media-bots/",
+   "source_title": "U.S. FTC's New Rule on Fake and AI-Generated Reviews and Social Media Bots (Sidley)",
+   "source_date": "2024-08-30",
+   "confidence": "medium",
+   "notes": "Rule announced 2024-08-14 (16 CFR Part 465, cited from search results and not verified in fetched text). AI-claims guidance: FTC blog 'Keep Your AI Claims in Check' (Feb 2023), via Fenwick. No FTC rule specifically requires labelling AI-generated ad imagery.",
+   "summary": "Applies when an ad uses testimonials or endorsements, including AI-generated people or voices presented as real customers or celebrities, or makes claims about AI.",
+   "requires": [
+    "Do not use fake testimonials that misrepresent the reviewer's identity, experience or existence, including AI-generated ones; fake celebrity endorsements are covered.",
+    "Section 5 FTC Act deception principles apply to AI claims and, per commentary, to non-obvious synthetic content that misleads consumers.",
+    "Civil penalties are available."
+   ],
+   "human_in_loop": "",
+   "applies": {
+    "all": [
+     "advertising",
+     "us"
+    ]
+   },
+   "evidence": [
+    {
+     "text": "Record identifying which on-screen 'customers' or endorsers are synthetic, and substantiation that they are not presented as real testimonials",
+     "check": "manual"
+    }
+   ]
+  }
+ ]
+}

@@ -323,9 +323,20 @@ def test_compliance_selects_rules_from_what_the_record_shows():
     facts = compliance.signals(lin, hist, {"distribute_in": ["EU"]})
     assert {"eu", "production", "source-media", "likeness"} <= facts  # FaceID nodes in the fixture
     checks = compliance.assess(lin, hist, {"distribute_in": ["EU"]})
+    assert checks["rules"]
     for rule in checks["rules"]:
         assert rule["source"], f"{rule['id']} has no source"
-        assert rule["source_date"], f"{rule['id']} has no source date"
+        # An undated source is allowed only when the rule says why.
+        assert rule["source_date"] or rule["notes"], f"{rule['id']} is undated with no note"
+    ids = {r["id"] for r in checks["rules"]}
+    assert "eu-ai-act-art50-4-deployer-deepfake" in ids
+    assert "eu-ai-act-art14-human-oversight" not in ids
+    assert any(c["id"] == "eu-ai-act-art14-human-oversight" for c in checks["clarifications"])
+    usco = next(r for r in checks["rules"] if r["id"] == "usco-part2-copyrightability")
+    states = [e["state"] for e in usco["evidence"]]
+    # The lifetime leaves one supplied input undeclared, so the "human-made
+    # inputs" item is rightly missing while the other three are on record.
+    assert states == ["need", "have", "have", "have"]
 
 
 def test_attested_evidence_is_read_back_from_the_chain():

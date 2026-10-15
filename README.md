@@ -600,6 +600,50 @@ A document for legal, exportable as HTML or PDF. It contains:
   holds.
 - The complete signed log.
 
+### Rules and agreements
+
+The provenance record ends with the published rules a shot may have to meet, and
+what the record already evidences for each. The bundled knowledge base
+(`core/knowledge/data/regulations.json`) has 37 entries, each with its source,
+that source's date and a confidence level. It covers:
+
+- **Union and guild agreements:** SAG-AFTRA TV/Theatrical (2023 and 2026),
+  Commercials (2025) and Interactive Media (2025), plus the WGA and DGA AI terms
+  and the Academy's AI rules.
+- **US copyright:** the US Copyright Office's copyrightability report and its
+  registration-disclosure guidance, and *Thaler v. Perlmutter*.
+- **EU:** the AI Act's Article 50 marking and deepfake-disclosure duties and the
+  Code of Practice, the CJEU originality test, and the German and Czech AI
+  rulings.
+- **UK and China:** the UK's computer-generated works provision, China's
+  labelling measures and *Li v Liu*.
+- **US states and federal:** the California, New York and Tennessee
+  digital-replica and transparency laws, and the federal bills.
+- **Provenance and platforms:** C2PA content credentials, and the platform and
+  FTC disclosure rules.
+
+Which rules appear depends on what the history shows (identity or voice nodes,
+LLM nodes, training nodes, the production stage, supplied media). It also
+depends on what the studio sets: territory, where the work is distributed, and
+whether it is a union production, advertising or a feature.
+
+Evidence the history can answer itself is checked automatically: human
+decisions between runs, declared sources, prompt authorship, a reviewed final,
+a sign-off, signatures, fingerprinted outputs and a manifest. Evidence only a
+person can attest, such as a signed consent rider or a disclosure in the
+credits, is recorded as a note tagged with the rule. That way it is signed into
+the chain rather than left in an email.
+
+One common assumption is answered directly. **No EU rule requires proof that a
+human was in the loop for a creative shot.** The AI Act's human-oversight
+article (Art. 14) applies only to high-risk systems, and the record says so.
+Human involvement matters for *copyright*, in the US, the EU and China, which
+is why the history records it so carefully.
+
+Refresh the research, then rebuild with `python tools/build_regulations.py`. The
+mapping from each rule to its triggers and checks is set by hand in that
+script, not inferred.
+
 ### Content credentials
 
 `comfyaudit history manifest` writes a C2PA manifest *definition* built from the
@@ -773,7 +817,7 @@ reproducible six months later.
 ## Development
 
 ```bash
-python -m pytest        # 209 tests
+python -m pytest        # 241 tests
 ```
 
 The 13 agent tests need `anthropic>=1.0`; on an older SDK they fail with
@@ -781,7 +825,7 @@ The 13 agent tests need `anthropic>=1.0`; on an older SDK they fail with
 version floor talking rather than a real failure.
 
 ```bash
-python -m pytest --ignore=tests/test_agent.py   # 194, no SDK needed
+python -m pytest --ignore=tests/test_agent.py   # 228, no SDK needed
 ```
 
 The agent tests point a real Anthropic client at a local stub of the Messages

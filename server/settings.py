@@ -163,6 +163,11 @@ HISTORY_CONFIDENTIALITY = f"{PREFIX}.History.Confidentiality"
 #: it was rendered).
 HISTORY_DISTRIBUTE = f"{PREFIX}.History.DistributeIn"
 
+#: Production facts that decide which union and disclosure rules apply.
+HISTORY_UNION = f"{PREFIX}.History.UnionProduction"
+HISTORY_ADVERTISING = f"{PREFIX}.History.Advertising"
+HISTORY_FEATURE = f"{PREFIX}.History.FeatureFilm"
+
 CONFIDENTIALITY_OPTIONS = {
     "prompts readable": "none",
     "prompts as fingerprints only": "redact",
@@ -186,4 +191,7 @@ def history_settings(user: str = "default") -> dict[str, Any]:
         "distribute_in": distribute,
         "territory": TERRITORY_OPTIONS.get(s.get(TERRITORY, "not set"), ""),
         "likeness": bool(s.get(LIKENESS)),
+        "union_performers": bool(s.get(HISTORY_UNION)),
+        "advertising": bool(s.get(HISTORY_ADVERTISING)),
+        "feature": bool(s.get(HISTORY_FEATURE)),
     }

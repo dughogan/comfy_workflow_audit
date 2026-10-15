@@ -68,6 +68,8 @@ def add_parsers(sub) -> None:
     rc.add_argument("--likeness", action="store_true", help="real performers' likenesses are involved")
     rc.add_argument("--union", action="store_true", help="union performers are involved")
     rc.add_argument("--advertising", action="store_true", help="the work is advertising")
+    rc.add_argument("--feature", action="store_true", help="a feature film (awards eligibility rules)")
+    rc.add_argument("--youtube", action="store_true", help="published on YouTube")
 
     mf = hsub.add_parser("manifest", help="write a C2PA manifest definition for signing")
     mf.add_argument("workflow")
@@ -181,7 +183,8 @@ def run(args: argparse.Namespace) -> int:
         context = {"territory": args.territory.upper(),
                    "distribute_in": [t.strip().upper() for t in args.distribute.split(",") if t.strip()],
                    "likeness": args.likeness, "union_performers": args.union,
-                   "advertising": args.advertising}
+                   "advertising": args.advertising, "feature": args.feature,
+                   "youtube": args.youtube}
         html = history_html.render(history, data=None if graph._looks_like_api(data) else data,  # noqa: SLF001
                                    keys=keys, ledger=args.ledger, reveal=args.reveal,
                                    context=context)

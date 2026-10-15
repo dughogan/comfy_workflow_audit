@@ -81,6 +81,21 @@ const SETTINGS = [
     tooltip: "Territory codes where finished work is made available, comma separated (US, EU, GB, CN...). Decides which disclosure rules apply.",
     category: ["ComfyAudit", "Shot history", "Distribution"],
   },
+  {
+    id: "ComfyAudit.History.UnionProduction", name: "Union or guild production", type: "boolean", defaultValue: false,
+    tooltip: "SAG-AFTRA, DGA or WGA terms apply to this show. Adds their AI provisions to the provenance record's checklist.",
+    category: ["ComfyAudit", "Shot history", "Union production"],
+  },
+  {
+    id: "ComfyAudit.History.Advertising", name: "Advertising work", type: "boolean", defaultValue: false,
+    tooltip: "Commercials: adds the SAG-AFTRA Commercials, New York synthetic-performer disclosure, FTC and ad-platform rules.",
+    category: ["ComfyAudit", "Shot history", "Advertising"],
+  },
+  {
+    id: "ComfyAudit.History.FeatureFilm", name: "Feature film", type: "boolean", defaultValue: false,
+    tooltip: "Adds the Academy's AI disclosure rules for awards eligibility.",
+    category: ["ComfyAudit", "Shot history", "Feature film"],
+  },
 ];
 
 function getSetting(id, fallback) {

@@ -34,6 +34,11 @@ DATA = os.path.join(os.path.dirname(os.path.dirname(__file__)), "knowledge", "da
 VOICE_RE = re.compile(r"\btts\b|text.?to.?speech|voice|rvc|xtts|f5.?tts|elevenlabs|"
                       r"speech|vocal|singing|lip.?sync|audio.?to.?face", re.IGNORECASE)
 
+LLM_RE = re.compile(r"ollama|\bllm\b|llm_|chatgpt|openai.?chat|claude|gemini.?text|"
+                    r"textgen|text.?generat|qwen.?\d*.?(chat|instruct)|llama", re.IGNORECASE)
+TRAINING_RE = re.compile(r"train|fine.?tune|dataset|kohya|musubi|lora.?trainer|dreambooth",
+                         re.IGNORECASE)
+
 #: Evidence checks the history can answer by itself.
 CHECKS = {
     "external_id": "Linked to the studio's own asset ID",
@@ -75,9 +80,21 @@ def signals(lineage: dict[str, Any], history: dict[str, Any],
         out.add("likeness")
     if context.get("voice") or VOICE_RE.search(blob):
         out.add("voice")
+    if LLM_RE.search(blob):
+        out.add("llm")
+    if TRAINING_RE.search(blob):
+        out.add("training")
     for t in [context.get("territory", "")] + list(context.get("distribute_in", [])):
+        t = (t or "").strip().lower()
         if t:
-            out.add(t.lower())
+            out.add(t)
+            if t.startswith("us-"):
+                out.add("us")
+            if t in ("youtube", "yt"):
+                out.add("youtube")
+    for flag in ("feature", "youtube"):
+        if context.get(flag):
+            out.add(flag)
     if lineage["shot"].get("stage") in ("production", "cleared", "delivered"):
         out.add("production")
     if lineage["sources"]:
@@ -145,8 +162,14 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
     kb = load()
     facts = signals(lineage, history, context)
     rules = []
+    clarifications = []
     for rule in kb.get("rules", []):
         applies = rule.get("applies", {})
+        if applies.get("clarification"):
+            clarifications.append({k: rule.get(k, "") for k in (
+                "id", "title", "jurisdiction", "authority", "summary", "human_in_loop",
+                "source", "source_title", "source_date")})
+            continue
         any_of = set(applies.get("any", []))
         all_of = set(applies.get("all", []))
         if any_of and not (any_of & facts):
@@ -161,17 +184,18 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
                 if i in attested or -1 in attested:
                     state, note = "have", f" (attested by {attested.get(i, attested.get(-1))})"
                 else:
-                    state, note = "need", " (attest with a note tagged " + \
-                        f"{rule['id']}:{i})"
+                    state, note = "need", ""
             else:
                 ok = _check(check, lineage, history)
                 state = "na" if ok is None else ("have" if ok else "need")
                 note = ""
-            evidence.append({"text": item["text"] + note, "state": state})
+            evidence.append({"text": item["text"] + note, "state": state,
+                             "tag": f"{rule['id']}:{i}" if check == "manual" else ""})
         rules.append({**{k: rule.get(k, "") for k in (
             "id", "title", "jurisdiction", "authority", "status", "source",
-            "source_title", "source_date", "confidence")},
-            "why": rule.get("summary", ""), "evidence": evidence})
+            "source_title", "source_date", "confidence", "notes", "human_in_loop")},
+            "why": rule.get("summary", ""), "requires": rule.get("requires", []),
+            "evidence": evidence})
 
     order = {"Global": 0, "Industry": 1, "US": 2, "EU": 3}
     rules.sort(key=lambda r: (order.get(r["jurisdiction"], 5), r["jurisdiction"], r["title"]))
@@ -186,4 +210,6 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
                  "Where a rule turns on a fact the file cannot know - where the work is "
                  "distributed, whether performers are union members - set it in the "
                  "studio profile. This is a checklist to take to counsel, not a ruling.")
-    return {"intro": intro, "rules": rules, "signals": known, "as_of": kb.get("as_of", "")}
+    return {"intro": intro, "rules": rules, "clarifications": clarifications,
+            "corrections": kb.get("corrections", []), "signals": known,
+            "as_of": kb.get("as_of", "")}
