@@ -42,7 +42,7 @@ MAP: dict[str, tuple[dict, dict[int, str]]] = {
     "wga-mba-ai": ({"any": ["llm"]}, {}),
     # A reviewer can be anyone; "the director was consulted" is attested, not inferred.
     "dga-ai": ({"any": ["union-performers"]}, {1: "approved"}),
-    "ampas-99th-oscars-ai-rules": ({"any": ["feature"]}, {0: "human_breakpoints"}),
+    "ampas-99th-oscars-ai-rules": ({"any": ["feature"]}, {0: "human_breakpoints", 2: "models_recorded"}),
     # Human edits after generation (comp, paint, roto) mostly happen outside
     # ComfyUI, so item 1 is attested; a seed or parameter tweak is not one.
     "usco-part2-copyrightability": ({"any": ["always"]}, {0: "human_inputs", 2: "final_reviewed",
@@ -56,16 +56,18 @@ MAP: dict[str, tuple[dict, dict[int, str]]] = {
     "eu-code-of-practice-ai-content-transparency": ({"any": ["eu"]}, {}),
     # Kept in the knowledge base because it is the rule people assume applies.
     "eu-ai-act-art14-human-oversight": ({"clarification": True}, {}),
-    "eu-cjeu-originality-standard": ({"any": ["eu"]}, {0: "human_inputs"}),
+    # Item 0 asks for creative choices visible in the frame (paintovers, layout),
+    # which the history cannot see; only the decision record is answered.
+    "eu-cjeu-originality-standard": ({"any": ["eu"]}, {2: "human_breakpoints"}),
     # The ruling itself says selection and parameter iteration are not enough,
     # so "human edits beyond selection" is attested, never inferred from them.
-    "de-ag-munich-ai-logos-2026": ({"any": ["eu"]}, {0: "prompt_authorship"}),
+    "de-ag-munich-ai-logos-2026": ({"any": ["eu"]}, {}),
     "cz-prague-municipal-court-ai-image": ({"any": ["eu"]}, {0: "verifiable_process"}),
     "de-gema-v-openai": ({"any": ["eu"]}, {}),
     "de-kneschke-v-laion": ({"any": ["training"]}, {}),
     "uk-cdpa-s9-3-computer-generated-works": ({"any": ["gb"]}, {0: "prompt_authorship", 1: "human_breakpoints"}),
     "cn-ai-content-labeling-measures": ({"any": ["cn"]}, {}),
-    "cn-li-v-liu-beijing-internet-court": ({"any": ["cn"]}, {0: "verifiable_process"}),
+    "cn-li-v-liu-beijing-internet-court": ({"any": ["cn"]}, {0: "verifiable_process", 1: "models_recorded"}),
     "us-ca-ab2602-digital-replica-contracts": ({"any": LIKENESS, "all": ["us"]}, {}),
     "us-ca-ab1836-deceased-personality-replicas": ({"any": LIKENESS, "all": ["us"]}, {}),
     "us-ca-sb942-ai-transparency-act": ({"any": ["us-ca"]}, {}),
@@ -80,6 +82,63 @@ MAP: dict[str, tuple[dict, dict[int, str]]] = {
     "youtube-altered-synthetic-disclosure": ({"any": ["youtube"]}, {}),
     "meta-ai-labels-ads": ({"any": ["advertising"]}, {}),
     "us-ftc-reviews-testimonials-rule": ({"all": ["advertising", "us"]}, {}),
+
+    # -- added 2026-10-15 ------------------------------------------------------
+    # Unions and guilds.
+    "iatse-basic-agreement-2024-ai": ({"any": ["union-crew"]}, {}),
+    "tag-839-2024-ai": ({"any": ["animation"], "all": ["union-crew"]}, {}),
+    "actra-ipa-2025-ai": ({"all": ["union-performers", "ca"]}, {}),
+    "ubcp-actra-bcmpa-2025-ai": ({"all": ["union-performers", "ca"]}, {}),
+    # Copyright and litigation. Cases about a model family are risk signals
+    # raised by the models in the record, not verdicts on the shot.
+    "allen-v-perlmutter": ({"any": ["us", "copyright-claim"]}, {0: "verifiable_process"}),
+    "usco-part3-generative-ai-training": ({"any": ["training"], "all": ["us"]}, {}),
+    "getty-v-stability-uk": ({"any": ["model-stable-diffusion"], "all": ["gb"]}, {}),
+    "getty-v-stability-us": ({"any": ["model-stable-diffusion"], "all": ["us"]}, {}),
+    "studios-v-midjourney": ({"any": ["model-midjourney"]}, {}),
+    "studios-v-minimax-hailuo": ({"any": ["model-minimax"]}, {0: "models_recorded"}),
+    "andersen-v-stability": ({"any": ["model-stable-diffusion", "model-midjourney"]}, {}),
+    "bartz-v-anthropic": ({"all": ["training", "llm"]}, {}),
+    "kadrey-v-meta": ({"all": ["training", "llm"]}, {}),
+    "thomson-reuters-v-ross-3d-cir": ({"all": ["training", "us"]}, {}),
+    "cox-v-sony-contributory-liability": ({"all": ["us", "third-party-characters"]}, {}),
+    "cn-zhangjiagang-butterfly-chairs": ({"any": ["cn"]}, {}),
+    "cn-changshu-half-heart": ({"any": ["cn"]}, {}),
+    "cn-spc-ai-dispute-opinions-2026": ({"any": ["cn"]}, {}),
+    "ca-cippic-v-sahni": ({"any": ["ca"]}, {}),
+    "jp-chiba-ai-image-referral": ({"any": ["jp"]}, {}),
+    # EU and member states.
+    "eu-commission-art50-guidelines-2026": ({"any": ["eu"]}, {}),
+    "eu-ai-act-art53-gpai-provider-obligations": ({"any": ["eu"]}, {}),
+    "eu-gpai-code-of-practice": ({"any": ["eu"]}, {}),
+    "eu-ai-act-art5-ncii-prohibition": ({"all": ["eu", "intimate-imagery"]}, {}),
+    "it-law-132-2025-copyright-ai-assisted-works": ({"any": ["it"]}, {0: "human_breakpoints"}),
+    "it-penal-612-quater-ai-deepfake": ({"any": LIKENESS, "all": ["it"]}, {}),
+    "fr-penal-226-8-ai-montage-consent": ({"any": LIKENESS, "all": ["fr"]}, {}),
+    "dk-l49-likeness-imitation-bill": ({"any": LIKENESS, "all": ["dk"]}, {}),
+    "de-olg-duesseldorf-ai-comic-2026": ({"any": ["de"]}, {}),
+    "de-gema-v-suno-2026": ({"any": ["ai-music"]}, {}),
+    "fr-ppl-presumption-ai-use-cultural-content": ({"all": ["fr", "training"]}, {}),
+    # Studio, platform and insurance. The audit-log item is what a signed,
+    # fingerprinted history is; the approvals and inventories are attested.
+    "netflix-genai-production-partner-guidance": ({"any": ["client-netflix"]}, {}),
+    "mpa-tpn-content-security-ai-controls": ({"any": ["tpn-vendor"]}, {2: "verifiable_process"}),
+    "uk-asa-cap-ai-in-ads": ({"all": ["advertising", "gb"]}, {}),
+    "eo-insurance-ai-underwriting": ({"any": ["eo-insurance"]}, {}),
+    # US states and Asia-Pacific.
+    "us-ca-sb1050-synthetic-performer-ad-disclosure": ({"any": ["us", "us-ca"], "all": ["advertising"]}, {}),
+    "us-ca-civ3344-digital-replicas": ({"any": LIKENESS, "all": ["us"]}, {}),
+    "us-il-right-of-publicity-digital-replicas": ({"any": LIKENESS, "all": ["us"]}, {}),
+    "us-il-digital-voice-likeness-contracts": ({"any": LIKENESS, "all": ["us"]}, {}),
+    "us-wa-forged-digital-likeness": ({"any": LIKENESS, "all": ["us"]}, {}),
+    "ca-copyright-human-authorship": ({"any": ["ca"]}, {0: "human_breakpoints"}),
+    "ca-criminal-code-sexual-deepfakes": ({"all": ["ca", "intimate-imagery"]}, {}),
+    "jp-copyright-art30-4-training": ({"all": ["jp", "training"]}, {}),
+    "jp-ai-output-infringement-copyrightability": ({"any": ["jp"]}, {1: "human_breakpoints"}),
+    "jp-ai-promotion-act": ({"any": ["jp"]}, {}),
+    "jp-tsuda-voice-publicity-ruling": ({"any": ["voice"], "all": ["jp"]}, {}),
+    "kr-ai-basic-act-art31-transparency": ({"any": ["kr"]}, {}),
+    "kr-copyright-registration-genai-guide": ({"any": ["kr"]}, {1: "verifiable_process"}),
 }
 
 
@@ -100,7 +159,10 @@ def main() -> int:
         rules.append({
             **{k: r.get(k, "") for k in ("id", "jurisdiction", "authority", "title", "kind",
                                           "status", "effective", "source", "source_title",
-                                          "source_date", "confidence", "notes")},
+                                          "source_date", "confidence", "notes",
+                                          "verified_on", "basis", "check_result",
+                                          "check_summary")},
+            "sources": r.get("sources", []),
             "summary": f"{lead} {when if when.lower().startswith('when ') else 'when ' + when}.",
             "requires": r["requires"],
             "human_in_loop": r.get("human_in_loop", ""),
@@ -118,6 +180,9 @@ def main() -> int:
             "anything that gates a delivery; union terms and EU guidance changed in 2026.",
         ],
         "as_of": src["as_of"],
+        "research": src.get("research", {}),
+        "facts": src.get("facts", {}),
+        "interop": src.get("interop", {}),
         "corrections": src.get("corrections", []),
         "not_found": src.get("not_found", []),
         "rules": rules,

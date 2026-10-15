@@ -39,6 +39,35 @@ LLM_RE = re.compile(r"ollama|\bllm\b|llm_|chatgpt|openai.?chat|claude|gemini.?te
 TRAINING_RE = re.compile(r"train|fine.?tune|dataset|kohya|musubi|lora.?trainer|dreambooth",
                          re.IGNORECASE)
 
+#: Model families named in pending litigation. They raise the case as a risk
+#: signal for the shot; the case says nothing yet about the shot itself.
+MODEL_FAMILY_RE = {
+    "model-stable-diffusion": re.compile(
+        r"stable.?diffusion|stability.?ai|sdxl|sd_?xl|\bsd[_-]?(1\.?5|2\.?1|3(\.5)?)(?![0-9])|"
+        r"\bv1-5-pruned|pony.?diffusion", re.IGNORECASE),
+    "model-midjourney": re.compile(r"midjourney", re.IGNORECASE),
+    "model-minimax": re.compile(r"minimax|hailuo", re.IGNORECASE),
+}
+
+#: Studio and shot facts the file cannot know, set in settings or per record.
+FLAG_FACTS = {
+    "union_performers": "union-performers",
+    "union_crew": "union-crew",
+    "animation": "animation",
+    "advertising": "advertising",
+    "copyright_claim": "copyright-claim",
+    "tpn_vendor": "tpn-vendor",
+    "eo_insurance": "eo-insurance",
+    "third_party_characters": "third-party-characters",
+    "ai_music": "ai-music",
+    "intimate_imagery": "intimate-imagery",
+}
+
+
+def client_fact(name: str) -> str:
+    """'Netflix' -> 'client-netflix'."""
+    return "client-" + re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+
 #: Evidence checks the history can answer by itself. Each one is mapped only to
 #: evidence items it actually proves (see tools/build_regulations.py); anything
 #: it cannot prove - a consent rider, a disclosure in the credits, a marking that
@@ -55,6 +84,7 @@ CHECKS = {
     "verifiable_process": "Signed record linking prompts, settings and fingerprinted outputs",
     "outputs_fingerprinted": "Delivered outputs fingerprinted",
     "production_stage": "Shot marked as production work, not sandbox",
+    "models_recorded": "Every model used is named in the record, with its licence",
 }
 
 #: EU member states, so distribution to one of them counts as distribution in the EU.
@@ -93,6 +123,9 @@ def signals(lineage: dict[str, Any], history: dict[str, Any],
         out.add("llm")
     if TRAINING_RE.search(blob):
         out.add("training")
+    for fact, rx in MODEL_FAMILY_RE.items():
+        if rx.search(blob):
+            out.add(fact)
     for t in [context.get("territory", "")] + list(context.get("distribute_in", [])):
         t = (t or "").strip().lower()
         if t:
@@ -110,10 +143,12 @@ def signals(lineage: dict[str, Any], history: dict[str, Any],
         out.add("production")
     if lineage["sources"]:
         out.add("source-media")
-    if context.get("union_performers"):
-        out.add("union-performers")
-    if context.get("advertising"):
-        out.add("advertising")
+    for flag, fact in FLAG_FACTS.items():
+        if context.get(flag):
+            out.add(fact)
+    for client in context.get("clients", []) or []:
+        if str(client).strip():
+            out.add(client_fact(str(client)))
     return out
 
 
@@ -152,6 +187,8 @@ def _check(name: str, lineage: dict[str, Any], history: dict[str, Any],
         outs = lineage["final_outputs"]
         return (assurance in ("signed", "witnessed") and bool(lineage["prompts"])
                 and bool(outs) and all(o.get("sha256") for o in outs))
+    if name == "models_recorded":
+        return bool(lineage["models"]) if lineage["renders"] else None
     if name == "production_stage":
         return lineage["shot"].get("stage") in ("production", "cleared", "delivered")
     return False
@@ -188,7 +225,7 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
         if applies.get("clarification"):
             clarifications.append({k: rule.get(k, "") for k in (
                 "id", "title", "jurisdiction", "authority", "summary", "human_in_loop",
-                "source", "source_title", "source_date")})
+                "source", "source_title", "source_date", "verified_on", "basis", "check_result")})
             continue
         any_of = set(applies.get("any", []))
         all_of = set(applies.get("all", []))
@@ -213,7 +250,8 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
                              "tag": f"{rule['id']}:{i}" if check == "manual" else ""})
         rules.append({**{k: rule.get(k, "") for k in (
             "id", "title", "jurisdiction", "authority", "status", "source",
-            "source_title", "source_date", "confidence", "notes", "human_in_loop")},
+            "source_title", "source_date", "confidence", "notes", "human_in_loop",
+            "verified_on", "basis", "check_result", "sources")},
             "why": rule.get("summary", ""), "requires": rule.get("requires", []),
             "evidence": evidence})
 
@@ -234,4 +272,4 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
                  "not a ruling.")
     return {"intro": intro, "rules": rules, "clarifications": clarifications,
             "corrections": kb.get("corrections", []), "signals": known,
-            "as_of": kb.get("as_of", "")}
+            "as_of": kb.get("as_of", ""), "research": kb.get("research", {})}

@@ -167,6 +167,13 @@ HISTORY_DISTRIBUTE = f"{PREFIX}.History.DistributeIn"
 HISTORY_UNION = f"{PREFIX}.History.UnionProduction"
 HISTORY_ADVERTISING = f"{PREFIX}.History.Advertising"
 HISTORY_FEATURE = f"{PREFIX}.History.FeatureFilm"
+HISTORY_UNION_CREW = f"{PREFIX}.History.UnionCrew"
+HISTORY_ANIMATION = f"{PREFIX}.History.Animation"
+HISTORY_TPN = f"{PREFIX}.History.TPNVendor"
+HISTORY_EO = f"{PREFIX}.History.EOInsurance"
+HISTORY_COPYRIGHT = f"{PREFIX}.History.CopyrightClaim"
+#: Who commissioned the work (Netflix, ...), which brings in that client's AI rules.
+HISTORY_CLIENTS = f"{PREFIX}.History.Clients"
 
 CONFIDENTIALITY_OPTIONS = {
     "prompts readable": "none",
@@ -194,4 +201,11 @@ def history_settings(user: str = "default") -> dict[str, Any]:
         "union_performers": bool(s.get(HISTORY_UNION)),
         "advertising": bool(s.get(HISTORY_ADVERTISING)),
         "feature": bool(s.get(HISTORY_FEATURE)),
+        "union_crew": bool(s.get(HISTORY_UNION_CREW)),
+        "animation": bool(s.get(HISTORY_ANIMATION)),
+        "tpn_vendor": bool(s.get(HISTORY_TPN)),
+        "eo_insurance": bool(s.get(HISTORY_EO)),
+        "copyright_claim": bool(s.get(HISTORY_COPYRIGHT)),
+        "clients": [c.strip() for c in str(s.get(HISTORY_CLIENTS, "") or "").replace(";", ",").split(",")
+                    if c.strip()],
     }

@@ -436,6 +436,41 @@ def test_compliance_selects_rules_from_what_the_record_shows():
     assert states == ["have", "need", "have", "have"]
 
 
+def test_every_rule_says_when_it_was_checked_and_on_what_basis():
+    kb = compliance.load()
+    research = kb.get("research", {})
+    assert research.get("performed_on") and research.get("performed_by") and research.get("statement")
+    for rule in kb["rules"]:
+        assert rule.get("verified_on"), f"{rule['id']} has no check date"
+        assert rule.get("basis") in ("primary-text-fetched", "official-summary-fetched",
+                                     "secondary-fetched", "search-results-only"), rule["id"]
+
+
+def test_models_in_the_record_raise_the_cases_about_their_family():
+    # A risk signal, not a verdict: the MiniMax case appears when a MiniMax
+    # model is in the record, and only then.
+    lin = {"shot": {}, "sources": []}
+    hist = {"entries": []}
+    facts = compliance.signals(lin, hist, {"node_types": ["minimax_h3_ref2va_pruned_int8.safetensors"]})
+    assert "model-minimax" in facts and "model-stable-diffusion" not in facts
+    facts = compliance.signals(lin, hist, {"node_types": ["flux1-dev.safetensors", "wan2.1_t2v.safetensors"]})
+    assert not {f for f in facts if f.startswith("model-")}
+    assert "model-stable-diffusion" in compliance.signals(lin, hist, {"node_types": ["sd_xl_base_1.0.safetensors"]})
+
+
+def test_studio_facts_and_clients_bring_in_their_rules():
+    hist = H.read(lifetime())
+    lin = H.lineage(hist)
+    checks = compliance.assess(lin, hist, {"tpn_vendor": True, "clients": ["Netflix"]})
+    ids = {r["id"] for r in checks["rules"]}
+    assert {"mpa-tpn-content-security-ai-controls", "netflix-genai-production-partner-guidance"} <= ids
+    assert "netflix-genai-production-partner-guidance" not in {
+        r["id"] for r in compliance.assess(lin, hist, {})["rules"]}
+    tpn = next(r for r in checks["rules"] if r["id"] == "mpa-tpn-content-security-ai-controls")
+    # Written client approval is attested by a person; nothing in the file proves it.
+    assert tpn["evidence"][0]["state"] == "need" and tpn["evidence"][0]["tag"]
+
+
 def test_one_bare_rule_tag_does_not_tick_every_item():
     wf = H.stamp(lifetime(), event="note", actor=LEE, keys=keys(), note="disclosed",
                  data_payload={"evidence": "eu-ai-act-art50-4-deployer-deepfake"}).workflow

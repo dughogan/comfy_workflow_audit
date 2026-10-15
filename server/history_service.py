@@ -147,7 +147,11 @@ def record(body: dict[str, Any]) -> dict[str, Any]:
                "union_performers": bool(body.get("union_performers") or cfg.get("union_performers")),
                "advertising": bool(body.get("advertising") or cfg.get("advertising")),
                "feature": bool(body.get("feature") or cfg.get("feature")),
-               "youtube": bool(body.get("youtube"))}
+               "youtube": bool(body.get("youtube")),
+               "clients": list(cfg.get("clients", [])) + list(body.get("clients", []) or [])}
+    for flag in ("union_crew", "animation", "tpn_vendor", "eo_insurance", "copyright_claim",
+                 "third_party_characters", "ai_music", "intimate_imagery"):
+        context[flag] = bool(body.get(flag) or cfg.get(flag))
     html = history_html.render(history, data=workflow, keys=keys(cfg),
                                ledger=cfg.get("ledger", ""),
                                reveal=bool(body.get("reveal")), context=context)

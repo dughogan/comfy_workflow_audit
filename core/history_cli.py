@@ -70,6 +70,15 @@ def add_parsers(sub) -> None:
     rc.add_argument("--advertising", action="store_true", help="the work is advertising")
     rc.add_argument("--feature", action="store_true", help="a feature film (awards eligibility rules)")
     rc.add_argument("--youtube", action="store_true", help="published on YouTube")
+    rc.add_argument("--union-crew", action="store_true", help="crew under IATSE / Animation Guild terms")
+    rc.add_argument("--animation", action="store_true", help="an animated production")
+    rc.add_argument("--tpn", action="store_true", help="the studio is a TPN-assessed vendor (MPA content security)")
+    rc.add_argument("--eo-insurance", action="store_true", help="the production carries E&O insurance")
+    rc.add_argument("--copyright-claim", action="store_true", help="copyright will be registered or enforced")
+    rc.add_argument("--client", action="append", default=[], help="who commissioned the work (repeatable)")
+    rc.add_argument("--third-party-characters", action="store_true",
+                    help="the shot depicts or evokes characters or IP owned by someone else")
+    rc.add_argument("--ai-music", action="store_true", help="the shot includes AI-generated music or sound")
 
     mf = hsub.add_parser("manifest", help="write a C2PA manifest definition for signing")
     mf.add_argument("workflow")
@@ -184,7 +193,12 @@ def run(args: argparse.Namespace) -> int:
                    "distribute_in": [t.strip().upper() for t in args.distribute.split(",") if t.strip()],
                    "likeness": args.likeness, "union_performers": args.union,
                    "advertising": args.advertising, "feature": args.feature,
-                   "youtube": args.youtube}
+                   "youtube": args.youtube, "union_crew": args.union_crew,
+                   "animation": args.animation, "tpn_vendor": args.tpn,
+                   "eo_insurance": args.eo_insurance, "copyright_claim": args.copyright_claim,
+                   "clients": args.client,
+                   "third_party_characters": args.third_party_characters,
+                   "ai_music": args.ai_music}
         html = history_html.render(history, data=None if graph._looks_like_api(data) else data,  # noqa: SLF001
                                    keys=keys, ledger=args.ledger, reveal=args.reveal,
                                    context=context)

@@ -87,6 +87,36 @@ const SETTINGS = [
     tooltip: "Adds the Academy's AI disclosure rules for awards eligibility.",
     category: ["ComfyAudit", "Shot history", "Feature film"],
   },
+  {
+    id: "ComfyAudit.History.UnionCrew", name: "Union crew (IATSE / Animation Guild)", type: "boolean", defaultValue: false,
+    tooltip: "Crew work under IATSE or Animation Guild terms. Adds their AI notice, consultation and scan-consent rules.",
+    category: ["ComfyAudit", "Shot history", "Union crew"],
+  },
+  {
+    id: "ComfyAudit.History.Animation", name: "Animated production", type: "boolean", defaultValue: false,
+    tooltip: "An animated production. With union crew, adds the Animation Guild's AI terms.",
+    category: ["ComfyAudit", "Shot history", "Animation"],
+  },
+  {
+    id: "ComfyAudit.History.TPNVendor", name: "TPN-assessed vendor", type: "boolean", defaultValue: false,
+    tooltip: "Your studio handles MPA member studios' content under TPN content security. Adds the MPA/TPN AI controls: written client approval, an approved-AI inventory and an AI audit log.",
+    category: ["ComfyAudit", "Shot history", "TPN"],
+  },
+  {
+    id: "ComfyAudit.History.EOInsurance", name: "E&O insured", type: "boolean", defaultValue: false,
+    tooltip: "The production carries errors and omissions insurance. Adds what underwriters ask about AI use.",
+    category: ["ComfyAudit", "Shot history", "E&O insurance"],
+  },
+  {
+    id: "ComfyAudit.History.CopyrightClaim", name: "Registering copyright", type: "boolean", defaultValue: false,
+    tooltip: "The studio or client will register or enforce copyright in this work. Adds human-authorship rules in more territories.",
+    category: ["ComfyAudit", "Shot history", "Copyright"],
+  },
+  {
+    id: "ComfyAudit.History.Clients", name: "Clients", type: "text", defaultValue: "",
+    tooltip: "Who commissioned the work, comma separated (Netflix, ...). Adds that client's published AI rules for vendors.",
+    category: ["ComfyAudit", "Shot history", "Clients"],
+  },
 ];
 
 function getSetting(id, fallback) {

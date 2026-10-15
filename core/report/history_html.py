@@ -290,6 +290,12 @@ def _body(history, lin, rows, v, checks) -> str:
       "signed consent rider, a disclosure placed in the credits) are recorded as a note "
       "carrying the grey tag shown beside them, so the attestation lives in the chain "
       "with everything else - signed, when the studio key is set.</p>")
+    research = checks.get("research") or {}
+    if research:
+        w("<div class='rule-card'><h4>About this research</h4><p style='margin:8px 0 0;"
+          f"font-size:13.5px'>{_e(research.get('statement', ''))}</p><div class='meta' "
+          f"style='margin-top:8px'>Researched {_e(research.get('performed_on') or 'on an unrecorded date')}"
+          f" &middot; by {_e(research.get('performed_by') or 'an unrecorded researcher')}</div></div>")
     if checks["rules"]:
         w("<table class='log'><thead><tr><th>Rule</th><th>Where</th><th>Status</th>"
           "<th>Evidence on record</th></tr></thead><tbody>")
@@ -305,7 +311,8 @@ def _body(history, lin, rows, v, checks) -> str:
         w(f"<div class='rule-card' id='rule-{_e(r['id'])}'>")
         w(f"<h4>{_e(r['title'])}</h4><div class='meta'>{_e(r['jurisdiction'])} &middot; "
           f"{_e(r['authority'])} &middot; {_e(r['status'])} &middot; source dated "
-          f"{_e(r.get('source_date') or 'undated - see note')} &middot; {_e(r.get('confidence', ''))} confidence</div>")
+          f"{_e(r.get('source_date') or 'undated - see note')} &middot; {_e(r.get('confidence', ''))} confidence"
+          f" &middot; {_e(_checked(r))}</div>")
         w(f"<p style='margin:8px 0 0;font-size:14.5px'>{_e(r['why'])}</p>")
         if r.get("requires"):
             w("<div class='meta' style='margin-top:10px'>WHAT IT ASKS</div><ul class='asks'>")
@@ -338,7 +345,8 @@ def _body(history, lin, rows, v, checks) -> str:
         for c in checks["clarifications"]:
             w("<div class='rule-card' style='opacity:.85'>")
             w(f"<h4>{_e(c['title'])}</h4><div class='meta'>{_e(c['jurisdiction'])} &middot; "
-              f"{_e(c['authority'])} &middot; source dated {_e(c.get('source_date') or 'n/a')}</div>")
+              f"{_e(c['authority'])} &middot; source dated {_e(c.get('source_date') or 'n/a')}"
+              f" &middot; {_e(_checked(c))}</div>")
             w(f"<p style='margin:8px 0 0;font-size:14px'>{_e(c['summary'])} "
               f"{_e(c.get('human_in_loop', ''))}</p>")
             if c.get("source"):
@@ -568,6 +576,24 @@ def _describe_changes(changes: dict[str, Any], plain: bool = False) -> str:
     if plain:
         return "\n".join(lines)
     return "<br>".join(_e(line) for line in lines)
+
+
+#: How much of a rule's source the researcher actually read.
+BASIS = {
+    "primary-text-fetched": "primary text read",
+    "official-summary-fetched": "official summary read",
+    "secondary-fetched": "law-firm or press sources read",
+    "search-results-only": "search results only, source not read in full",
+}
+
+
+def _checked(rule: dict) -> str:
+    """When a rule was last checked and what that check rests on."""
+    basis = BASIS.get(rule.get("basis", ""), "basis not recorded")
+    when = rule.get("verified_on") or "check date not recorded"
+    result = {"confirmed": " (confirmed)", "corrected": " (corrected)", "new": " (added)",
+              "could-not-verify": " (could not be verified)"}.get(rule.get("check_result", ""), "")
+    return f"checked {when}{result}, {basis}"
 
 
 def _short_status(status: str) -> str:

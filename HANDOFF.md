@@ -254,17 +254,45 @@ run against a live frontend; it was only syntax-checked (`node --check`).
 - [ ] **C2PA signing.** Today an unsigned manifest *definition* is exported.
       Wire it to `c2patool` or a signing service when a studio certificate
       exists, and embed it at delivery.
-- [ ] **MovieLabs OMC export**, which Sony mentioned.
+- [ ] **MovieLabs OMC export.** Sony mentioned MovieLabs, not OMC itself, but
+      Doug wants studios to read exported history natively. Export each shot
+      as OMC Assets plus Provenance (OMC v2.8 has a generic Provenance entity,
+      and a creator can be a software Service). Alongside it, fill C2PA 2.4's
+      `c2pa.ai-disclosure` assertion (model plus `humanOversightLevel`). The
+      only MovieLabs ComfyUI repo (`MovieLabs/comfyui-movielabs-util`) publishes
+      to ShotGrid but records no prompts or models; see `interop` in the
+      research file.
 - [ ] **A delivery gate node.** Fail the queue if a tracked shot lacks a
       history, is Altered, is still in sandbox, or has unconfirmed licence
       conflicts. The existing **Audit Gate** node is the place.
 - [ ] **Signing oracle.** Anyone who can reach ComfyUI can POST to
       `/history/stamp` and get a signed entry under any name. Acceptable for a
       single-artist workstation; studios need auth or per-person keys.
-- [ ] **Regulations refresh.** The research is dated 2026-10-15. 2026 union
-      terms, EU Art. 50 guidelines and US state laws are moving. Rerun the
-      research, update `tools/research/regulations.research.json`, then run
-      `python tools/build_regulations.py`.
+- [x] **Regulations refresh (2026-10-15, second pass).** All 37 rules were
+      re-checked (several corrected) and 48 added, for 85 in total. Each rule
+      now carries `verified_on`, `basis` (what the check rests on),
+      `check_result` and `sources`, and the record shows them with an "About
+      this research" box. A test fails if any rule lacks them. Rerun yearly or
+      when union terms, the EU guidelines or US state laws change.
+- [ ] **Clearance timeline.** Doug's request: a per-entry commercial status
+      (cleared / conditional / blocked / unknown) with a dated, explained flag
+      whenever a change makes the workflow unusable commercially (or clears
+      it), read both as recorded at the time and against today's licence KB.
+- [ ] **History viewer: story, log and graph.** Doug's vision: read the shot's
+      life as a narrative, as a timestamped log, and as the actual node graph
+      replayed over a timeline scrubber, all in sync. The graph needs topology
+      (node ids, types, positions, links) in each snapshot, which it does not
+      store today.
+- [ ] **Production readiness checklist.** One list at the top of the record of
+      everything a shot needs before delivery (TPN written client approval and
+      AI inventory, performer consent, client notification, commercial
+      clearance), feeding the Audit Gate. Shot-level facts (third-party
+      characters, AI music) should be declared as signed history entries, not
+      global settings; today they come only from the CLI and the server body.
+- [ ] **MiniMax risk signal.** *Disney v. MiniMax* (C.D. Cal.; motion to
+      dismiss denied 2026-05-22) concerns the Hailuo service. Whether it reaches
+      open-weight MiniMax models such as H3 is not addressed. Doug to raise
+      with Comfy partnerships/counsel.
 - [ ] **Open PR.** Merge `shot-history` into `main` once it has been tested live.
 
 ## 7. Context from the wider conversation
