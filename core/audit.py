@@ -71,6 +71,9 @@ class AuditReport:
     knowledge: dict[str, Any] = field(default_factory=dict)
     freshness: freshness_mod.Freshness = field(
         default_factory=freshness_mod.Freshness)
+    #: The workflow's shot history, when it carries one: the lineage summary
+    #: and how far the record can be trusted. Empty for untracked workflows.
+    history: dict[str, Any] = field(default_factory=dict)
     diagnostics: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -121,6 +124,7 @@ class AuditReport:
                 "findings": to_jsonable(self.risk.findings),
             },
             "knowledge": self.knowledge,
+            "history": self.history,
             "diagnostics": self.diagnostics,
         }
 
@@ -240,6 +244,7 @@ def run_workflow(wf: graph.Workflow, opts: AuditOptions) -> AuditReport:
         "groups": [g.title for g in wf.groups if g.title],
         "frontend_version": wf.extra.get("frontend") or "",
     }
+    report.history = _history_summary(wf)
     licence_meta = licences_mod.kb_metadata(opts.licences_path or None)
     report.freshness = freshness_mod.assess(licence_meta)
     report.knowledge = {
@@ -266,6 +271,22 @@ def run_workflow(wf: graph.Workflow, opts: AuditOptions) -> AuditReport:
             (m.filename, m.folder) for m in models
         )
     return report
+
+
+def _history_summary(wf: graph.Workflow) -> dict[str, Any]:
+    """Lineage and trust level for a workflow that carries a shot history."""
+    from . import history as history_mod
+    data = wf.raw or {}
+    hist = history_mod.read(data) if isinstance(data, dict) else None
+    if not hist:
+        return {}
+    try:
+        lin = history_mod.lineage(hist)
+        v = history_mod.verify(data, history=hist)
+        return {"lineage": lin, "verification": v.as_dict(),
+                "timeline": history_mod.timeline(hist)}
+    except Exception as exc:  # noqa: BLE001 - a malformed history must not sink the audit
+        return {"error": f"history could not be read: {exc}"}
 
 
 def _human_size(num: float) -> str:

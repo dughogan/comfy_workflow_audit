@@ -140,3 +140,50 @@ def describe() -> dict[str, Any]:
         "profile": profile.describe() if profile else "",
         "registry_path": registry_path(),
     }
+
+
+# -- shot history ------------------------------------------------------------
+
+#: Who is at this workstation. Recorded on every history entry; without it the
+#: entry falls back to the operating-system account, which is rarely a name a
+#: lawyer recognises.
+HISTORY_USER = f"{PREFIX}.History.UserName"
+HISTORY_ROLE = f"{PREFIX}.History.Role"
+#: Stamp the open workflow automatically on every queue and every render.
+HISTORY_AUTO = f"{PREFIX}.History.Auto"
+#: Append-only file outside the workflow that witnesses each head hash.
+HISTORY_LEDGER = f"{PREFIX}.History.LedgerPath"
+#: A file holding the studio signing passphrase. A path, never the secret
+#: itself: comfy.settings.json is readable by anything on the machine and gets
+#: copied around with user profiles.
+HISTORY_KEY_FILE = f"{PREFIX}.History.KeyFile"
+HISTORY_CONFIDENTIALITY = f"{PREFIX}.History.Confidentiality"
+#: Where finished work is distributed, which is what decides several rules
+#: (the EU marking obligations reach content made available in the EU, wherever
+#: it was rendered).
+HISTORY_DISTRIBUTE = f"{PREFIX}.History.DistributeIn"
+
+CONFIDENTIALITY_OPTIONS = {
+    "prompts readable": "none",
+    "prompts as fingerprints only": "redact",
+    "prompts encrypted": "encrypt",
+}
+
+
+def history_settings(user: str = "default") -> dict[str, Any]:
+    s = read_settings(user)
+    distribute = [t.strip().upper() for t in
+                  str(s.get(HISTORY_DISTRIBUTE, "") or "").replace(";", ",").split(",")
+                  if t.strip()]
+    return {
+        "user": str(s.get(HISTORY_USER, "") or "").strip(),
+        "role": str(s.get(HISTORY_ROLE, "") or "").strip(),
+        "auto": bool(s.get(HISTORY_AUTO, True)),
+        "ledger": str(s.get(HISTORY_LEDGER, "") or "").strip(),
+        "key_file": str(s.get(HISTORY_KEY_FILE, "") or "").strip(),
+        "confidentiality": CONFIDENTIALITY_OPTIONS.get(
+            s.get(HISTORY_CONFIDENTIALITY, "prompts readable"), "none"),
+        "distribute_in": distribute,
+        "territory": TERRITORY_OPTIONS.get(s.get(TERRITORY, "not set"), ""),
+        "likeness": bool(s.get(LIKENESS)),
+    }

@@ -454,6 +454,8 @@ def _body(report: AuditReport) -> str:
     _automation_section(w, section, report)
     _risk_section(w, section, report)
 
+    _history_section(w, section, report)
+
     review = review_section.get_review(report)
     if review:
         w(review_section.html(review))
@@ -465,6 +467,29 @@ def _body(report: AuditReport) -> str:
 
 
 # --------------------------------------------------------------------------
+
+
+def _history_section(w, section, report: AuditReport) -> None:
+    hist = report.history or {}
+    if not hist.get("lineage"):
+        return
+    from . import history_html
+    lin, v = hist["lineage"], hist["verification"]
+    section("Shot history", f"{lin['entries']} entries")
+    tone = {"witnessed": "ok", "signed": "ok", "consistency": "warn"}.get(v["assurance"], "stop")
+    from .. import history as history_mod
+    label = history_mod.ASSURANCE_LABELS.get(v["assurance"], v["assurance"])
+    w(f"<p class='verdict-note {tone}'><span><strong>{_e(label)}.</strong> "
+      f"{_e(v['assurance_detail'])}</span></p>")
+    w(f"<p class='lede'>{len(lin['people'])} people, {lin['human_steps']} recorded human "
+      f"decisions and {lin['renders']} model runs since "
+      f"{_e((hist['timeline'][0]['at'] if hist['timeline'] else '')[:10])}. Stage: "
+      f"{_e(lin['shot'].get('stage', 'sandbox'))}. Export the provenance record from the "
+      "History tab or <code>comfyaudit history record</code> for the full lineage.</p>")
+    w("<style>" + history_html.HISTORY_CSS + "</style>")
+    w("<div class='graphwrap'>" + history_html.flow_svg(lin, hist["timeline"]) + "</div>")
+    if lin["gaps"]:
+        w("<ul class='gaps'>" + "".join(f"<li>{_e(g)}</li>" for g in lin["gaps"]) + "</ul>")
 
 
 def _registry_section(w, section, report: AuditReport) -> None:

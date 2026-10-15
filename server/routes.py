@@ -21,6 +21,7 @@ from ..core import catalog
 from ..core.knowledge import licences as licences_mod
 from ..core.report import html as html_report
 from ..core.report import markdown as md_report
+from . import history_service
 from . import live
 from . import settings as settings_mod
 
@@ -104,7 +105,44 @@ def register() -> bool:
                 {"error": f"{type(exc).__name__}: {exc}"}, status=500)
         return web.json_response(payload)
 
+    # -- shot history --------------------------------------------------------
+
+    def _history_route(path: str, fn):
+        @routes.post(f"{PREFIX}/history/{path}")
+        async def handler(request):  # noqa: ANN001
+            try:
+                body = await request.json()
+            except Exception:
+                return web.json_response({"error": "request body must be JSON"}, status=400)
+            if not isinstance(body.get("workflow"), dict):
+                return web.json_response({"error": "expected a 'workflow' object"}, status=400)
+            try:
+                payload = await _run(fn, body)
+            except ValueError as exc:
+                return web.json_response({"error": str(exc)}, status=400)
+            except Exception as exc:  # noqa: BLE001
+                traceback.print_exc()
+                return web.json_response({"error": f"{type(exc).__name__}: {exc}"}, status=500)
+            return web.json_response(payload, dumps=lambda o: json.dumps(o, default=str))
+        return handler
+
+    _history_route("stamp", history_service.stamp)
+    _history_route("record", history_service.record)
+    _history_route("manifest", history_service.manifest)
+    _history_route("summary", lambda body: history_service.summary(
+        _read_history(body["workflow"]), workflow=body["workflow"]))
+
+    @routes.get(f"{PREFIX}/licensing-guide")
+    async def guide_route(request):  # noqa: ANN001
+        html = await _run(history_service.guide)
+        return web.Response(text=html, content_type="text/html")
+
     return True
+
+
+def _read_history(workflow: dict[str, Any]):
+    from ..core import history as history_mod
+    return history_mod.read(workflow)
 
 
 async def _run(fn, *args) -> Any:
