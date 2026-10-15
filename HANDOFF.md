@@ -1,0 +1,274 @@
+# Handoff: ComfyAudit shot history
+
+*Written 2026-10-15 at the end of the session that built the `shot-history` branch.
+Read this first, then `README.md` for the user-facing documentation.*
+
+## 1. What this project is
+
+**ComfyAudit** is a ComfyUI custom node pack, pure Python standard library, that
+documents what is inside a workflow so someone else (a supervisor, a client, a
+legal team) can decide whether it can go on a commercial job. It covers every
+model and what its licence says, prompts, assets, custom node packs, and how
+much human babysitting it needs. Optionally it reaches a go / no-go given the
+studio's territory and revenue.
+
+The `shot-history` branch adds the pieces studio legal teams asked for:
+
+1. **Shot history.** A tamper-evident record of a workflow's whole life,
+   embedded in the workflow JSON under `extra.comfyaudit_history`, so it travels
+   with the file and into every PNG ComfyUI renders. It records who created and
+   changed it, model and prompt changes, source-media origins, renders, reviews,
+   approvals and production stage. It is hash-chained, optionally HMAC-signed,
+   optionally witnessed by an external ledger, and optionally encrypts prompts.
+2. **A provenance record**, an HTML/PDF document for legal. It includes a lane
+   flow graph of the shot's life (one lane per person), a model lifeline,
+   prompt authorship, source origins, sign-off, a rules checklist and the full
+   signed log.
+3. **A rules checklist** backed by a sourced knowledge base of 37 rules: union
+   agreements, US Copyright Office guidance, EU AI Act, court rulings, US state
+   laws and C2PA. It shows which rules apply to a shot and what evidence the
+   history already holds.
+4. **A commercial licensing guide**, generated from the licence knowledge base:
+   how licensing works, the steps to a commercial licence, and every licence
+   sorted into permitted, conditional and needs-a-licence.
+5. **Conflicting licence data flags.** When a licence contradicts itself (FLUX.1
+   [dev]), when an entry contradicts itself, or when sources disagree, the tool
+   flags it everywhere and applies the stricter reading.
+
+## 2. Why: the goal
+
+Doug's framing: *make Comfy easy for artists to use **and** easy for legal teams
+to trust, so studios can put Comfy workflows and models in the final pixels of
+commercial productions. Comfy should become the standard for this.*
+
+The key input was a 2026-10-14 meeting with a major studio's VFX team. Their
+legal hurdles shaped the design:
+
+| The studio said | What was built |
+|---|---|
+| Provenance starts at the studio's tracking-system ID, before anything enters Comfy | `external_ids` on the shot, sealed into every entry |
+| "Where did the input image come from?" | Declared origin per source input (artist / client / licensed / photographed / generated / unknown) plus its asset ID |
+| "What did the model change from the original?" | Input and output fingerprints per render |
+| Runs, settings tried, feedback given | Iteration counts, parameter diffs, review notes |
+| Ownership of prompts | Per-prompt authorship in the lineage |
+| R&D short vs commercial work | Stages: `sandbox → production → cleared → delivered` |
+| Air-gapped content network | Nothing contacts the network; stdlib only |
+| A commercial licence raises indemnity questions | Licensing guide: "a commercial licence is not indemnity" |
+
+They also mentioned **MovieLabs**, whose ontology would make a natural future
+export target.
+
+## 3. Where things are
+
+| Path | What it is |
+|---|---|
+| `core/history.py` | The engine: `snapshot`, `diff`, `breakpoints_for`, `append`, `stamp` (returns `StampResult`), `verify` (returns `Verification`), `lineage`, `timeline`, `c2pa_manifest`, `Keys`, `Actor` |
+| `core/history_cli.py` | `comfyaudit history stamp/verify/log/record/manifest` and `comfyaudit guide` |
+| `core/report/history_html.py` | Provenance record, `flow_svg` (lane graph) and `lifeline_svg` |
+| `core/report/compliance.py` | Signals (which rules apply) and evidence checks |
+| `core/report/licensing_guide.py` | The licensing guide |
+| `core/knowledge/data/regulations.json` | **Generated.** Do not hand-edit; see below |
+| `tools/research/regulations.research.json` | The sourced research the regulations come from |
+| `tools/build_regulations.py` | Hand-written `MAP`: rule → triggers + evidence checks. Rebuilds `regulations.json` |
+| `core/knowledge/data/licences.json` | Licence KB; entries may carry a `conflicts` list |
+| `core/knowledge/licences.py` | `licence_conflicts()`: recorded and detected conflicts |
+| `server/history_service.py` | Server-side stamping (the key never reaches the browser) |
+| `server/routes.py` | `/comfyaudit/history/{stamp,record,manifest,summary}` and `/comfyaudit/licensing-guide` |
+| `server/settings.py` | `history_settings()`; the ledger and key paths come from **env only** |
+| `web/shothistory.js` | History sidebar tab, auto-stamp on queue and render, settings |
+| `tools/make_history_example.py` | Builds a 14-entry demo shot plus ledger, for demos and screenshots |
+| `tests/test_history.py` | ~50 tests, including every integrity attack from the review |
+
+### Running things
+
+The package **must be importable as `comfyaudit`**: the tests and the CLI do
+`import comfyaudit`. Clone it into a folder literally named `comfyaudit`, or
+symlink one:
+
+```bash
+# from the folder ABOVE the pack
+python -m comfyaudit.core.cli history verify shot.json
+cd comfyaudit && python -m pytest -q --ignore=tests/test_agent.py   # 244 passing
+python tools/make_history_example.py --out examples/
+python tools/build_regulations.py      # after editing MAP or the research file
+```
+
+Environment variables (server and CLI):
+
+| Variable | Purpose |
+|---|---|
+| `COMFYAUDIT_HISTORY_KEY` or `COMFYAUDIT_HISTORY_KEY_FILE` | Studio signing passphrase |
+| `COMFYAUDIT_HISTORY_ENC_KEY` | Prompt encryption; needs `pip install cryptography` |
+| `COMFYAUDIT_HISTORY_LEDGER` | Append-only JSONL witness file |
+| `COMFYAUDIT_HISTORY_CONFIDENTIALITY` | `none` / `redact` / `encrypt` |
+| `COMFYAUDIT_USER` | Fallback actor name for the CLI |
+
+## 4. Design decisions worth keeping
+
+- **History lives in `extra`.** ComfyUI preserves `extra` on save and copies it
+  into rendered PNGs. API-format prompts have no room for it (every top-level
+  key is a node), so they get a sidecar, `<name>.history.json`.
+- **Auto-stamp happens *before* queueing** (`app.queuePrompt` is wrapped), so the
+  history is serialized into that render's metadata. The `rendered` entry comes
+  after `execution_success`. Completions are matched to queued workflows FIFO.
+  If the user switched tabs, the render is held in `pending` until they return.
+- **Layout is not an edit.** `graph_fingerprint` ignores positions, sizes and
+  colours. A save that changed nothing adds nothing; renders, reviews and
+  approvals always record.
+- **Unchanged snapshots are stored once**, and later entries carry
+  `snapshot_ref`. Always go through `snapshot_of(entries, e)`, never
+  `e["snapshot"]`.
+- **The chain is the authority.** The top-level `history["shot"]` block is an
+  unprotected convenience copy. Shot identity is read from `entries[-1]["shot"]`,
+  the ledger is keyed by `entries[0]["shot"]["id"]`, and any mismatch is
+  damage.
+- **Assurance levels:**
+  - `absent`: no history.
+  - `none` ("Altered"): any damage.
+  - `consistency` ("Unverified"): unsigned, or checked without the key.
+  - `signed`: every entry signed and verified.
+  - `witnessed`: signed, and every entry has a matching ledger row.
+
+  `problems` are damage; `notes` are true but not damage (the workflow moved on,
+  or the ledger started late).
+- **Mixed signed and unsigned entries count as damage.** An unsigned entry in a
+  signed history is exactly what a forger without the key would add.
+- **`stamp()` refuses to extend a damaged history.** A new signature would
+  launder the damage.
+- **Break points are conservative.**
+  - An import credits nobody; its prompts are "before tracking".
+  - Seeds advanced by `control_after_generate` don't count.
+  - Blank notes don't count.
+  - A render carrying unsaved edits records them as the person's.
+  - Bypassed models are not "in the final render".
+- **Compliance checks are mapped only to evidence they actually prove.**
+  Anything else (consent riders, disclosures, a consulted director, comp and
+  paint done outside Comfy) is a **manual attestation**: a `note` entry with
+  `data.evidence = "<rule-id>:<index>"`. A bare rule id deliberately ticks
+  nothing.
+- **Secrets and paths never live in ComfyUI settings.** Any browser that reaches
+  the server can write those settings.
+- **Signing scope is stated beside every badge.** A signature proves an entry
+  came through the studio key (in practice the studio's ComfyAudit server), not
+  which person wrote it. Names are self-declared.
+
+## 5. What we learned
+
+### About the law (sourced in `tools/research/regulations.research.json`)
+
+- **No EU rule requires proving a human was in the loop for creative work.**
+  - AI Act Art. 14 (human oversight) covers only high-risk systems; creative
+    generation is not one.
+  - What applies is **Art. 50 transparency**: providers mark output, and
+    deployers disclose deepfakes. There is a lighter duty for evidently artistic
+    work, in force from 2026-08-02.
+  - The record shows Art. 14 under "Often assumed, but does not apply".
+- **Human involvement matters for copyright, not legality.**
+  - The US Copyright Office (Part 2, Jan 2025) and the AG Munich ruling
+    (Feb 2026) both say prompts, selection and parameter iteration alone are
+    not enough.
+  - Human-made material that stays visible in the output, and human edits
+    after generation, carry the weight.
+  - So the tool presents prompts and selection as *process*, and source
+    origins and attested edits as *evidence*.
+- **MPAA is now the MPA** (renamed 2019). It is a trade association with no
+  binding AI production rules.
+- **The NO FAKES Act is still a bill.** The TAKE IT DOWN Act covers only
+  intimate imagery, so it fires only on an explicit fact.
+- **Not verified:** the full 2026 SAG-AFTRA, WGA and DGA contract texts (from
+  press and law-firm summaries); C2PA 2.4; the Prague ruling's year; whether
+  *Allen v. Perlmutter* has been decided. These are marked in each rule's notes
+  and confidence.
+
+### About the licence data
+
+- **FLUX.1 [dev] contradicts itself.** The outputs clause permits commercial use
+  except training a competing model. The restrictions clause bars commercial or
+  production use of "any data produced by" the model. The KB now records this
+  as a conflict and applies the stricter (non-commercial) reading.
+  - The KB links `bfl.ai/legal/non-commercial-license-terms`, which may be a
+    newer v2. It could not be fetched without Doug approving the URL.
+  - Doug should confirm the current terms with Black Forest Labs.
+
+### About building it
+
+- **The adversarial review was worth it.** A separate reviewer found two
+  no-key attacks that still showed "Signed":
+  - appending an unsigned approval;
+  - truncating, then editing the unprotected top-level shot id.
+
+  It also found compliance checks ticking items they didn't prove. All are
+  fixed and covered by tests. Repeat this kind of review before any release
+  legal will rely on.
+- **Things a fresh clone trips over:**
+  - The test fixtures (`tests/fixtures/*.json`) were never committed. They are
+    generated by `tools/make_example.py`, which writes to `examples/`. They are
+    now committed.
+  - `.gitignore` was added for `__pycache__/` and `examples/`.
+  - The initial commit includes stray `__pycache__` files and a
+    `dughogan-claude-comfyui-workflow-audit-gvocwc/Thumbs.db` folder. These are
+    harmless; leaving them was the conservative choice.
+
+## 6. What's left to do
+
+**Priority 1: prove it in a real ComfyUI.** Nothing in `web/shothistory.js` has
+run against a live frontend; it was only syntax-checked (`node --check`).
+
+1. Install the branch into `custom_nodes` (folder named `comfyaudit`) and start
+   ComfyUI. Confirm the log line `comfyaudit … loaded (… web routes)` and that a
+   **History** tab appears.
+2. Set *Settings → ComfyAudit → Shot history → Your name*.
+3. Open a workflow, then **Start tracking** with a shot name and ShotGrid ID.
+   Check that `app.graph.extra.comfyaudit_history` exists (browser console).
+4. Queue a render. Check that:
+   - an *edited* entry appears if the graph changed;
+   - a *rendered* entry appears on completion, with the output fingerprinted;
+   - the rendered PNG's metadata contains the history.
+5. Test the edge cases:
+   - batch count above 1;
+   - switching workflow tabs while a render runs (the `pending` path);
+   - an interrupted or errored run (no render entry);
+   - the `graphChanged` listener, which may not exist in Doug's frontend
+     version, so refresh may need another hook.
+6. Check that `markDirty()` (`changeTracker.checkState`) marks the tab modified,
+   so the user saves. If not, find this frontend's equivalent.
+7. Click through Review / Approve / Declare source / Change stage / Note,
+   then Provenance record, C2PA manifest and Licensing guide.
+8. Restart with `COMFYAUDIT_HISTORY_KEY` and `COMFYAUDIT_HISTORY_LEDGER` set and
+   confirm the badge reads **Witnessed**.
+
+**Priority 2: known gaps.**
+
+- [ ] **FLUX.1 [dev] terms.** Confirm the current BFL licence and update the
+      `flux1-dev-nc` entry and its `conflicts` in `licences.json`.
+- [ ] **Per-person keys.** Today one studio key means "Signed" can't name the
+      person. Options: per-user HMAC keys (`key_id`), or the ComfyUI multi-user
+      header (`comfy-user`) bound to server-side identities.
+- [ ] **Recording work done outside ComfyUI.** Comp, paint and grade are the
+      strongest copyright evidence, and today they are only attestable as
+      notes. A Nuke-side stamp (see `nuke_to_comfyui.py`) or a structured
+      "external edit" event with before/after fingerprints would close this.
+- [ ] **ShotGrid / ftrack integration.** Read the asset ID automatically
+      instead of typing it, and optionally push the head hash back as the
+      ledger.
+- [ ] **C2PA signing.** Today an unsigned manifest *definition* is exported.
+      Wire it to `c2patool` or a signing service when a studio certificate
+      exists, and embed it at delivery.
+- [ ] **MovieLabs OMC export**, which Sony mentioned.
+- [ ] **A delivery gate node.** Fail the queue if a tracked shot lacks a
+      history, is Altered, is still in sandbox, or has unconfirmed licence
+      conflicts. The existing **Audit Gate** node is the place.
+- [ ] **Signing oracle.** Anyone who can reach ComfyUI can POST to
+      `/history/stamp` and get a signed entry under any name. Acceptable for a
+      single-artist workstation; studios need auth or per-person keys.
+- [ ] **Regulations refresh.** The research is dated 2026-10-15. 2026 union
+      terms, EU Art. 50 guidelines and US state laws are moving. Rerun the
+      research, update `tools/research/regulations.research.json`, then run
+      `python tools/build_regulations.py`.
+- [ ] **Open PR.** Merge `shot-history` into `main` once it has been tested live.
+
+## 7. Context from the wider conversation
+
+- **Doug:** Doug Hogan, Forward Deployed Creative Technologist at Comfy Org, VFX
+  and Nuke background. The tool is part of making enterprise studios
+  comfortable putting Comfy in final pixels.
