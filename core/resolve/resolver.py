@@ -228,6 +228,14 @@ class Resolver:
                 + ". The most restrictive reading has been applied. A mismatch "
                   "usually means the file was renamed after it was downloaded, so "
                   "confirm which model this actually is.")
+            winner.conflicts.append({
+                "kind": "sources",
+                "summary": "Sources describe this file differently: " + summary + ".",
+                "clauses": [f"{label}: {info.name} (commercial use: {info.commercial_use})"
+                            for info, label, _ in selves],
+                "reading": "The most restrictive reading has been applied.",
+                "source": winner.url,
+            })
             winner.confidence = "low"
 
         # A derivative claiming more than the model it was trained on.

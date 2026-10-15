@@ -206,12 +206,24 @@
         "Content filtering measures are required for all use."
       ],
       "url": "https://bfl.ai/legal/non-commercial-license-terms",
-      "summary": "Non-commercial. Note that the restriction is written to cover the outputs, not only the weights.",
+      "summary": "Non-commercial for the weights. Its clauses on outputs contradict each other, so outputs are treated as non-commercial until the licence holder confirms otherwise.",
       "conditions": {
         "outputs_commercial": "no",
         "commercial_licence_available": true,
         "separate_licence_holder": "Black Forest Labs"
-      }
+      },
+      "conflicts": [
+        {
+          "summary": "The licence text both permits commercial use of outputs and restricts commercial or production use of anything the model produces.",
+          "clauses": [
+            "Outputs clause: Output may be used for any purpose, including commercial purposes, except training a competing model.",
+            "Restrictions clause: the model, its derivatives or any data it produces may not be used for commercial or production purposes."
+          ],
+          "reading": "Treated here as non-commercial for outputs (the stricter reading) until Black Forest Labs or counsel confirms otherwise.",
+          "source": "https://scancode-licensedb.aboutcode.org/flux-1-nc.html",
+          "checked": "2026-10-15"
+        }
+      ]
     },
     "tencent-hunyuan-community": {
       "name": "Tencent Hunyuan Community License",

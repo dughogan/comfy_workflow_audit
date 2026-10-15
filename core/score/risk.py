@@ -111,6 +111,29 @@ def _licence_findings(models: list[ModelRef], api_node_types: list[str]) -> list
     """
     out: list[Finding] = []
 
+    contradictory = [m for m in models if m.license and any(
+        c.get("kind") in ("recorded", "detected") for c in m.license.conflicts)]
+    if contradictory:
+        by_licence: dict[str, list[str]] = {}
+        for m in contradictory:
+            by_licence.setdefault(m.license.name, []).append(m.filename)
+        first = next(c for c in contradictory[0].license.conflicts
+                     if c.get("kind") in ("recorded", "detected"))
+        out.append(Finding(
+            id="licence.conflicting-terms",
+            title=f"{len(by_licence)} licence(s) contradict themselves",
+            severity="high",
+            category="provenance",
+            detail="The licence's own terms say two incompatible things about the "
+                   "same use, so no reading of it is safe to rely on without the "
+                   "rights holder or counsel confirming which applies. "
+                   + first.get("summary", ""),
+            evidence=[f"{name}: {', '.join(files[:4])}" for name, files in by_licence.items()],
+            recommendation="Get written confirmation from the licence holder of how "
+                           "the conflicting clauses apply to your use, or swap the "
+                           "model. Until then the stricter reading is applied.",
+        ))
+
     conflicted = [m for m in models if m.license
                   and any("Sources disagree" in r for r in m.license.restrictions)]
     if conflicted:

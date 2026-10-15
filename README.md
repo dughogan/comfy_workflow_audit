@@ -387,6 +387,24 @@ absolute paths, unpinned packs, seeds that drift, hosted APIs that can change
 under you, node classes nothing can install. **Licence position is deliberately
 not part of this score** — that's policy, and policy is yours.
 
+## Conflicting licence data
+
+Some licences contradict themselves, and sources sometimes disagree about what
+a file is. Neither is ever resolved silently. Three kinds are flagged:
+
+| Kind | Example |
+|---|---|
+| **Conflicting terms in the licence** | FLUX.1 [dev] permits commercial use of outputs in one clause and bars production use of anything the model produces in another. Recorded in the knowledge base with both clauses, the reading applied and the source. |
+| **Contradictory licence data** | An entry, including a studio's own override, that says two incompatible things, such as *commercial use: yes* with *outputs: non-commercial*. Detected automatically. |
+| **Sources disagree** | With `--online`, the filename, the Hugging Face tag, Civitai and the base model describe one file differently. |
+
+Each conflict appears in the licence summary, as a high-severity finding, in
+the licensing guide, and on the model's lifeline in the provenance record. The
+stricter reading is applied until the licence holder or counsel confirms
+otherwise. To record a new conflict, add a `conflicts` list to the licence's
+entry in `licences.json`, with `summary`, `clauses`, `reading`, `source` and
+`checked`.
+
 ## Looking models up
 
 With `--online` (or the node's `online_lookups` switch), models and packs are
@@ -850,7 +868,7 @@ reproducible six months later.
 ## Development
 
 ```bash
-python -m pytest        # 255 tests
+python -m pytest        # 257 tests
 ```
 
 The 13 agent tests need `anthropic>=1.0`; on an older SDK they fail with
@@ -858,7 +876,7 @@ The 13 agent tests need `anthropic>=1.0`; on an older SDK they fail with
 version floor talking rather than a real failure.
 
 ```bash
-python -m pytest --ignore=tests/test_agent.py   # 242, no SDK needed
+python -m pytest --ignore=tests/test_agent.py   # 244, no SDK needed
 ```
 
 The agent tests point a real Anthropic client at a local stub of the Messages

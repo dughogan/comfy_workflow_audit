@@ -216,6 +216,12 @@ def _body(history, lin, rows, v, checks) -> str:
     w("<p class='intro'>Every weight that was ever in the graph, from the entry that "
       "introduced it to the one that removed it. Solid bars reached the final render; "
       "the licence is as the bundled knowledge base read it at each entry.</p>")
+    conflicted = [m for m in lin["models"] if m.get("conflict") and m.get("in_final")]
+    if conflicted:
+        w("<p class='verdict-note stop'><span><strong>&#9888; Conflicting licence "
+          "terms</strong> on " + ", ".join(_e(m["filename"]) for m in conflicted)
+          + ": " + _e(conflicted[0]["conflict"]) + " The stricter reading is shown; "
+          "confirm with the rights holder before delivery.</span></p>")
     if lin["models"]:
         w("<div class='graphwrap'>" + lifeline_svg(lin, rows) + "</div>")
         w("<div class='legend'><span><i class='ok'></i>commercial use permitted</span>"
@@ -493,6 +499,7 @@ def lifeline_svg(lin: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         end = (m["removed"] - 1) if m["removed"] else n
         x0, x1 = left + col * start + 4, left + col * end - 4
         tip = (f"{m['filename']}\n{m['licence']}\ncommercial use: {m['commercial_use']}\n"
+               + (f"CONFLICTING TERMS: {m['conflict']}\n" if m.get("conflict") else "")
                + ("bypassed - did not contribute to the final render\n"
                   if not m.get("enabled", True) and not m["removed"] else "")
                + ""
@@ -500,8 +507,9 @@ def lifeline_svg(lin: dict[str, Any], rows: list[dict[str, Any]]) -> str:
                + (f"\nremoved #{m['removed']} by {m['removed_by']}" if m["removed"] else ""))
         s.append(f"<g><title>{_e(tip)}</title>")
         s.append(f"<text class='f' x='10' y='{y + 14}'>{_e(_clip(m['filename'], 40))}</text>")
+        label = ("\u26a0 conflicting terms - " if m.get("conflict") else "") + m["licence"]
         s.append(f"<text class='l' x='10' y='{y + 28}' fill='{color}'>"
-                 f"{_e(_clip(m['licence'], 52))}</text>")
+                 f"{_e(_clip(label, 52))}</text>")
         s.append(f"<rect x='{x0}' y='{y + 10}' width='{max(x1 - x0, 6)}' height='12' rx='6' "
                  f"fill='{color}' fill-opacity='{0.9 if m['in_final'] else 0.25}' stroke='{color}'/></g>")
     y = top + row_h * len(models) + 14

@@ -525,7 +525,8 @@ def _licence_section(w, section, report: AuditReport) -> None:
     w("| Licence | Models | Commercial use | Fee | Confidence |")
     w("|---|---|---|---|---|")
     for group in lic.groups:
-        w(f"| {_cell(group.licence)} | {group.count} | {group.position} | "
+        w(f"| {_cell(group.licence)} | {group.count} | {group.position}"
+          f"{' ⚠ conflicting terms' if group.conflicts else ''} | "
           f"{_cell(licensing.describe_fee(group.fee))} | {group.confidence} |")
     w("")
 
@@ -535,6 +536,13 @@ def _licence_section(w, section, report: AuditReport) -> None:
         w("")
         if group.summary:
             w(group.summary)
+            w("")
+        for c in group.conflicts:
+            w(f"> ⚠ **Conflict:** {c.get('summary', '')}")
+            for clause in c.get("clauses", []):
+                w(f"> - {clause}")
+            w(f"> *{c.get('reading', '')}*"
+              + (f" [source]({c['source']})" if c.get("source") else ""))
             w("")
         if group.restrictions:
             for restriction in group.restrictions[:10]:

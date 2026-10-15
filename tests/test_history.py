@@ -560,3 +560,38 @@ def test_a_bypassed_model_did_not_make_the_final_pixels():
     codeformer = next(m for m in H.lineage(H.read(wf))["models"]
                       if "codeformer" in m["filename"].lower())
     assert codeformer["in_final"] is False and codeformer["removed"] is None
+
+
+# -- conflicting licence data --------------------------------------------------
+
+def test_a_recorded_licence_conflict_is_flagged_everywhere(tmp_path):
+    from comfyaudit.core.knowledge import licences as L
+    from comfyaudit.core.records import ModelRef
+    info = L.LicenceMatcher().for_model(ModelRef(filename="flux1-dev.safetensors",
+                                                 folder="diffusion_models"))
+    assert info.conflicts and info.conflicts[0]["kind"] == "recorded"
+
+    flux_dev = json.loads(json.dumps(load("clean-batch.json"))
+                          .replace("flux1-schnell.safetensors", "flux1-dev.safetensors"))
+    path = tmp_path / "flux.json"
+    path.write_text(json.dumps(flux_dev))
+    report = audit.run(str(path))
+    assert report.licensing.conflicted
+    assert "conflicting terms" in report.licensing.headline
+    assert any(f.id == "licence.conflicting-terms" for f in report.risk.findings)
+    assert "Conflicting terms in the licence" in html_report.render(report)
+    assert "Conflict:" in md_report.render(report)
+    assert "contradict themselves" in licensing_guide.render()
+
+    wf = H.stamp(flux_dev, event="created", actor=ANA, keys=keys()).workflow
+    wf = H.stamp(wf, event="rendered", actor=ANA, keys=keys()).workflow
+    assert any(m.get("conflict") for m in H.lineage(H.read(wf))["models"])
+    assert "Conflicting licence terms" in history_html.render(H.read(wf), data=wf, keys=keys())
+
+
+def test_contradictory_fields_in_a_studio_entry_are_detected():
+    from comfyaudit.core.knowledge import licences as L
+    found = L.licence_conflicts({"name": "House licence", "commercial_use": "yes",
+                                 "conditions": {"outputs_commercial": "no"}})
+    assert found and found[0]["kind"] == "detected"
+    assert not L.licence_conflicts({"name": "MIT", "commercial_use": "yes", "conditions": {}})

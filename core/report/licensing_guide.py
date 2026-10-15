@@ -61,6 +61,8 @@ table.lic td{border-bottom:1px solid var(--rule);padding:10px;vertical-align:top
 table.lic td.fam{font-weight:600;max-width:240px}
 table.lic ul{margin:0;padding-left:16px}
 table.lic .src{font-family:var(--mono);font-size:11.5px}
+table.lic .conflict{margin-top:8px;padding:8px 10px;background:var(--stop-bg);color:var(--ink);
+  border-left:3px solid var(--stop);font-size:12.5px;border-radius:2px}
 h2.sec{font-family:var(--display);font-weight:900;font-size:26px;letter-spacing:-.01em;
   margin:46px 0 6px;padding-top:18px;border-top:1px solid var(--rule-2)}
 .intro{color:var(--ink-2);max-width:74ch;margin:0 0 10px;font-size:15.5px}
@@ -200,6 +202,16 @@ def render(kb_path: str | None = None, standalone: bool = True) -> str:
         w(f"<p class='verdict-note warn'><span><strong>Check at source.</strong> "
           f"{_e(fresh.message)}</span></p>")
 
+    conflicted = [(lid, lic) for lid, lic in kb.get("licences", {}).items()
+                  if licences_mod.licence_conflicts(lic)]
+    if conflicted:
+        w("<p class='verdict-note stop'><span><strong>&#9888; "
+          f"{len(conflicted)} licence(s) contradict themselves:</strong> "
+          + ", ".join(_e(lic["name"]) for _, lic in conflicted)
+          + ". Their clauses disagree about the same use, so the stricter reading is "
+          "applied until the rights holder or counsel confirms otherwise. Each is "
+          "marked in the tables below.</span></p>")
+
     w("<h2 class='sec'>How it works</h2>")
     w("<p class='intro'>Seven ideas cover nearly every licensing question a production "
       "runs into. Read these once; the tables below apply them.</p>")
@@ -247,6 +259,9 @@ def render(kb_path: str | None = None, standalone: bool = True) -> str:
                 holder = "not needed"
             src = (f"<div class='src'><a href='{_e(lic['url'])}'>source</a></div>"
                    if lic.get("url") else "")
+            for c in licences_mod.licence_conflicts(lic):
+                src += ("<div class='conflict'>&#9888; <strong>Conflicting terms.</strong> "
+                        f"{_e(c['summary'])} <em>{_e(c.get('reading', ''))}</em></div>")
             w(f"<tr><td class='fam'>{fam_cell}</td><td>{_e(lic['name'])}{src}</td>"
               f"<td><ul>{''.join(f'<li>{_e(c)}</li>' for c in conds)}</ul></td>"
               f"<td>{_e(holder or '-')}</td></tr>")

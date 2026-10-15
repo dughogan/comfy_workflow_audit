@@ -681,7 +681,9 @@ def _licence_section(w, section, report: AuditReport) -> None:
             f"<tr><td>{_e(group.licence)}"
             f"<span class='sub'>{_e(models)}</span></td>"
             f"<td class='num'>{group.count}</td>"
-            f"<td><span class='chip {tone}'>{_e(group.position)}</span></td>"
+            f"<td><span class='chip {tone}'>{_e(group.position)}</span>"
+            + (" <span class='chip stop'>conflicting terms</span>" if group.conflicts else "")
+            + "</td>"
             f"<td>{_e(licensing.describe_fee(group.fee))}</td>"
             f"<td>{_e(group.confidence)}</td></tr>")
     w(_table(["Licence", "Models", "Commercial use", "Fee", "Confidence"], rows))
@@ -694,6 +696,8 @@ def _licence_section(w, section, report: AuditReport) -> None:
           f"<span class='tag'>{group.count} model(s)</span></div>")
         if group.summary:
             w(f"<p>{_e(group.summary)}</p>")
+        for c in group.conflicts:
+            w(_conflict_html(c))
         if group.restrictions:
             w("<ul>" + "".join(f"<li>{_e(r)}</li>"
                                for r in group.restrictions[:10]) + "</ul>")
@@ -722,6 +726,23 @@ def _licence_section(w, section, report: AuditReport) -> None:
           "is not visible in the workflow.</p><ul>"
           + "".join(f"<li><code>{_e(t)}</code></li>" for t in lic.hosted_api_types)
           + "</ul>")
+
+
+CONFLICT_KIND = {"recorded": "Conflicting terms in the licence",
+                 "detected": "Contradictory licence data",
+                 "sources": "Sources disagree about this file"}
+
+
+def _conflict_html(c: dict) -> str:
+    """One conflict, shown in full: what disagrees, and which reading was applied."""
+    clauses = "".join(f"<li>{_e(x)}</li>" for x in c.get("clauses", []))
+    src = (f" <a href='{_e(c['source'])}'>source</a>" if c.get("source") else "")
+    checked = f" &middot; checked {_e(c['checked'])}" if c.get("checked") else ""
+    return ("<div class='verdict-note stop' style='margin:10px 0'><span>"
+            f"<strong>&#9888; {_e(CONFLICT_KIND.get(c.get('kind'), 'Conflict'))}.</strong> "
+            f"{_e(c.get('summary', ''))}"
+            + (f"<ul style='margin:6px 0'>{clauses}</ul>" if clauses else " ")
+            + f"<em>{_e(c.get('reading', ''))}</em>{src}{checked}</span></div>")
 
 
 def _models_section(w, section, report: AuditReport) -> None:

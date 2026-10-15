@@ -367,6 +367,7 @@ def snapshot(data: dict[str, Any], keys: Keys | None = None,
             "node": str(m.node_id), "enabled": m.enabled,
             "strength": m.strength,
             "licence": lic.name, "commercial_use": lic.commercial_use,
+            **({"conflict": lic.conflicts[0].get("summary", "")} if lic.conflicts else {}),
         })
 
     prompt_rows = []
@@ -1110,6 +1111,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
             rec["licence"] = m["licence"]
             rec["commercial_use"] = m["commercial_use"]
             rec["enabled"] = m.get("enabled", True)
+            rec["conflict"] = m.get("conflict", "")
             if rec["removed"] is not None:
                 rec["removed"], rec["removed_by"] = None, ""
         current = {_model_key(m) for m in snap.get("models", [])}
