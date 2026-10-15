@@ -396,3 +396,18 @@ def test_server_service_stamps_without_comfyui_and_refuses_path_escapes():
     assert out["recorded"] and out["summary"]["present"]
     assert out["summary"]["shot"]["external_ids"] == {"shotgrid": "Shot#2"}
     assert history_service.output_path({"filename": "../../etc/passwd"}) == ""
+
+
+def test_a_bypassed_model_did_not_make_the_final_pixels():
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
+    restore = next(n for n in wf["nodes"]
+                   if any(isinstance(v, str) and "codeformer" in v.lower()
+                          for v in n.get("widgets_values") or []))
+    restore["mode"] = 4
+    result = H.stamp(wf, actor=DOUG, keys=keys())
+    assert result.entry["changes"]["models_disabled"]
+    assert "model-choice" in result.entry["breakpoints"]
+    wf = H.stamp(result.workflow, event="rendered", actor=DOUG, keys=keys()).workflow
+    codeformer = next(m for m in H.lineage(H.read(wf))["models"]
+                      if "codeformer" in m["filename"].lower())
+    assert codeformer["in_final"] is False and codeformer["removed"] is None
