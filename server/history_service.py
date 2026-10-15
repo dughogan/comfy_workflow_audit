@@ -56,9 +56,11 @@ def output_path(item: dict[str, Any]) -> str:
             "input": getattr(folder_paths, "get_input_directory", lambda: "")()}.get(kind, "")
     if not base:
         return ""
-    path = os.path.normpath(os.path.join(base, item.get("subfolder", ""), item.get("filename", "")))
-    # Never let a posted name walk out of ComfyUI's own folders.
-    if not path.startswith(os.path.normpath(base) + os.sep):
+    root = os.path.realpath(base)
+    path = os.path.realpath(os.path.join(root, item.get("subfolder", ""), item.get("filename", "")))
+    # Never let a posted name - or a symlink inside the folder - walk out of
+    # ComfyUI's own folders.
+    if not path.startswith(root + os.sep):
         return ""
     return path
 
@@ -124,6 +126,7 @@ def summary(history: dict[str, Any] | None, *, workflow: dict[str, Any] | None =
         "assurance": v.assurance,
         "assurance_detail": v.assurance_detail,
         "problems": v.problems,
+        "notes": v.notes,
         "recent": [{"seq": r["seq"], "at": r["at"], "label": r["label"],
                     "event": r["event"], "who": r["actor"].get("name", ""),
                     "note": r["note"]} for r in rows[-6:]][::-1],

@@ -190,7 +190,9 @@ def test_edits_after_the_last_entry_are_flagged():
     first_text_node(wf)["widgets_values"][0] = "changed after sign-off"
     v = H.verify(wf, keys=keys())
     assert v.current is False
-    assert any("changed since the last entry" in p for p in v.problems)
+    # Worth saying, but the record itself is undamaged.
+    assert any("changed since the last entry" in n for n in v.notes)
+    assert v.assurance == "signed"
 
 
 def test_the_ledger_catches_a_truncated_or_replaced_history(tmp_path):
@@ -203,11 +205,82 @@ def test_the_ledger_catches_a_truncated_or_replaced_history(tmp_path):
     v = H.verify(cut, keys=keys(), ledger=ledger)
     assert v.ledger == "missing entries" and v.assurance == "none"
 
-    # A whole, internally consistent replacement history for the same shot.
-    fresh = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
-    fresh["extra"][H.EXTRA_KEY]["shot"]["id"] = H.read(wf)["shot"]["id"]
+    # A whole, internally consistent replacement history for the same shot,
+    # made by someone holding the key: the ledger remembers the original.
+    forged = H.empty(name="SH0120")
+    forged["shot"]["id"] = H.read(wf)["shot"]["id"]
+    fresh = H.stamp(load(), event="created", actor=ANA, keys=keys(), history=forged).workflow
     v = H.verify(fresh, keys=keys(), ledger=ledger)
     assert v.ledger == "mismatch" and v.assurance == "none"
+
+    # Swapping only the editable top-level id does not dodge the ledger.
+    dodge = copy.deepcopy(cut)
+    dodge["extra"][H.EXTRA_KEY]["shot"]["id"] = "something-else"
+    v = H.verify(dodge, keys=keys(), ledger=ledger)
+    assert v.assurance == "none" and v.ledger == "missing entries"
+
+
+def test_witnessed_needs_every_entry_in_the_ledger(tmp_path):
+    ledger = tmp_path / "ledger.jsonl"
+    wf = lifetime(ledger=str(ledger))
+    rows = ledger.read_text().splitlines()
+    ledger.write_text("\n".join(rows[:2]) + "\n")
+    v = H.verify(wf, keys=keys(), ledger=str(ledger))
+    assert v.assurance == "signed" and v.ledger == "incomplete"
+
+
+def test_a_ledger_that_saw_two_versions_of_an_entry_means_a_rewrite(tmp_path):
+    ledger = tmp_path / "ledger.jsonl"
+    wf = lifetime(ledger=str(ledger))
+    row = json.loads(ledger.read_text().splitlines()[3])
+    row["hash"] = "0" * 64
+    with open(ledger, "a") as fh:
+        fh.write(json.dumps(row) + "\n")
+    v = H.verify(wf, keys=keys(), ledger=str(ledger))
+    assert v.ledger == "rewritten" and v.assurance == "none"
+
+
+def test_a_malformed_ledger_row_does_not_crash_verification(tmp_path):
+    ledger = tmp_path / "ledger.jsonl"
+    wf = lifetime(ledger=str(ledger))
+    with open(ledger, "a") as fh:
+        fh.write(json.dumps({"shot": H.chain_shot_id(H.read(wf)), "seq": "nine",
+                             "hash": "x"}) + "\n")
+    assert H.verify(wf, keys=keys(), ledger=str(ledger)).assurance == "witnessed"
+
+
+def test_an_unsigned_entry_slipped_into_a_signed_history_is_caught():
+    wf = lifetime()
+    hist = copy.deepcopy(H.read(wf))
+    H.append(hist, wf, event="approved", actor=H.Actor(name="Studio Counsel", role="legal"),
+             keys=H.Keys())
+    forged = H.write(wf, hist)
+    v = H.verify(forged, keys=keys())
+    assert v.assurance == "none" and v.unsigned_entries == [8]
+
+    stripped = lifetime()
+    del stripped["extra"][H.EXTRA_KEY]["entries"][2]["sig"]
+    assert H.verify(stripped, keys=keys()).assurance == "none"
+
+
+def test_forged_top_level_shot_details_are_caught():
+    wf = lifetime()
+    wf["extra"][H.EXTRA_KEY]["shot"]["external_ids"] = {"shotgrid": "Shot#FAKE"}
+    v = H.verify(wf, keys=keys())
+    assert v.assurance == "none"
+    assert H.lineage(H.read(wf))["shot"]["external_ids"] == {"shotgrid": "Shot#4411"}
+
+
+def test_no_history_is_absent_not_altered():
+    v = H.verify(load(), keys=keys())
+    assert v.assurance == "absent" and H.ASSURANCE_LABELS[v.assurance] == "No history"
+
+
+def test_stamping_refuses_to_build_on_a_damaged_history():
+    wf = lifetime()
+    wf["extra"][H.EXTRA_KEY]["entries"][2]["note"] = "rewritten"
+    with pytest.raises(ValueError, match="damaged"):
+        H.stamp(wf, event="reviewed", actor=DOUG, keys=keys())
 
 
 # -- confidentiality ----------------------------------------------------------
@@ -217,7 +290,29 @@ def test_redacted_prompts_never_appear_in_the_file_but_stay_provable():
     text = first_text_node(wf)["widgets_values"][0]
     blob = json.dumps(wf["extra"][H.EXTRA_KEY])
     assert text not in blob
-    assert H.sha256(text) in blob
+    # Keyed, so a guessed prompt cannot be confirmed by hashing it.
+    assert H.sha256(text) not in blob
+    assert H.fingerprint(text, keys(mode="redact")) in blob
+
+
+def test_confidentiality_never_drops_below_what_the_environment_asks(monkeypatch):
+    monkeypatch.setenv("COMFYAUDIT_HISTORY_ENC_KEY", "enc")
+    assert H.Keys.from_environment(confidentiality="none").confidentiality == "encrypt"
+    monkeypatch.delenv("COMFYAUDIT_HISTORY_ENC_KEY")
+    monkeypatch.setenv("COMFYAUDIT_HISTORY_CONFIDENTIALITY", "redact")
+    assert H.Keys.from_environment(confidentiality="none").confidentiality == "redact"
+    assert H.Keys.from_environment(confidentiality="encrypt").confidentiality == "encrypt"
+
+
+def test_prompt_only_lora_names_and_output_names_are_protected():
+    wf = load()
+    first_text_node(wf)["widgets_values"][0] += " <lora:CLIENT_SECRET_LOOK:0.7>"
+    k = keys(mode="redact")
+    wf = H.stamp(wf, event="created", actor=ANA, keys=k).workflow
+    wf = H.stamp(wf, event="rendered", actor=ANA, keys=k,
+                 outputs=[{"file": "ACME_launch_hero.png"}]).workflow
+    blob = json.dumps(wf["extra"][H.EXTRA_KEY])
+    assert "CLIENT_SECRET_LOOK" not in blob and "ACME_launch" not in blob
 
 
 def test_encryption_round_trips_with_the_key():
@@ -300,9 +395,10 @@ def test_api_format_workflows_keep_history_in_a_sidecar():
 def test_c2pa_manifest_declares_generative_source():
     m = H.c2pa_manifest(H.read(lifetime()))
     actions = m["assertions"][0]["data"]["actions"]
-    created = [a for a in actions if a["action"] == "c2pa.created"]
-    assert created and created[0]["digitalSourceType"].endswith("compositeWithTrainedAlgorithmicMedia")
-    assert any(a["action"] == "c2pa.published" for a in actions)
+    assert actions[0]["action"] == "c2pa.created"
+    assert actions[0]["digitalSourceType"].endswith("compositeWithTrainedAlgorithmicMedia")
+    ours = m["assertions"][1]["data"]
+    assert ours["approved"]["by"] == "Lee Park" and ours["head"]
 
 
 def test_provenance_record_renders_every_part():
@@ -334,9 +430,51 @@ def test_compliance_selects_rules_from_what_the_record_shows():
     assert any(c["id"] == "eu-ai-act-art14-human-oversight" for c in checks["clarifications"])
     usco = next(r for r in checks["rules"] if r["id"] == "usco-part2-copyrightability")
     states = [e["state"] for e in usco["evidence"]]
-    # The lifetime leaves one supplied input undeclared, so the "human-made
-    # inputs" item is rightly missing while the other three are on record.
-    assert states == ["need", "have", "have", "have"]
+    # A photographed plate is human-made input on record. Human edits after
+    # generation (comp, paint, roto) happen outside ComfyUI, so that item
+    # waits for a person to attest it rather than being inferred from tweaks.
+    assert states == ["have", "need", "have", "have"]
+
+
+def test_one_bare_rule_tag_does_not_tick_every_item():
+    wf = H.stamp(lifetime(), event="note", actor=LEE, keys=keys(), note="disclosed",
+                 data_payload={"evidence": "eu-ai-act-art50-4-deployer-deepfake"}).workflow
+    hist = H.read(wf)
+    checks = compliance.assess(H.lineage(hist), hist, {"distribute_in": ["FR"]})
+    art = next(r for r in checks["rules"] if r["id"] == "eu-ai-act-art50-4-deployer-deepfake")
+    assert all(e["state"] == "need" for e in art["evidence"])
+
+
+def test_an_exported_manifest_is_not_evidence_that_marking_was_applied():
+    hist = H.read(lifetime())
+    checks = compliance.assess(H.lineage(hist), hist, {"distribute_in": ["EU"]})
+    c2pa = next(r for r in checks["rules"] if r["id"] == "c2pa-content-credentials")
+    assert c2pa["evidence"][0]["state"] == "need"
+
+
+def test_an_approval_before_the_final_render_does_not_cover_it():
+    wf = lifetime()
+    wf = H.stamp(wf, event="rendered", actor=ANA, keys=keys(), force=True).workflow
+    lin = H.lineage(H.read(wf))
+    assert lin["approved"] is None
+    assert any("does not cover the current output" in g for g in lin["gaps"])
+
+
+def test_importing_someone_elses_graph_does_not_credit_the_importer():
+    wf = H.stamp(load(), actor=DOUG, keys=keys()).workflow
+    entry = H.read(wf)["entries"][0]
+    assert entry["event"] == "imported" and entry["breakpoints"] == []
+    lin = H.lineage(H.read(wf))
+    assert all(p["authored_by"] == "before tracking" for p in lin["prompts"])
+
+
+def test_blank_notes_do_not_count_as_human_decisions():
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
+    for _ in range(3):
+        wf = H.stamp(wf, event="rendered", actor=ANA, keys=keys()).workflow
+        wf = H.stamp(wf, event="note", actor=ANA, keys=keys(), note="").workflow
+    lin = H.lineage(H.read(wf))
+    assert any("no recorded human step" in g for g in lin["gaps"])
 
 
 def test_attested_evidence_is_read_back_from_the_chain():

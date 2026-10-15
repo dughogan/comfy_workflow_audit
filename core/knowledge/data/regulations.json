@@ -76,7 +76,7 @@
     },
     {
      "text": "Mapping of replica-generated shots to the consented project and use description",
-     "check": "external_id"
+     "check": "manual"
     },
     {
      "text": "Payment calculation records for replica-generated scenes",
@@ -161,7 +161,7 @@
     },
     {
      "text": "Prompt/reference-image log showing no real performer's features were used to generate the character (or consent if they were)",
-     "check": "prompt_authorship"
+     "check": "manual"
     }
    ]
   },
@@ -387,7 +387,7 @@
    "evidence": [
     {
      "text": "Record that the director was consulted, and signed off where 2026 terms require, on each AI-generated shot or element",
-     "check": "final_reviewed"
+     "check": "manual"
     },
     {
      "text": "Director/approver identity attached to the shot's workflow history",
@@ -463,11 +463,11 @@
    "evidence": [
     {
      "text": "Human-made inputs per shot: plates, paintovers, 3D layouts, sketches, control maps, with author IDs",
-     "check": "sources_declared"
+     "check": "human_inputs"
     },
     {
      "text": "Record of human modifications after generation (comp, paint, roto, grading) with before/after versions",
-     "check": "human_breakpoints"
+     "check": "manual"
     },
     {
      "text": "Selection and arrangement decisions (which takes were chosen and why, the edit)",
@@ -579,7 +579,7 @@
     },
     {
      "text": "Marking method applied per output (signed metadata / C2PA manifest, watermark), and verification that it survives the delivery pipeline",
-     "check": "manifest"
+     "check": "manual"
     },
     {
      "text": "Vendor contract terms guaranteeing marking by upstream model providers",
@@ -661,7 +661,7 @@
     },
     {
      "text": "Provenance metadata retained through delivery",
-     "check": "manifest"
+     "check": "manual"
     },
     {
      "text": "Training/awareness records for staff who approve labelling",
@@ -729,11 +729,11 @@
    "evidence": [
     {
      "text": "Records of human creative choices visible in the final frame: composition, framing, lighting, layout, paintovers, edit decisions",
-     "check": "human_breakpoints"
+     "check": "human_inputs"
     },
     {
      "text": "Link between those choices and the output (e.g. control images, masks, comp scripts)",
-     "check": "sources_declared"
+     "check": "manual"
     }
    ]
   },
@@ -768,7 +768,7 @@
     },
     {
      "text": "Human edits beyond selection",
-     "check": "human_breakpoints"
+     "check": "manual"
     }
    ]
   },
@@ -800,7 +800,7 @@
    "evidence": [
     {
      "text": "Contemporaneous, verifiable records linking prompt, settings and output (the claimant lost partly for lack of such proof)",
-     "check": "signed"
+     "check": "verifiable_process"
     }
    ]
   },
@@ -832,7 +832,7 @@
    "evidence": [
     {
      "text": "Model/checkpoint identity and provenance per shot (which provider is responsible)",
-     "check": "outputs_fingerprinted"
+     "check": "manual"
     },
     {
      "text": "Output similarity checks against known third-party IP for final deliverables",
@@ -937,7 +937,7 @@
    "evidence": [
     {
      "text": "Labels and metadata present on deliverables released in China",
-     "check": "manifest"
+     "check": "manual"
     },
     {
      "text": "Platform declaration records for published content",
@@ -973,7 +973,7 @@
    "evidence": [
     {
      "text": "Full prompt, negative prompt, parameter and iteration history; the plaintiff proved authorship by reproducing the process",
-     "check": "signed"
+     "check": "verifiable_process"
     }
    ]
   },
@@ -1015,7 +1015,7 @@
     },
     {
      "text": "Map of replica-generated shots to the contracted uses",
-     "check": "external_id"
+     "check": "manual"
     }
    ]
   },
@@ -1089,7 +1089,7 @@
     },
     {
      "text": "Record of which provider/system version produced each asset",
-     "check": "signed"
+     "check": "manual"
     }
    ]
   },
@@ -1334,7 +1334,7 @@
    "evidence": [
     {
      "text": "Signed manifest per deliverable listing ingredients (plates, generated elements), actions and digitalSourceType",
-     "check": "manifest"
+     "check": "manual"
     },
     {
      "text": "Signing certificate/identity used by the studio",

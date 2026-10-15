@@ -39,19 +39,28 @@ LLM_RE = re.compile(r"ollama|\bllm\b|llm_|chatgpt|openai.?chat|claude|gemini.?te
 TRAINING_RE = re.compile(r"train|fine.?tune|dataset|kohya|musubi|lora.?trainer|dreambooth",
                          re.IGNORECASE)
 
-#: Evidence checks the history can answer by itself.
+#: Evidence checks the history can answer by itself. Each one is mapped only to
+#: evidence items it actually proves (see tools/build_regulations.py); anything
+#: it cannot prove - a consent rider, a disclosure in the credits, a marking that
+#: survived delivery - is a manual attestation instead.
 CHECKS = {
     "external_id": "Linked to the studio's own asset ID",
     "human_breakpoints": "Human decisions recorded between model runs",
+    "human_inputs": "Human-made source material recorded with its origin",
     "prompt_authorship": "Each prompt attributed to the person who wrote it",
     "sources_declared": "Origin of every supplied input declared",
     "final_reviewed": "A person reviewed the final output",
-    "approved": "Sign-off recorded",
-    "signed": "Record signed with the studio key",
+    "approved": "Sign-off recorded after the final render",
+    "signed": "Record intact and signed with the studio key (verified)",
+    "verifiable_process": "Signed record linking prompts, settings and fingerprinted outputs",
     "outputs_fingerprinted": "Delivered outputs fingerprinted",
-    "manifest": "Content-provenance manifest can be exported",
     "production_stage": "Shot marked as production work, not sandbox",
 }
+
+#: EU member states, so distribution to one of them counts as distribution in the EU.
+EU_MEMBERS = {"AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR",
+              "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK",
+              "SI", "ES", "SE"}
 
 
 def load() -> dict[str, Any]:
@@ -90,6 +99,8 @@ def signals(lineage: dict[str, Any], history: dict[str, Any],
             out.add(t)
             if t.startswith("us-"):
                 out.add("us")
+            if t.upper() in EU_MEMBERS:
+                out.add("eu")
             if t in ("youtube", "yt"):
                 out.add("youtube")
     for flag in ("feature", "youtube"):
@@ -106,60 +117,69 @@ def signals(lineage: dict[str, Any], history: dict[str, Any],
     return out
 
 
-def _check(name: str, lineage: dict[str, Any], history: dict[str, Any]) -> bool | None:
-    entries = history.get("entries", [])
+def _check(name: str, lineage: dict[str, Any], history: dict[str, Any],
+           verification: dict[str, Any]) -> bool | None:
+    assurance = verification.get("assurance", "")
     if name == "external_id":
         return bool(lineage["shot"].get("external_ids"))
     if name == "human_breakpoints":
         return lineage["human_steps"] > 0 and not any(
             "followed another render" in g for g in lineage["gaps"])
+    if name == "human_inputs":
+        return any(s.get("origin") in H.HUMAN_ORIGINS for s in lineage["sources"])
     if name == "prompt_authorship":
-        return bool(lineage["prompts"]) and all(p.get("authored_by") not in ("", "unknown")
-                                                 for p in lineage["prompts"])
+        return bool(lineage["prompts"]) and all(
+            p.get("authored_by") not in ("", "unknown", "before tracking")
+            for p in lineage["prompts"])
     if name == "sources_declared":
         if not lineage["sources"]:
             return None
-        return all(s.get("origin") for s in lineage["sources"])
+        return all(s.get("origin") and s["origin"] != "unknown" for s in lineage["sources"])
     if name == "final_reviewed":
         return lineage["final_reviewed"] if lineage["renders"] else None
     if name == "approved":
         return lineage["approved"] is not None
     if name == "signed":
-        return bool(entries) and all("sig" in e for e in entries)
+        return assurance in ("signed", "witnessed")
     if name == "outputs_fingerprinted":
-        outs = lineage["final_outputs"]
         if not lineage["renders"]:
             return None
+        outs = lineage["final_outputs"]
         return bool(outs) and all(o.get("sha256") for o in outs)
-    if name == "manifest":
-        return bool(entries)
+    if name == "verifiable_process":
+        if not lineage["renders"]:
+            return None
+        outs = lineage["final_outputs"]
+        return (assurance in ("signed", "witnessed") and bool(lineage["prompts"])
+                and bool(outs) and all(o.get("sha256") for o in outs))
     if name == "production_stage":
         return lineage["shot"].get("stage") in ("production", "cleared", "delivered")
     return False
 
 
 def _attested(rule_id: str, history: dict[str, Any]) -> dict[int, str]:
-    """Manual evidence recorded in the chain as notes tagged with this rule."""
+    """Manual evidence recorded in the chain as notes tagged ``<rule-id>:<index>``.
+
+    The index is required: one note must not tick every item on a rule. The
+    note has to say something, and whether it was signed is reported with it.
+    """
     got: dict[int, str] = {}
     for e in history.get("entries", []):
+        if e.get("event") != "note" or not str(e.get("note", "")).strip():
+            continue
         tag = str((e.get("data") or {}).get("evidence", ""))
-        if not tag:
-            continue
         rid, _, idx = tag.partition(":")
-        if rid != rule_id:
+        if rid != rule_id or not idx.isdigit():
             continue
-        who = e["actor"].get("name", "")
-        when = e["at"][:10]
-        if idx.isdigit():
-            got[int(idx)] = f"{who}, {when}"
-        else:
-            got[-1] = f"{who}, {when}"
+        who = e.get("actor", {}).get("name", "")
+        got[int(idx)] = f"{who}, {e.get('at', '')[:10]}" + ("" if "sig" in e else ", unsigned")
     return got
 
 
 def assess(lineage: dict[str, Any], history: dict[str, Any],
            context: dict[str, Any]) -> dict[str, Any]:
     kb = load()
+    verification = context.get("verification") or {}
     facts = signals(lineage, history, context)
     rules = []
     clarifications = []
@@ -181,12 +201,12 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
         for i, item in enumerate(rule.get("evidence", [])):
             check = item.get("check", "manual")
             if check == "manual":
-                if i in attested or -1 in attested:
-                    state, note = "have", f" (attested by {attested.get(i, attested.get(-1))})"
+                if i in attested:
+                    state, note = "have", f" (attested by {attested[i]})"
                 else:
                     state, note = "need", ""
             else:
-                ok = _check(check, lineage, history)
+                ok = _check(check, lineage, history, verification)
                 state = "na" if ok is None else ("have" if ok else "need")
                 note = ""
             evidence.append({"text": item["text"] + note, "state": state,
@@ -206,10 +226,12 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
         intro = (f"Selected from {len(kb['rules'])} published rules and agreements "
                  f"(knowledge as of {kb.get('as_of') or 'an unknown date'}) using what "
                  f"this record shows: {', '.join(known) or 'no special signals'}. "
-                 "Green items the record already evidences; red items it does not yet. "
-                 "Where a rule turns on a fact the file cannot know - where the work is "
-                 "distributed, whether performers are union members - set it in the "
-                 "studio profile. This is a checklist to take to counsel, not a ruling.")
+                 "A tick means the record holds something that speaks to the item; "
+                 "whether it is enough is for counsel. A cross means the record holds "
+                 "nothing for it yet. Where a rule turns on a fact the file cannot know - "
+                 "where the work is distributed, whether it is a union production - set "
+                 "it in the studio settings. This is a checklist to take to counsel, "
+                 "not a ruling.")
     return {"intro": intro, "rules": rules, "clarifications": clarifications,
             "corrections": kb.get("corrections", []), "signals": known,
             "as_of": kb.get("as_of", "")}

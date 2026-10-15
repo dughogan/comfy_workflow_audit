@@ -94,6 +94,14 @@ ORIGINS = {
     "unknown": "Origin not known",
 }
 
+#: Origins that make a supplied input human-made material. "generated" is an
+#: honest declaration but not human authorship; "unknown" is not a declaration.
+HUMAN_ORIGINS = {"artist", "client", "licensed", "photographed"}
+
+#: Input kinds that are media going into the shot, however they are supplied:
+#: an upload widget, a path baked into a loader, or a URL fetched at run time.
+SOURCE_KINDS = {"image", "video", "audio", "url"}
+
 #: Events a person performs by definition. ``rendered`` is the machine step.
 HUMAN_EVENTS = {"created", "imported", "edited", "reviewed", "approved",
                 "rejected", "note", "handoff", "sourced", "promoted"}
@@ -200,14 +208,26 @@ class Keys:
     def from_environment(cls, confidentiality: str = "") -> "Keys":
         sign = os.environ.get("COMFYAUDIT_HISTORY_KEY", "")
         enc = os.environ.get("COMFYAUDIT_HISTORY_ENC_KEY", "")
-        mode = (confidentiality
-                or os.environ.get("COMFYAUDIT_HISTORY_CONFIDENTIALITY", "")
-                or ("encrypt" if enc else "none"))
+        env_mode = (os.environ.get("COMFYAUDIT_HISTORY_CONFIDENTIALITY", "")
+                    or ("encrypt" if enc else "none"))
+        # A caller (a settings panel, a CLI flag) may tighten what the
+        # environment asks for, never loosen it: the default "prompts readable"
+        # in a UI must not quietly override a studio's encryption key.
+        mode = strongest(confidentiality or "none", env_mode)
         return cls(sign_key=_derive(sign, b"comfyaudit-sign") if sign else b"",
                    key_id=os.environ.get("COMFYAUDIT_HISTORY_KEY_ID", "")
                    or (sha256(_derive(sign, b"comfyaudit-sign"))[:12] if sign else ""),
                    enc_key=_derive(enc, b"comfyaudit-enc") if enc else b"",
                    confidentiality=mode)
+
+
+CONFIDENTIALITY_ORDER = ("none", "redact", "encrypt")
+
+
+def strongest(*modes: str) -> str:
+    """The most protective of several confidentiality modes."""
+    known = [m for m in modes if m in CONFIDENTIALITY_ORDER]
+    return max(known, key=CONFIDENTIALITY_ORDER.index) if known else "none"
 
 
 def _derive(secret: str, salt: bytes) -> bytes:
@@ -229,9 +249,23 @@ def encryption_available() -> bool:
     return True
 
 
+def fingerprint(text: str, keys: Keys) -> str:
+    """A stable fingerprint for a sensitive string.
+
+    With a studio key it is an HMAC, so a short prompt or a guessable file path
+    cannot be confirmed by hashing candidates - only a key holder can check
+    which text was used. Without a key it is a plain SHA-256, which is still
+    stable across entries but is no secret for short or guessable text.
+    """
+    key = keys.enc_key or keys.sign_key
+    if key and keys.confidentiality != "none":
+        return "hmac:" + hmac.new(key, text.encode("utf-8"), hashlib.sha256).hexdigest()
+    return sha256(text)
+
+
 def _seal(text: str, keys: Keys) -> dict[str, Any]:
     """Protect one sensitive string according to the confidentiality mode."""
-    digest = sha256(text)
+    digest = fingerprint(text, keys)
     if keys.confidentiality == "encrypt" and keys.enc_key:
         if not encryption_available():
             # Fail closed: never write the plaintext the studio asked us to hide.
@@ -308,18 +342,28 @@ def snapshot(data: dict[str, Any], keys: Keys | None = None,
 
     prompts, _notes = prompts_extract.extract(wf)
     raw_models = models_extract.extract(wf)
+    in_graph = {m.filename for m in raw_models}
+    from_prompts: set[str] = set()
     for p in prompts:
-        raw_models.extend(models_extract.from_prompt_embeddings(p.embeddings, p))
-        raw_models.extend(models_extract.from_prompt_loras(p.inline_loras, p))
+        extra = (models_extract.from_prompt_embeddings(p.embeddings, p)
+                 + models_extract.from_prompt_loras(p.inline_loras, p))
+        from_prompts.update(m.filename for m in extra)
+        raw_models.extend(extra)
     models = models_extract.deduplicate(raw_models)
+    # A LoRA or embedding named only inside a protected prompt is part of that
+    # prompt's text; listing it in the clear would leak what the prompt hides.
+    hidden = (from_prompts - in_graph) if keys.confidentiality != "none" else set()
     inputs, outputs = assets_extract.extract(wf)
     packs, core_types, api_types = packs_extract.extract(wf)
 
     model_rows = []
     for m in sorted(models, key=lambda m: (m.folder, m.filename.lower())):
         lic = matcher.for_model(m)
+        name = m.filename
+        if name in hidden:
+            name = "protected:" + fingerprint(name, keys).split(":")[-1][:16]
         model_rows.append({
-            "filename": m.filename, "folder": m.folder, "role": m.role,
+            "filename": name, "folder": m.folder, "role": m.role,
             "node": str(m.node_id), "enabled": m.enabled,
             "strength": m.strength,
             "licence": lic.name, "commercial_use": lic.commercial_use,
@@ -458,9 +502,14 @@ def diff(before: dict[str, Any] | None, after: dict[str, Any]) -> dict[str, Any]
         if minus:
             out[f"{kind}_nodes_removed"] = minus
 
-    seeds = sorted(n for n in after["seeds"] if before["seeds"].get(n) != after["seeds"][n])
-    if seeds:
-        out["seeds_changed"] = seeds
+    moved = [n for n in after["seeds"] if before["seeds"].get(n) != after["seeds"][n]]
+    auto = {n for n in moved if str(after["params"].get(n, {}).get("control_after_generate", ""))
+            in ("randomize", "increment", "decrement")}
+    if set(moved) - auto:
+        out["seeds_changed"] = sorted(set(moved) - auto)
+    if auto:
+        # The sampler advanced these itself after a queue; nobody chose them.
+        out["seeds_advanced"] = sorted(auto)
     params = []
     for n, vals in after["params"].items():
         old = before["params"].get(n, {})
@@ -479,15 +528,29 @@ def diff(before: dict[str, Any] | None, after: dict[str, Any]) -> dict[str, Any]
     return out
 
 
-def breakpoints_for(event: str, changes: dict[str, Any]) -> list[str]:
-    """Which kinds of human decision this entry records."""
+def breakpoints_for(event: str, changes: dict[str, Any], note: str = "") -> list[str]:
+    """Which kinds of human decision this entry records.
+
+    Deliberately conservative, because these rows are what a reader takes as
+    evidence of a person directing the work:
+
+    * Taking an existing graph under tracking records nothing as authored by
+      the importer - its contents predate the record.
+    * A note counts only when it says something.
+    * A render that arrives carrying graph changes (someone edited, then queued
+      without an intermediate save) records those changes as the person's;
+      seeds a sampler advanced on its own never count.
+    """
     kinds: list[str] = []
-    if event in ("created", "imported"):
+    if event == "imported":
+        return []
+    if event == "created":
         kinds.append("authored")
-    if event == "edited" and (changes.get("node_count") or changes.get("core_nodes_added")
-                              or changes.get("packs_added") or changes.get("api_nodes_added")):
+    if event in ("edited", "rendered") and (
+            changes.get("node_count") or changes.get("core_nodes_added")
+            or changes.get("packs_added") or changes.get("api_nodes_added")):
         kinds.append("authored")
-    if event in HUMAN_EVENTS:
+    if event in HUMAN_EVENTS or event == "rendered":
         if changes.get("prompts_changed") or changes.get("prompts_added"):
             kinds.append("prompt")
         if changes.get("inputs_changed"):
@@ -508,7 +571,7 @@ def breakpoints_for(event: str, changes: dict[str, Any]) -> list[str]:
         kinds.append("selection")
     if event == "handoff":
         kinds.append("handoff")
-    if event == "note":
+    if event == "note" and note.strip():
         kinds.append("note")
     if event == "sourced":
         kinds.append("sourcing")
@@ -615,6 +678,14 @@ def _output_row(o: Any) -> dict[str, Any]:
     return row
 
 
+def _protect_output(row: dict[str, Any], keys: Keys) -> dict[str, Any]:
+    """Output names come from filename prefixes, which often carry the brief."""
+    if keys.confidentiality != "none" and row.get("file"):
+        ext = os.path.splitext(row["file"])[1]
+        row = {**row, "file": "protected-" + fingerprint(row["file"], keys).split(":")[-1][:12] + ext}
+    return row
+
+
 def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edited",
            actor: Actor | None = None, note: str = "", outputs: Iterable[str] = (),
            keys: Keys | None = None, force: bool = False,
@@ -654,7 +725,7 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         "event": event,
         "actor": actor.as_dict(),
         "note": note,
-        "outputs": [_output_row(o) for o in outputs],
+        "outputs": [_protect_output(_output_row(o), keys) for o in outputs],
         "data": data_payload or {},
         # The shot's identity and external IDs ride inside every entry, so the
         # ShotGrid link is covered by the chain rather than sitting beside it.
@@ -663,7 +734,7 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         "snapshot": snap,
         "snapshot_sha256": snap_hash,
         "changes": changes,
-        "breakpoints": breakpoints_for(event, changes),
+        "breakpoints": breakpoints_for(event, changes, note),
         "confidentiality": keys.confidentiality,
         "prev": prev["hash"] if prev else "",
     }
@@ -703,7 +774,16 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
     the caller has already loaded.
     """
     keys = keys or Keys.from_environment()
-    history = copy.deepcopy(history if history is not None else read(data)) \
+    existing = history if history is not None else read(data)
+    if existing and existing.get("entries"):
+        # Signing a new entry on top of tampering would launder it: the new
+        # signature makes a damaged record look freshly vouched for.
+        check = verify({}, keys=keys, ledger=ledger, history=existing)
+        if check.assurance == "none":
+            raise ValueError("this shot's history is damaged and cannot be extended: "
+                             f"{check.problems[0]}. Export the provenance record for "
+                             "review and start a new history.")
+    history = copy.deepcopy(existing) \
         or empty(name=name, project=project, external_ids=external_ids)
     shot = history["shot"]
     if name and not shot.get("name"):
@@ -777,7 +857,14 @@ def _ledger_rows(ledger_path: str, shot_id: str) -> list[dict[str, Any]]:
 
 #: What each assurance level is called wherever a person reads it.
 ASSURANCE_LABELS = {"witnessed": "Witnessed", "signed": "Signed",
-                    "consistency": "Unverified", "none": "Altered"}
+                    "consistency": "Unverified", "none": "Altered",
+                    "absent": "No history"}
+
+#: What a signature does and does not establish. Said next to every badge that
+#: rests on one, because "Signed" beside a name reads as identity.
+SIGNATURE_SCOPE = ("A signature shows an entry was written through a holder of the "
+                   "studio key - in ComfyUI, this studio's ComfyAudit server - not "
+                   "which person wrote it; names are as each person declared them.")
 
 
 @dataclass
@@ -788,19 +875,42 @@ class Verification:
     entries: int = 0
     intact: bool = False
     signed: str = "no"          # no | partly | yes
+    unsigned_entries: list[int] = field(default_factory=list)
     signatures_valid: bool | None = None
-    ledger: str = "not checked"  # not checked | matches | missing entries | mismatch | absent
+    ledger: str = "not checked"  # not checked | matches | incomplete | no record | mismatch | missing entries | rewritten | absent
     current: bool | None = None  # does the workflow still match the last entry?
     problems: list[str] = field(default_factory=list)
-    assurance: str = "none"      # none | consistency | signed | witnessed
+    notes: list[str] = field(default_factory=list)
+    assurance: str = "absent"    # absent | none | consistency | signed | witnessed
     assurance_detail: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         return dict(self.__dict__)
 
 
+def chain_shot_id(history: dict[str, Any]) -> str:
+    """The shot id as sealed into the chain - the one that can be trusted."""
+    entries = history.get("entries") or []
+    if entries and isinstance(entries[0].get("shot"), dict):
+        return str(entries[0]["shot"].get("id") or "")
+    return str((history.get("shot") or {}).get("id") or "")
+
+
+def _as_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
            history: dict[str, Any] | None = None) -> Verification:
+    """Say how far a history can be relied on, naming the first thing wrong.
+
+    ``problems`` are damage: anything there means the record cannot be taken at
+    face value. ``notes`` are true and worth saying but are not damage - the
+    workflow moving on since its last entry, or a ledger that started late.
+    """
     keys = keys or Keys.from_environment()
     history = history if history is not None else read(data)
     v = Verification()
@@ -809,92 +919,151 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
                               "made it or how it changed can be shown from the file.")
         return v
     v.present = True
-    entries = history.get("entries", [])
+    entries = history.get("entries") or []
     v.entries = len(entries)
+    if not entries:
+        v.problems.append("the history block is present but holds no entries")
 
     prev_hash = ""
-    signed = 0
+    signed: list[int] = []
     bad_sig = False
     for i, e in enumerate(entries, 1):
+        if not isinstance(e, dict):
+            v.problems.append(f"entry {i}: is not a record")
+            continue
         if e.get("seq") != i:
-            v.problems.append(f"entry {i}: sequence number reads {e.get('seq')} - "
-                              "entries have been removed or reordered")
+            v.problems.append(f"entry {i}: sequence number reads {e.get('seq')!r} - "
+                              "entries have been removed, duplicated or reordered")
         if e.get("prev", "") != prev_hash:
             v.problems.append(f"entry {i}: does not follow entry {i - 1} - the chain "
                               "is broken here")
         if _entry_hash(e) != e.get("hash"):
             v.problems.append(f"entry {i}: contents no longer match their hash - "
                               "this entry was edited after it was written")
-        if sha256(canonical(snapshot_of(entries, e))) != e.get("snapshot_sha256"):
+        snap = snapshot_of(entries, e)
+        if not snap:
+            v.problems.append(f"entry {i}: its snapshot is missing or points nowhere")
+        elif sha256(canonical(snap)) != e.get("snapshot_sha256"):
             v.problems.append(f"entry {i}: snapshot was altered")
         if "sig" in e:
-            signed += 1
-            if keys.sign_key:
-                if not hmac.compare_digest(_sign(e.get("hash", ""), keys), e["sig"]):
-                    bad_sig = True
-                    v.problems.append(f"entry {i}: signature does not verify with this "
-                                      "studio key")
+            signed.append(i)
+            if keys.sign_key and not hmac.compare_digest(
+                    _sign(str(e.get("hash", "")), keys), str(e["sig"])):
+                bad_sig = True
+                v.problems.append(f"entry {i}: signature does not verify with this "
+                                  "studio key")
         prev_hash = e.get("hash", "")
-    v.signed = "yes" if entries and signed == len(entries) else ("partly" if signed else "no")
+
+    v.unsigned_entries = [i for i in range(1, len(entries) + 1) if i not in signed]
+    v.signed = "yes" if entries and not v.unsigned_entries else ("partly" if signed else "no")
+    if v.signed == "partly":
+        # Once a history is signed, an unsigned entry is exactly what someone
+        # without the key would add - a forged approval, an attestation.
+        v.problems.append(
+            f"entr{'y' if len(v.unsigned_entries) == 1 else 'ies'} "
+            f"{', '.join(map(str, v.unsigned_entries))} carr"
+            f"{'ies' if len(v.unsigned_entries) == 1 else 'y'} no signature in an "
+            "otherwise signed history - added by someone without the studio key")
     if signed and keys.sign_key:
         v.signatures_valid = not bad_sig
 
-    if entries and not graph._looks_like_api(data):  # noqa: SLF001
+    # The top-level shot block is a convenience copy; the chain is the record.
+    shot_top = history.get("shot") or {}
+    shot_chain = entries[-1].get("shot") if entries and isinstance(entries[-1], dict) else None
+    if isinstance(shot_chain, dict):
+        for k in ("id", "name", "project", "external_ids"):
+            top, sealed = shot_top.get(k), shot_chain.get(k)
+            if k == "external_ids":
+                top, sealed = top or {}, sealed or {}
+            if top != sealed and not (k in ("name", "project") and not top and not sealed):
+                v.problems.append(f"the shot's {k.replace('_', ' ')} outside the entries "
+                                  "does not match what the entries record")
+
+    if entries and not graph._looks_like_api(data) and data:  # noqa: SLF001
         v.current = snapshot_of(entries, entries[-1]).get("graph_sha256") == graph_fingerprint(data)
         if not v.current:
-            v.problems.append("the workflow has changed since the last entry - those "
-                              "edits are not in the history")
+            v.notes.append("the workflow has changed since the last entry - those "
+                           "edits are not in the history")
 
     if ledger:
-        if not os.path.exists(ledger):
-            v.ledger = "absent"
-        else:
-            rows = _ledger_rows(ledger, history["shot"]["id"])
-            by_seq = {r["seq"]: r["hash"] for r in rows}
-            mismatched = [s for s, h in by_seq.items()
-                          if s <= len(entries) and entries[s - 1].get("hash") != h]
-            beyond = [s for s in by_seq if s > len(entries)]
-            if mismatched:
-                v.ledger = "mismatch"
-                v.problems.append(f"ledger disagrees with entries {mismatched} - the "
-                                  "history was replaced or rewritten")
-            elif beyond:
-                v.ledger = "missing entries"
-                v.problems.append(f"the ledger has {len(beyond)} later entr"
-                                  f"{'y' if len(beyond) == 1 else 'ies'} that this file "
-                                  "does not - the history has been cut short")
-            elif rows:
-                v.ledger = "matches"
-            else:
-                v.ledger = "absent"
+        _check_ledger(v, entries, chain_shot_id(history), ledger)
 
-    # The workflow having moved on is worth saying, but it is not damage to the
-    # record; a ledger that disagrees with the file is.
-    damage = [p for p in v.problems if "changed since the last entry" not in p]
-    v.intact = not damage
-    if damage:
+    v.intact = not v.problems
+    if v.problems:
         v.assurance = "none"
-        v.assurance_detail = ("The history has been altered. Treat everything after "
-                              "the first problem below as unproven.")
-    elif v.ledger == "matches" and v.signatures_valid:
+        v.assurance_detail = ("The history has been altered or is incomplete. Treat "
+                              "everything after the first problem below as unproven.")
+    elif v.signed == "yes" and v.signatures_valid and v.ledger == "matches":
         v.assurance = "witnessed"
         v.assurance_detail = ("Chain intact, every entry signed with the studio key, "
-                              "and every head hash matches the studio ledger. This is "
-                              "the strongest record the tool can produce.")
-    elif v.signatures_valid:
+                              "and every entry's hash matches the studio ledger kept "
+                              "outside the file. " + SIGNATURE_SCOPE)
+    elif v.signed == "yes" and v.signatures_valid:
         v.assurance = "signed"
-        v.assurance_detail = ("Chain intact and signed with the studio key: no one "
-                              "without that key could have written or changed these "
-                              "entries. Not checked against a ledger, so a history "
-                              "truncated at the end would not be detected.")
+        v.assurance_detail = ("Chain intact and every entry signed with the studio key, "
+                              "so nobody without that key wrote or changed them. "
+                              + ("Not fully matched against a ledger, so a history cut "
+                                 "short at the end would not be detected. "
+                                 if v.ledger != "matches" else "") + SIGNATURE_SCOPE)
     else:
         v.assurance = "consistency"
         v.assurance_detail = ("Chain intact, but " + (
             "not signed" if v.signed == "no" else
-            "signatures could not be checked without the studio key") +
+            "the signatures could not be checked without the studio key") +
             ". That catches accidental damage and casual edits; it would not stop "
             "someone who deliberately rebuilt the chain.")
     return v
+
+
+def _check_ledger(v: Verification, entries: list[dict[str, Any]], shot_id: str,
+                  ledger: str) -> None:
+    if not os.path.exists(ledger):
+        v.ledger = "absent"
+        v.notes.append("the ledger file named for this check does not exist")
+        return
+    seen: dict[int, set[str]] = {}
+    for row in _ledger_rows(ledger, shot_id):
+        seq = _as_int(row.get("seq"))
+        if seq is None or not isinstance(row.get("hash"), str):
+            continue
+        seen.setdefault(seq, set()).add(row["hash"])
+    if not seen:
+        v.ledger = "no record"
+        v.notes.append("the ledger has no record of this shot, so it cannot "
+                       "confirm or contradict the history")
+        return
+    rewritten = sorted(s for s, hs in seen.items() if len(hs) > 1)
+    mismatched = sorted(s for s, hs in seen.items()
+                        if len(hs) == 1 and s <= len(entries)
+                        and entries[s - 1].get("hash") not in hs)
+    beyond = sorted(s for s in seen if s > len(entries))
+    unwitnessed = [i for i in range(1, len(entries) + 1) if i not in seen]
+    # Checked mildest first, so the ledger label ends on the most serious finding.
+    if beyond:
+        v.ledger = "missing entries"
+        v.problems.append(f"the ledger has {len(beyond)} later entr"
+                          f"{'y' if len(beyond) == 1 else 'ies'} that this file "
+                          "does not - the history has been cut short")
+    if mismatched:
+        v.ledger = "mismatch"
+        v.problems.append(f"the ledger disagrees with entr{'y' if len(mismatched) == 1 else 'ies'} "
+                          f"{', '.join(map(str, mismatched))} - the history was replaced "
+                          "or rewritten")
+    if rewritten:
+        v.ledger = "rewritten"
+        v.problems.append(f"the ledger recorded different contents for entr"
+                          f"{'y' if len(rewritten) == 1 else 'ies'} "
+                          f"{', '.join(map(str, rewritten))} at different times - "
+                          "the history was rewritten after it was written")
+    if not (rewritten or mismatched or beyond):
+        if unwitnessed:
+            v.ledger = "incomplete"
+            v.notes.append(f"entr{'y' if len(unwitnessed) == 1 else 'ies'} "
+                           f"{', '.join(map(str, unwitnessed[:8]))}"
+                           f"{' and more' if len(unwitnessed) > 8 else ''} "
+                           "are not in the ledger, so the ledger cannot vouch for them")
+        else:
+            v.ledger = "matches"
 
 
 # ---------------------------------------------------------------------------
@@ -929,7 +1098,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
         p["events"][e["event"]] = p["events"].get(e["event"], 0) + 1
         snap = snapshot_of(entries, e)
 
-        for m in snap["models"]:
+        for m in snap.get("models", []):
             k = _model_key(m)
             rec = models.setdefault(k, {"filename": m["filename"], "folder": m["folder"],
                                         "role": m.get("role", ""),
@@ -943,7 +1112,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
             rec["enabled"] = m.get("enabled", True)
             if rec["removed"] is not None:
                 rec["removed"], rec["removed_by"] = None, ""
-        current = {_model_key(m) for m in snap["models"]}
+        current = {_model_key(m) for m in snap.get("models", [])}
         for k, rec in models.items():
             if k not in current and rec["removed"] is None:
                 rec["removed"], rec["removed_by"] = e["seq"], who
@@ -951,19 +1120,23 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
         # A prompt belongs to whoever first wrote that exact text into the
         # graph - the ownership question in a sentence. Keyed by fingerprint,
         # so it holds even when the text itself is encrypted or redacted.
-        for pr in snap["prompts"]:
+        for pr in snap.get("prompts", []):
+            pre = e["event"] == "imported"
             rec = prompts.setdefault(pr["sha256"], {
                 "sha256": pr["sha256"], "node": pr["node"], "polarity": pr["polarity"],
                 "text": pr.get("text"), "protected": "text" not in pr,
-                "authored_by": who, "authored_at": e["at"], "first_seq": e["seq"],
+                # Text already in a graph when tracking began was written by
+                # someone the record never saw.
+                "authored_by": "before tracking" if pre else who,
+                "authored_at": e["at"], "first_seq": e["seq"], "pre_existing": pre,
                 "renders": 0, "in_final": False})
         if e["event"] == "rendered":
-            for pr in snap["prompts"]:
-                if pr.get("enabled", True):
+            for pr in snap.get("prompts", []):
+                if pr.get("enabled", True) and pr["sha256"] in prompts:
                     prompts[pr["sha256"]]["renders"] += 1
 
-        for inp in snap["inputs"]:
-            if not inp.get("upload"):
+        for inp in snap.get("inputs", []):
+            if not (inp.get("upload") or inp.get("kind") in SOURCE_KINDS):
                 continue
             rec = sources.setdefault(inp["node"], {
                 "node": inp["node"], "kind": inp["kind"], "sha256": inp["sha256"],
@@ -997,7 +1170,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
 
         if e["event"] == "rendered":
             renders += 1
-            streak += 1
+            streak = 1 if e.get("breakpoints") else streak + 1
             if streak > 1:
                 unsupervised_runs += 1
         elif e["event"] in HUMAN_EVENTS and e.get("breakpoints"):
@@ -1018,10 +1191,17 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
     after_final = [e for e in entries if final_render and e["seq"] > final_render["seq"]]
     reviewed_final = any(e["event"] in ("reviewed", "approved", "rejected")
                          for e in after_final)
-    approved = next((e for e in reversed(entries) if e["event"] == "approved"), None)
+    last_approval = next((e for e in reversed(entries) if e["event"] == "approved"), None)
+    later_rejection = last_approval is not None and any(
+        e["event"] == "rejected" and e["seq"] > last_approval["seq"] for e in entries)
+    # A sign-off covers the output it was given on. One that predates the final
+    # render, or was followed by a rejection, does not cover what shipped.
+    approved = last_approval if (
+        last_approval is not None and not later_rejection
+        and (final_render is None or last_approval["seq"] > final_render["seq"])) else None
     stage = stages[-1]["stage"] if stages else "sandbox"
 
-    human_steps = sum(1 for e in entries if e["event"] in HUMAN_EVENTS and e.get("breakpoints"))
+    human_steps = sum(1 for e in entries if e.get("breakpoints"))
 
     gaps: list[str] = []
     if entries and entries[0]["event"] == "imported":
@@ -1031,19 +1211,32 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
         gaps.append("Not linked to a studio asset ID (ShotGrid, Sparky, ftrack). "
                     "Provenance should start where the asset was born, not where "
                     "ComfyUI first saw it.")
-    undeclared = [s["node"] for s in sources.values() if not s.get("origin")]
+    undeclared = [s["node"] for s in sources.values()
+                  if not s.get("origin") or s.get("origin") == "unknown"]
     if undeclared:
-        gaps.append(f"{len(undeclared)} source input(s) have no declared origin "
+        gaps.append(f"{len(undeclared)} source input(s) have no known origin "
                     f"(node {', '.join(undeclared)}). Legal will ask where each came from.")
+    if last_approval is not None and approved is None:
+        gaps.append(f"The sign-off at entry {last_approval['seq']} does not cover the "
+                    "current output: " + ("it was followed by a rejection."
+                                          if later_rejection else
+                                          "a later render replaced what was approved."))
     if renders and not reviewed_final:
         gaps.append("No person is recorded reviewing the final render. Record a review "
                     "or approval so the human decision on the delivered output is on file.")
     if unsupervised_runs:
         gaps.append(f"{unsupervised_runs} render(s) followed another render with no "
                     "recorded human step in between.")
-    if not any(k in breakpoints for k in ("prompt", "source-media", "selection")):
-        gaps.append("No recorded expressive human input (prompt, source media or "
-                    "selection). That is the evidence a human-authorship claim rests on.")
+    human_made = [s for s in sources.values() if s.get("origin") in HUMAN_ORIGINS]
+    if not human_made:
+        gaps.append("No human-made source material is recorded (an artist's plate, "
+                    "drawing, paintover or layout). Prompts and selections document the "
+                    "process, but copyright offices and courts treat prompts alone as "
+                    "insufficient for authorship; human material that remains visible in "
+                    "the output, and human edits after generation, carry more weight.")
+    if any(p.get("pre_existing") for p in prompts.values()):
+        gaps.append("Some prompts were already in the graph when tracking began; who "
+                    "wrote them is not recorded.")
     if stage == "sandbox" and approved:
         gaps.append("An output was approved while the shot is still marked sandbox. "
                     "Promote it to production so the clearance trail starts at the "
@@ -1053,9 +1246,19 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
         gaps.append("Some entries have no meaningful name attached. Set a user name in "
                     "the ComfyAudit settings so each change is attributable.")
 
-    shot = dict(history.get("shot", {}))
-    if entries:
-        shot.update({k: v for k, v in entries[-1].get("shot", {}).items() if v})
+    # The chain is the authority on what this shot is; the top-level block is a
+    # convenience copy that nothing protects.
+    top = history.get("shot", {}) or {}
+    if entries and isinstance(entries[-1].get("shot"), dict):
+        sealed = entries[-1]["shot"]
+        shot = {"id": sealed.get("id", ""), "name": sealed.get("name", ""),
+                "project": sealed.get("project", ""),
+                "external_ids": dict(sealed.get("external_ids") or {}),
+                "started": entries[0].get("at", "")}
+    else:
+        shot = {"id": top.get("id", ""), "name": top.get("name", ""),
+                "project": top.get("project", ""), "external_ids": {},
+                "started": top.get("started", "")}
     shot["stage"] = stage
 
     return {
@@ -1124,47 +1327,46 @@ IPTC_COMPOSITE = ("http://cv.iptc.org/newscodes/digitalsourcetype/"
 
 
 def c2pa_manifest(history: dict[str, Any], title: str = "") -> dict[str, Any]:
-    """A C2PA manifest definition built from the history, ready for signing.
+    """A C2PA manifest definition for the final render, ready for signing.
 
     This is the *input* to a C2PA signer (``c2patool``, or a studio's own
     signing service), not a signed manifest: signing needs a certificate the
-    studio holds, and embedding needs the delivered file. What it saves is the
-    hard part - an accurate account of what generated the media and who acted
-    on it, in the vocabulary the standard and the EU disclosure rules use.
+    studio holds, and embedding needs the delivered file.
+
+    The standard's action list describes the asset, so it opens with the
+    asset's creation - the render that produced it, marked with the IPTC source
+    type for generative media. The people and decisions behind that render are
+    not C2PA actions; they go in this tool's own assertion, keyed to the
+    history's head hash so a reader can verify them against the record.
     """
     entries = history.get("entries", [])
-    final = next((e for e in reversed(entries) if e["event"] == "rendered"),
-                 entries[-1] if entries else None)
-    used_source_media = any(i.get("upload") for e in entries
-                            for i in snapshot_of(entries, e).get("inputs", []))
-    actions = []
-    for e in entries:
-        if e["event"] == "rendered":
-            actions.append({"action": "c2pa.created",
-                            "digitalSourceType": IPTC_COMPOSITE if used_source_media else IPTC_TRAINED,
-                            "softwareAgent": {"name": "ComfyUI"},
-                            "when": e["at"]})
-        elif e["event"] in ("edited", "created", "imported"):
-            actions.append({"action": "c2pa.edited", "when": e["at"],
-                            "parameters": {"description": EVENTS[e["event"]],
-                                           "actor": e["actor"].get("name", "")}})
-        elif e["event"] in ("reviewed", "approved", "rejected"):
-            actions.append({"action": "c2pa.published" if e["event"] == "approved"
-                            else "c2pa.edited", "when": e["at"],
-                            "parameters": {"description": EVENTS[e["event"]],
-                                           "actor": e["actor"].get("name", "")}})
-    models = snapshot_of(entries, final).get("models", []) if final else []
+    final = next((e for e in reversed(entries) if e.get("event") == "rendered"), None)
+    basis = final or (entries[-1] if entries else None)
+    snap = snapshot_of(entries, basis) if basis else {}
+    used_media = any(i.get("upload") or i.get("kind") in SOURCE_KINDS
+                     for i in snap.get("inputs", []))
+    created = {"action": "c2pa.created",
+               "digitalSourceType": IPTC_COMPOSITE if used_media else IPTC_TRAINED,
+               "softwareAgent": {"name": "ComfyUI"}}
+    if final:
+        created["when"] = final["at"]
+    lin = lineage(history)
     return {
         "claim_generator": f"comfyaudit/{__version__}",
-        "title": title or history.get("shot", {}).get("name") or "ComfyUI output",
+        "title": title or lin["shot"].get("name") or "ComfyUI output",
         "assertions": [
-            {"label": "c2pa.actions", "data": {"actions": actions}},
+            {"label": "c2pa.actions", "data": {"actions": [created]}},
             {"label": "com.comfyaudit.history", "data": {
-                "shot": history.get("shot", {}),
+                "shot": {k: lin["shot"].get(k) for k in ("id", "name", "project",
+                                                          "external_ids", "stage")},
                 "head": entries[-1]["hash"] if entries else "",
                 "entries": len(entries),
+                "final_render_entry": final["seq"] if final else None,
+                "people": [{"name": p["name"], "role": p["role"]} for p in lin["people"]],
+                "human_breakpoints": lin["breakpoints"],
+                "approved": lin["approved"],
                 "models": [{"filename": m["filename"], "licence": m["licence"]}
-                           for m in models if m.get("enabled", True)],
+                           for m in snap.get("models", []) if m.get("enabled", True)],
             }},
         ],
     }

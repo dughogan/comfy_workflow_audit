@@ -35,6 +35,7 @@ ASSURANCE = {
     "signed": ("ok", "Signed"),
     "consistency": ("warn", "Unverified"),
     "none": ("stop", "Altered"),
+    "absent": ("warn", "No history"),
 }
 
 COMMERCIAL_TONE = {"yes": "ok", "conditional": "warn", "no": "stop", "unknown": "warn"}
@@ -117,12 +118,17 @@ def render(history: dict[str, Any], *, data: dict[str, Any] | None = None,
     """
     keys = keys or H.Keys.from_environment()
     v = H.verify(data or {}, keys=keys, ledger=ledger, history=history)
-    if data is None:
-        v.current = None
-        v.problems = [p for p in v.problems if "changed since the last entry" not in p]
     lin = H.lineage(history)
     rows = H.timeline(history, keys=keys, reveal=reveal)
-    checks = compliance_mod.assess(lin, history, context or {})
+    if reveal:
+        # The prompts table reads lineage; give it the decrypted text too.
+        plain = {p["sha256"]: p["text"] for r in rows for p in r["prompts"]
+                 if p.get("text") is not None}
+        for p in lin["prompts"]:
+            if p.get("text") is None and p["sha256"] in plain:
+                p["text"] = plain[p["sha256"]]
+    checks = compliance_mod.assess(lin, history, {**(context or {}),
+                                                   "verification": v.as_dict()})
     body = _body(history, lin, rows, v, checks)
     style = f"<style>{CSS}{HISTORY_CSS}</style>"
     if not standalone:
@@ -167,9 +173,8 @@ def _body(history, lin, rows, v, checks) -> str:
     tone, label = ASSURANCE[v.assurance]
     w(f"<div class='assure {tone}'><div class='badge'>{label}</div><div>")
     w(f"<p>{_e(v.assurance_detail)}</p>")
-    if v.current is False:
-        w("<p style='margin-top:8px;color:var(--warn)'>The workflow has been changed "
-          "since its last entry; those edits are not part of this record.</p>")
+    for note in v.notes:
+        w(f"<p style='margin-top:8px;color:var(--warn)'>{_e(note[0].upper() + note[1:])}.</p>")
     if v.problems:
         w("<ul>" + "".join(f"<li>{_e(p)}</li>" for p in v.problems) + "</ul>")
     w("</div></div>")
@@ -178,9 +183,12 @@ def _body(history, lin, rows, v, checks) -> str:
     bp = lin["breakpoints"]
     w("<h2 class='sec'>Human in the loop</h2>")
     w("<p class='intro'>Every place a person, rather than a model, made a decision. "
-      "Copyright offices and studio legal teams look for this pattern: a person "
-      "originating the idea, choosing the inputs, directing changes and selecting "
-      "the result, with the model executing in between.</p>")
+      "This documents the process. For copyright, weigh it carefully: the US Copyright "
+      "Office and EU courts give most weight to human-made material that stays visible "
+      "in the output and to human edits after generation; prompts, selection and "
+      "parameter changes alone are generally not enough for authorship. Record those "
+      "where they happened - including the comp, paint and grade work done outside "
+      "ComfyUI - as notes against the shot.</p>")
     w("<div class='hil'>")
     w(f"<div><b>{lin['human_steps']}</b><span>human decisions</span></div>")
     w(f"<div><b>{lin['renders']}</b><span>model runs</span></div>")
@@ -274,8 +282,8 @@ def _body(history, lin, rows, v, checks) -> str:
       + f"{len(checks['rules'])} apply</small></h2>")
     w(f"<p class='intro'>{_e(checks['intro'])} Items only a person can attest (a "
       "signed consent rider, a disclosure placed in the credits) are recorded as a note "
-      "carrying the grey tag shown beside them, so the attestation is signed into the "
-      "chain like everything else.</p>")
+      "carrying the grey tag shown beside them, so the attestation lives in the chain "
+      "with everything else - signed, when the studio key is set.</p>")
     if checks["rules"]:
         w("<table class='log'><thead><tr><th>Rule</th><th>Where</th><th>Status</th>"
           "<th>Evidence on record</th></tr></thead><tbody>")

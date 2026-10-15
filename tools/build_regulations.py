@@ -33,35 +33,42 @@ LIKENESS = ["likeness", "voice"]
 
 #: rule id -> (applies, {evidence index: check}). Unlisted indices are manual.
 MAP: dict[str, tuple[dict, dict[int, str]]] = {
-    "sag-aftra-tvt-2023-employment-based-replica": ({"any": LIKENESS, "all": ["union-performers"]}, {2: "external_id"}),
+    "sag-aftra-tvt-2023-employment-based-replica": ({"any": LIKENESS, "all": ["union-performers"]}, {}),
     "sag-aftra-tvt-2023-independent-replica-and-alteration": ({"any": LIKENESS, "all": ["union-performers"]}, {1: "sources_declared"}),
-    "sag-aftra-tvt-2023-synthetic-performers": ({"any": ["union-performers"]}, {1: "prompt_authorship"}),
+    "sag-aftra-tvt-2023-synthetic-performers": ({"any": ["union-performers"]}, {}),
     "sag-aftra-tvt-2026": ({"any": LIKENESS + ["training"], "all": ["union-performers"]}, {}),
     "sag-aftra-commercials-2025": ({"any": LIKENESS, "all": ["advertising"]}, {}),
     "sag-aftra-interactive-media-2025": ({"any": ["voice"], "all": ["union-performers"]}, {}),
     "wga-mba-ai": ({"any": ["llm"]}, {}),
-    "dga-ai": ({"any": ["union-performers"]}, {0: "final_reviewed", 1: "approved"}),
+    # A reviewer can be anyone; "the director was consulted" is attested, not inferred.
+    "dga-ai": ({"any": ["union-performers"]}, {1: "approved"}),
     "ampas-99th-oscars-ai-rules": ({"any": ["feature"]}, {0: "human_breakpoints"}),
-    "usco-part2-copyrightability": ({"any": ["always"]}, {0: "sources_declared", 1: "human_breakpoints",
-                                                          2: "final_reviewed", 3: "prompt_authorship"}),
+    # Human edits after generation (comp, paint, roto) mostly happen outside
+    # ComfyUI, so item 1 is attested; a seed or parameter tweak is not one.
+    "usco-part2-copyrightability": ({"any": ["always"]}, {0: "human_inputs", 2: "final_reviewed",
+                                                          3: "prompt_authorship"}),
     "usco-registration-ai-disclosure": ({"any": ["production"]}, {1: "human_breakpoints"}),
     "thaler-v-perlmutter": ({"any": ["production"]}, {0: "prompt_authorship"}),
-    "eu-ai-act-art50-2-provider-marking": ({"any": ["eu"]}, {1: "manifest"}),
+    # The tool exports an unsigned manifest definition; whether marking was
+    # applied and survived delivery is attested.
+    "eu-ai-act-art50-2-provider-marking": ({"any": ["eu"]}, {}),
     "eu-ai-act-art50-4-deployer-deepfake": ({"any": ["eu"]}, {}),
-    "eu-code-of-practice-ai-content-transparency": ({"any": ["eu"]}, {1: "manifest"}),
+    "eu-code-of-practice-ai-content-transparency": ({"any": ["eu"]}, {}),
     # Kept in the knowledge base because it is the rule people assume applies.
     "eu-ai-act-art14-human-oversight": ({"clarification": True}, {}),
-    "eu-cjeu-originality-standard": ({"any": ["eu"]}, {0: "human_breakpoints", 1: "sources_declared"}),
-    "de-ag-munich-ai-logos-2026": ({"any": ["eu"]}, {0: "prompt_authorship", 1: "human_breakpoints"}),
-    "cz-prague-municipal-court-ai-image": ({"any": ["eu"]}, {0: "signed"}),
-    "de-gema-v-openai": ({"any": ["eu"]}, {0: "outputs_fingerprinted"}),
+    "eu-cjeu-originality-standard": ({"any": ["eu"]}, {0: "human_inputs"}),
+    # The ruling itself says selection and parameter iteration are not enough,
+    # so "human edits beyond selection" is attested, never inferred from them.
+    "de-ag-munich-ai-logos-2026": ({"any": ["eu"]}, {0: "prompt_authorship"}),
+    "cz-prague-municipal-court-ai-image": ({"any": ["eu"]}, {0: "verifiable_process"}),
+    "de-gema-v-openai": ({"any": ["eu"]}, {}),
     "de-kneschke-v-laion": ({"any": ["training"]}, {}),
     "uk-cdpa-s9-3-computer-generated-works": ({"any": ["gb"]}, {0: "prompt_authorship", 1: "human_breakpoints"}),
-    "cn-ai-content-labeling-measures": ({"any": ["cn"]}, {0: "manifest"}),
-    "cn-li-v-liu-beijing-internet-court": ({"any": ["cn"]}, {0: "signed"}),
-    "us-ca-ab2602-digital-replica-contracts": ({"any": LIKENESS, "all": ["us"]}, {2: "external_id"}),
+    "cn-ai-content-labeling-measures": ({"any": ["cn"]}, {}),
+    "cn-li-v-liu-beijing-internet-court": ({"any": ["cn"]}, {0: "verifiable_process"}),
+    "us-ca-ab2602-digital-replica-contracts": ({"any": LIKENESS, "all": ["us"]}, {}),
     "us-ca-ab1836-deceased-personality-replicas": ({"any": LIKENESS, "all": ["us"]}, {}),
-    "us-ca-sb942-ai-transparency-act": ({"any": ["us-ca"]}, {1: "signed"}),
+    "us-ca-sb942-ai-transparency-act": ({"any": ["us-ca"]}, {}),
     "us-tn-elvis-act": ({"any": LIKENESS, "all": ["us"]}, {}),
     "us-ny-synthetic-performer-ad-disclosure": ({"any": ["us", "us-ny"], "all": ["advertising"]}, {}),
     "us-ny-post-mortem-digital-replica": ({"any": LIKENESS, "all": ["us"]}, {}),
@@ -69,9 +76,9 @@ MAP: dict[str, tuple[dict, dict[int, str]]] = {
     "us-no-fakes-act": ({"any": LIKENESS, "all": ["us"]}, {}),
     # Concerns nonconsensual intimate imagery only; a studio sets the fact explicitly.
     "us-take-it-down-act": ({"all": ["intimate-imagery"]}, {}),
-    "c2pa-content-credentials": ({"any": ["always"]}, {0: "manifest"}),
+    "c2pa-content-credentials": ({"any": ["always"]}, {}),
     "youtube-altered-synthetic-disclosure": ({"any": ["youtube"]}, {}),
-    "meta-ai-labels-ads": ({"any": ["advertising"]}, {1: "manifest"}),
+    "meta-ai-labels-ads": ({"any": ["advertising"]}, {}),
     "us-ftc-reviews-testimonials-rule": ({"all": ["advertising", "us"]}, {}),
 }
 

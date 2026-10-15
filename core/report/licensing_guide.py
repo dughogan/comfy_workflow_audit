@@ -69,9 +69,12 @@ h2.sec{font-family:var(--display);font-weight:900;font-size:26px;letter-spacing:
 CONCEPTS = [
     ("The licence can reach the pixels",
      "Most licences govern the weights: copying, modifying, redistributing them. Some "
-     "also govern what they make. FLUX.1 [dev], the CC BY-NC upscalers and CodeFormer "
-     "restrict commercial use of outputs, so a single non-commercial face-restore or "
-     "upscale pass taints the delivered frame."),
+     "also address what they make, and not always consistently. The FLUX.1 [dev] text "
+     "lets you use outputs commercially in one clause and bars production use of "
+     "anything the model produces in another, so treat its outputs as needing a "
+     "licence until Black Forest Labs or counsel says otherwise. The CC BY-NC "
+     "upscalers and CodeFormer are non-commercial and how far that reaches into "
+     "outputs is unsettled: a risk to clear, not a safe default."),
     ("Every model in the graph counts",
      "Clearance is decided by the most restrictive weight that touched the frame, "
      "not by the hero checkpoint. Upscalers, face detectors, background removers and "
@@ -81,8 +84,10 @@ CONCEPTS = [
      "FLUX.1 [dev] marked 'commercial OK' by its uploader is still non-commercial."),
     ("'Conditional' means: it depends on you",
      "Territory carve-outs (MiniMax, Hunyuan, Kolors), revenue caps (Stability $1M, "
-     "MiniMax $20M), user caps (Llama) and visible-attribution duties. No fee lifts a "
-     "territory exclusion; a revenue cap is a budget line, not a blocker."),
+     "MiniMax $20M), user caps (Llama) and visible-attribution duties. The open "
+     "licence does not reach an excluded territory at all - working there takes a "
+     "separate agreement with the holder, if one is offered. A revenue cap is a "
+     "budget line, not a blocker."),
     ("Hosted models run on someone else's terms",
      "API nodes are governed by the provider's terms of service, not a model licence. "
      "Your inputs leave your network, terms can change without a new version number, "
@@ -129,7 +134,7 @@ STEPS = [
      "Add it to the studio registry with the contract reference "
      "(<code>comfyaudit registry add studio-cleared.json shot.json --reference "
      "CONTRACT-123</code>). Future audits stop re-raising it - and reopen it "
-     "automatically if the file's hash or the licence text changes.",
+     "automatically if the file's hash or the licence it reads as changes.",
      []),
     ("Keep the shot history running",
      "Turn on shot history so the workflow carries who built it, which models and "
@@ -137,9 +142,10 @@ STEPS = [
      "who signed off. Export the provenance record for legal with the delivery.",
      []),
     ("Re-check at delivery",
-     "Licences move: Stability relicensed SD3 mid-release and BFL revised the FLUX "
-     "dev terms. Refresh the knowledge base and re-audit before final delivery, not "
-     "only at the start of the show.",
+     "Licences move - Stability relicensed SD3 after release - and some are "
+     "internally inconsistent. Refresh the knowledge base, confirm anything that "
+     "gates delivery at its source, and re-audit before final delivery, not only at "
+     "the start of the show.",
      []),
 ]
 

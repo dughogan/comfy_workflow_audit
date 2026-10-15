@@ -530,38 +530,65 @@ referenced, so a long life with hundreds of reviews stays small.
 
 ### Human break points
 
-Copyright offices and studio legal teams look for the same pattern: a person
-originating the idea, choosing the inputs, directing changes and selecting the
-result, with the model executing in between. Every entry is tagged with the
-human decisions it contains: *authored*, *prompt*, *source-media*,
-*model-choice*, *branch*, *parameters*, *seed*, *review*, *selection*,
-*sourcing*, *stage*, *handoff*, *note*. The record calls out the gaps: renders
-with no person between them, a final render nobody reviewed, sources with no
-declared origin, a shot approved while still in sandbox.
+Every entry is tagged with the human decisions it contains: *authored*,
+*prompt*, *source-media*, *model-choice*, *branch*, *parameters*, *seed*,
+*review*, *selection*, *sourcing*, *stage*, *handoff* and *note*. The tagging
+is deliberately conservative:
+
+- Taking an existing graph under tracking credits the importer with nothing,
+  and its prompts are listed as written "before tracking".
+- Seeds a sampler advanced on its own never count as a choice.
+- A blank note is not a decision.
+
+The record calls out the gaps: renders with no person between them, a final
+render nobody reviewed, sources with no known origin, and a sign-off that a
+later render or rejection has overtaken.
+
+Read the result for what it is: a record of **process**. For copyright, the US
+Copyright Office and EU courts give most weight to human-made material that
+stays visible in the output and to human edits after generation. They treat
+prompts, selection and parameter changes alone as generally not enough. So the
+history records the origin of every source plate. Work done outside ComfyUI,
+such as comp, paint and grade, can be attested against the shot.
 
 ### Can the record be trusted?
 
 | Level | What it means |
 |---|---|
-| **Witnessed** | Chain intact, every entry signed with the studio key, and every head hash matches the studio ledger |
-| **Signed** | Chain intact and signed: nobody without the key could have written or changed an entry |
+| **Witnessed** | Chain intact, every entry signed with the studio key, and every entry's hash matches a row in the studio ledger |
+| **Signed** | Chain intact and every entry signed: nobody without the key wrote or changed an entry |
 | **Unverified** | Chain intact but unsigned (or checked without the key). Catches accidents, not a determined forger |
-| **Altered** | Something was edited, removed, reordered, cut short or swapped; the first bad entry is named |
+| **Altered** | Something was edited, removed, reordered, cut short, replaced, or an unsigned entry was slipped into a signed history; the first problem is named |
+| **No history** | The workflow carries none |
 
 Each entry hashes the one before it, so editing one breaks the chain at that
-point. Signing uses HMAC-SHA256 with a studio passphrase from
-`COMFYAUDIT_HISTORY_KEY` or a key file named in settings. The secret never
-reaches the browser and is never stored in `comfy.settings.json`. The
-**ledger** is an append-only JSONL file outside the workflow recording each head
-hash. It is what catches a history that was cut short, or replaced wholesale
-with a cleaner one.
+point. Signing uses HMAC-SHA256 with a studio passphrase.
 
-A signature proves an entry came from someone holding the studio key, not
-*which* person. Names are recorded as declared, and the record says so.
+The **ledger** is an append-only JSONL file outside the workflow, recording
+each entry's hash. It is keyed by the shot id sealed inside the entries, so
+editing the file's visible shot id does not dodge it. It catches a history cut
+short, replaced wholesale, or rewritten after the fact: the ledger will have
+seen the same entry with two different contents. The tool also refuses to add
+an entry on top of a damaged history, because a fresh signature would launder
+the damage.
+
+Secrets and paths come from the **server's environment only**. That includes
+`COMFYAUDIT_HISTORY_KEY` (or `COMFYAUDIT_HISTORY_KEY_FILE`),
+`COMFYAUDIT_HISTORY_ENC_KEY` and `COMFYAUDIT_HISTORY_LEDGER`. ComfyUI settings
+are writable from any browser that can reach the server, so they never hold a
+key, a key path or a ledger path.
+
+A signature proves an entry was written through a holder of the studio key. In
+ComfyUI that is the studio's ComfyAudit server. It does not prove *which*
+person wrote the entry. Names are recorded as each person declared them, and
+the record says so beside every badge. Per-person keys narrow this.
 
 Prompts are often the client's creative. Set *Prompts in the history* to
-**fingerprints only** to store just the SHA-256, which proves which prompt was
-used without revealing it. Or set **encrypted** for AES-256-GCM, which needs
+**fingerprints only** to store just a keyed fingerprint (HMAC-SHA256). It
+proves which prompt was used without revealing it, and it cannot be confirmed
+by guessing. LoRA or embedding names written inside a protected prompt, and
+output filenames, are protected too. The environment's setting always wins
+over a weaker one chosen in the UI. Or set **encrypted** for AES-256-GCM, which needs
 `pip install cryptography`. Encryption fails closed: with the library missing it
 stores the fingerprint, never the plaintext. Models, nodes and licences always
 stay readable, since they are what the review is about.
@@ -627,9 +654,12 @@ LLM nodes, training nodes, the production stage, supplied media). It also
 depends on what the studio sets: territory, where the work is distributed, and
 whether it is a union production, advertising or a feature.
 
-Evidence the history can answer itself is checked automatically: human
-decisions between runs, declared sources, prompt authorship, a reviewed final,
-a sign-off, signatures, fingerprinted outputs and a manifest. Evidence only a
+Some evidence is checked automatically, and only where the check actually
+proves the item: human-made source material, declared sources, prompt
+authorship, a reviewed final, a sign-off that covers the final render, a
+verified signature, and fingerprinted outputs. Exporting a manifest is *not*
+treated as proof that marking was applied. Neither is a reviewer standing in
+for a consulted director. Evidence only a
 person can attest, such as a signed consent rider or a disclosure in the
 credits, is recorded as a note tagged with the rule. That way it is signed into
 the chain rather than left in an email.
@@ -646,8 +676,10 @@ script, not inferred.
 
 ### Content credentials
 
-`comfyaudit history manifest` writes a C2PA manifest *definition* built from the
-history. It marks generated output with the IPTC `trainedAlgorithmicMedia`
+`comfyaudit history manifest` writes a C2PA manifest *definition* for the final
+render. It opens with the required `c2pa.created` action. The people and
+decisions behind the render are carried in the tool's own assertion, keyed to
+the history's head hash. It marks generated output with the IPTC `trainedAlgorithmicMedia`
 source type, or `compositeWithTrainedAlgorithmicMedia` when supplied media went
 in, and lists the people who acted and the models used. Signing needs a
 certificate the studio holds, so sign and embed it at delivery with `c2patool`
@@ -656,7 +688,8 @@ or your own signing service.
 ### Command line
 
 ```bash
-export COMFYAUDIT_HISTORY_KEY=...            # studio passphrase
+export COMFYAUDIT_HISTORY_KEY=...            # studio passphrase (server env only)
+export COMFYAUDIT_HISTORY_LEDGER=/studio/ledger.jsonl
 comfyaudit history stamp shot.json --event created --by "Ana Ruiz" --role compositor \
     --name SH0120 --id shotgrid=Shot#4411 --ledger /studio/ledger.jsonl
 comfyaudit history stamp shot.json --event sourced --source 5=photographed --asset-id PLATE-0120-A
@@ -817,7 +850,7 @@ reproducible six months later.
 ## Development
 
 ```bash
-python -m pytest        # 241 tests
+python -m pytest        # 255 tests
 ```
 
 The 13 agent tests need `anthropic>=1.0`; on an older SDK they fail with
@@ -825,7 +858,7 @@ The 13 agent tests need `anthropic>=1.0`; on an older SDK they fail with
 version floor talking rather than a real failure.
 
 ```bash
-python -m pytest --ignore=tests/test_agent.py   # 228, no SDK needed
+python -m pytest --ignore=tests/test_agent.py   # 242, no SDK needed
 ```
 
 The agent tests point a real Anthropic client at a local stub of the Messages

@@ -37,6 +37,7 @@ const ASSURANCE = {
   signed: ["Signed", TONE.ok],
   consistency: ["Unverified", TONE.warn],
   none: ["Altered", TONE.stop],
+  absent: ["No history", TONE.flat],
 };
 
 /* ------------------------------------------------------------------ */
@@ -65,16 +66,6 @@ const SETTINGS = [
     defaultValue: "prompts readable",
     tooltip: "Fingerprints prove which prompt was used without revealing it. Encryption needs the studio key and the 'cryptography' package on the server.",
     category: ["ComfyAudit", "Shot history", "Confidentiality"],
-  },
-  {
-    id: "ComfyAudit.History.KeyFile", name: "Studio signing key file", type: "text", defaultValue: "",
-    tooltip: "Path on the ComfyUI server to a file holding the studio passphrase. Signed entries cannot be forged without it. COMFYAUDIT_HISTORY_KEY overrides this.",
-    category: ["ComfyAudit", "Shot history", "Signing key"],
-  },
-  {
-    id: "ComfyAudit.History.LedgerPath", name: "Studio ledger file", type: "text", defaultValue: "",
-    tooltip: "Append-only file outside the workflow recording each entry's hash, so a cut-short or replaced history is detectable.",
-    category: ["ComfyAudit", "Shot history", "Ledger"],
   },
   {
     id: "ComfyAudit.History.DistributeIn", name: "Distributed in", type: "text", defaultValue: "",
@@ -396,7 +387,7 @@ function formView() {
   if (spec.stage) {
     wrap.append(label("Move to", choose((s.stages || []).map((x) => [x, x]), f.stage || "production", (v) => { f.stage = v; })));
   }
-  if (spec.evidence) wrap.append(label("Evidence for rule (optional)", input(f.evidence, (v) => { f.evidence = v; }, "e.g. sag-aftra-tv-2023:0")));
+  if (spec.evidence) wrap.append(label("Evidence for rule (optional)", input(f.evidence, (v) => { f.evidence = v; }, "rule-id:item, e.g. eu-ai-act-art50-4-deployer-deepfake:1")));
   if (spec.note) wrap.append(label("Note", input(f.note, (v) => { f.note = v; }, "", true)));
   const submit = () => act(async () => {
     const data = {};
@@ -448,6 +439,7 @@ function trackedView(s) {
     ...Object.entries(s.shot?.external_ids || {}).map(([k, v]) => h("span", { style: { fontSize: "11px", color: UI.dim } }, `${k} ${v}`))));
   wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, lineHeight: "1.45", marginBottom: "10px" } }, s.assurance_detail));
   for (const p of s.problems || []) wrap.append(h("div", { style: { fontSize: "12px", color: TONE.stop, marginBottom: "4px" } }, p));
+  for (const n of s.notes || []) wrap.append(h("div", { style: { fontSize: "12px", color: TONE.warn, marginBottom: "4px" } }, n));
 
   wrap.append(h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", margin: "10px 0" } },
     stat(s.entries, "entries"), stat(s.people?.length || 0, "people"),

@@ -151,12 +151,12 @@ HISTORY_USER = f"{PREFIX}.History.UserName"
 HISTORY_ROLE = f"{PREFIX}.History.Role"
 #: Stamp the open workflow automatically on every queue and every render.
 HISTORY_AUTO = f"{PREFIX}.History.Auto"
-#: Append-only file outside the workflow that witnesses each head hash.
-HISTORY_LEDGER = f"{PREFIX}.History.LedgerPath"
-#: A file holding the studio signing passphrase. A path, never the secret
-#: itself: comfy.settings.json is readable by anything on the machine and gets
-#: copied around with user profiles.
-HISTORY_KEY_FILE = f"{PREFIX}.History.KeyFile"
+#: The ledger path and the signing-key file are deliberately NOT settings.
+#: ComfyUI settings are writable by any browser that can reach the server, so a
+#: path there would let anyone redirect where the server writes, or swap in a
+#: signing key of their own. Both come from the server's environment instead:
+#: COMFYAUDIT_HISTORY_LEDGER and COMFYAUDIT_HISTORY_KEY_FILE (or the key itself
+#: in COMFYAUDIT_HISTORY_KEY).
 HISTORY_CONFIDENTIALITY = f"{PREFIX}.History.Confidentiality"
 #: Where finished work is distributed, which is what decides several rules
 #: (the EU marking obligations reach content made available in the EU, wherever
@@ -184,8 +184,8 @@ def history_settings(user: str = "default") -> dict[str, Any]:
         "user": str(s.get(HISTORY_USER, "") or "").strip(),
         "role": str(s.get(HISTORY_ROLE, "") or "").strip(),
         "auto": bool(s.get(HISTORY_AUTO, True)),
-        "ledger": str(s.get(HISTORY_LEDGER, "") or "").strip(),
-        "key_file": str(s.get(HISTORY_KEY_FILE, "") or "").strip(),
+        "ledger": os.environ.get("COMFYAUDIT_HISTORY_LEDGER", "").strip(),
+        "key_file": os.environ.get("COMFYAUDIT_HISTORY_KEY_FILE", "").strip(),
         "confidentiality": CONFIDENTIALITY_OPTIONS.get(
             s.get(HISTORY_CONFIDENTIALITY, "prompts readable"), "none"),
         "distribute_in": distribute,
