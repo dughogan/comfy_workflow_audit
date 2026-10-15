@@ -537,6 +537,58 @@ def test_a_history_begun_before_the_studio_key_can_be_signed_from_then_on():
     assert H.verify(late, keys=keys()).assurance == "none"
 
 
+def test_stripping_signatures_off_the_start_of_a_signed_history_is_caught():
+    # Signed entries carry key_id inside their hash, so the signature can be
+    # dropped without breaking the chain. Without this check a fully signed,
+    # witnessed history quietly read as "signed from entry N" instead.
+    wf = lifetime()
+    for e in wf["extra"][H.EXTRA_KEY]["entries"][:3]:
+        del e["sig"]
+    v = H.verify(wf, keys=keys())
+    assert v.assurance == "none"
+    assert any("signature was removed" in p for p in v.problems)
+
+
+def test_decisions_made_before_the_key_are_not_passed_off_as_signed():
+    # Anyone can write an unsigned history - a vendor, a script - and the
+    # studio server signs whatever it is next asked to stamp on top. That
+    # signature proves the earlier entries have not changed since, not that
+    # they are true, so a forged approval must not sit beside a ticked
+    # "signed" check or be described as vouched for.
+    nk = H.Keys()
+    wf = H.stamp(load(), event="created", actor=ANA, keys=nk, name="SH9").workflow
+    wf = H.stamp(wf, event="rendered", actor=ANA, keys=nk,
+                 outputs=[{"file": "o.png", "sha256": "cd" * 32}]).workflow
+    wf = H.stamp(wf, event="approved", actor=LEE, keys=nk, note="cleared (forged)").workflow
+    wf = H.stamp(wf, event="note", actor=ANA, keys=keys(), note="opened at the studio").workflow
+    v = H.verify(wf, keys=keys())
+    assert v.signed == "from-entry" and v.signed_from == 4 and not v.problems
+    assert "vouch" not in v.assurance_detail and "vouch" not in " ".join(v.notes)
+    assert any("entry 3" in n and "approved" in n for n in v.notes)
+    hist = H.read(wf)
+    lin = H.lineage(hist)
+    assert lin["approved"] is not None          # the claim is still shown...
+    for check in ("signed", "verifiable_process"):  # ...but not as signed
+        assert compliance._check(check, lin, hist, v.as_dict()) is False
+    full = lifetime()
+    fv = H.verify(full, keys=keys())
+    assert compliance._check("signed", H.lineage(H.read(full)), H.read(full), fv.as_dict())
+
+
+def test_cutting_entries_off_the_front_is_reported_not_a_crash():
+    # snapshot_ref is checked against the entry's own seq, which survives a
+    # cut while positions shift; the lookup then pointed back at itself.
+    wf = lifetime(k=H.Keys())
+    wf = H.stamp(wf, event="reviewed", actor=DOUG, keys=H.Keys(), note="again").workflow
+    wf = H.stamp(wf, event="approved", actor=DOUG, keys=H.Keys(), note="again").workflow
+    hist = wf["extra"][H.EXTRA_KEY]
+    hist["entries"] = hist["entries"][3:]
+    v = H.verify(wf, keys=keys())
+    assert v.assurance == "none"
+    with pytest.raises(ValueError):
+        H.stamp(wf, event="note", actor=ANA, keys=keys(), note="x")
+
+
 def test_blank_notes_do_not_count_as_human_decisions():
     wf = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
     for _ in range(3):

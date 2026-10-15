@@ -106,6 +106,10 @@ SOURCE_KINDS = {"image", "video", "audio", "url"}
 HUMAN_EVENTS = {"created", "imported", "edited", "reviewed", "approved",
                 "rejected", "note", "handoff", "sourced", "promoted"}
 
+#: Events that record a person's decision or declaration - what a forger most
+#: wants on file, so verify names them when they sit before the studio key.
+_DECISION_EVENTS = {"reviewed", "approved", "rejected", "sourced", "promoted", "handoff"}
+
 #: Widgets that are generation settings worth recording per entry.
 _PARAM_WIDGETS = {"seed", "noise_seed", "steps", "cfg", "sampler_name",
                   "scheduler", "denoise", "guidance", "width", "height",
@@ -641,12 +645,16 @@ def snapshot_of(entries: list[dict[str, Any]], entry: dict[str, Any]) -> dict[st
     keeps a shot with hundreds of reviews from growing hundreds of copies; the
     pointer and the snapshot's hash are both covered by the chain.
     """
-    if "snapshot" in entry:
-        return entry["snapshot"]
-    ref = entry.get("snapshot_ref")
-    if isinstance(ref, int) and 1 <= ref <= len(entries) and ref < entry.get("seq", 0):
-        return snapshot_of(entries, entries[ref - 1])
-    return {}
+    # Each hop must point strictly earlier than the last, judged by the ref
+    # itself rather than the target's seq, so a cut or reordered file (whose
+    # seqs no longer match positions) can't loop.
+    limit = entry.get("seq", 0) if isinstance(entry.get("seq"), int) else 0
+    while isinstance(entry, dict) and "snapshot" not in entry:
+        ref = entry.get("snapshot_ref")
+        if not (isinstance(ref, int) and 1 <= ref <= len(entries) and ref < limit):
+            return {}
+        entry, limit = entries[ref - 1], ref
+    return entry["snapshot"] if isinstance(entry, dict) else {}
 
 
 def _entry_hash(entry: dict[str, Any]) -> str:
@@ -881,7 +889,8 @@ class Verification:
     present: bool = False
     entries: int = 0
     intact: bool = False
-    signed: str = "no"          # no | partly | yes
+    signed: str = "no"          # no | partly (damage) | from-entry | yes
+    signed_from: int = 0         # first signed entry; earlier ones predate the key
     unsigned_entries: list[int] = field(default_factory=list)
     signatures_valid: bool | None = None
     ledger: str = "not checked"  # not checked | matches | incomplete | no record | mismatch | missing entries | rewritten | absent
@@ -952,6 +961,11 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
             v.problems.append(f"entry {i}: its snapshot is missing or points nowhere")
         elif sha256(canonical(snap)) != e.get("snapshot_sha256"):
             v.problems.append(f"entry {i}: snapshot was altered")
+        if "key_id" in e and "sig" not in e:
+            # key_id is only written when signing and sits inside the hash;
+            # the signature does not, so it can be dropped without breaking
+            # the chain - turning signed entries into a "pre-key" prefix.
+            v.problems.append(f"entry {i}: was signed, but its signature was removed")
         if "sig" in e:
             signed.append(i)
             if keys.sign_key and not hmac.compare_digest(
@@ -975,14 +989,27 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
             "otherwise signed history - added by someone without the studio key")
     elif v.signed == "partly":
         # Tracking starts on open, so histories routinely predate the studio
-        # key. The first signed entry's hash covers the chain before it, so it
-        # vouches for those entries as they stood when the key arrived; editing
-        # them now would break that link. They were not signed one by one.
+        # key. The first signed entry's hash covers the chain before it, so
+        # those entries cannot have changed since it was signed. That is all
+        # it proves: anyone can write an unsigned history and the server signs
+        # whatever it is next asked to stamp on top, so what the earlier
+        # entries claim - above all a person's decision - stays unproven.
         v.signed = "from-entry"
+        v.signed_from = first_signed
         v.notes.append(
-            f"entries 1-{first_signed - 1} were made before the studio key was set; "
-            f"entry {first_signed}, the first signed one, vouches for them as they "
-            "stood then, but they were not signed individually")
+            f"entr{'y 1' if first_signed == 2 else f'ies 1-{first_signed - 1}'} "
+            f"{'was' if first_signed == 2 else 'were'} written before the studio key "
+            f"was set and could have been written by anyone; entry {first_signed}, the "
+            "first signed one, shows only that they have not changed since")
+        decisions = [
+            f"entry {i} ({e.get('event')}"
+            + (f" by {e['actor']['name']}" if isinstance(e.get("actor"), dict)
+               and e["actor"].get("name") else "") + ")"
+            for i, e in enumerate(entries[:first_signed - 1], 1)
+            if isinstance(e, dict) and (e.get("event") in _DECISION_EVENTS or (
+                e.get("event") == "note" and (e.get("data") or {}).get("evidence")))]
+        if decisions:
+            v.notes.append("unsigned, so unproven: " + ", ".join(decisions))
     if signed and keys.sign_key:
         v.signatures_valid = not bad_sig
 
@@ -1021,8 +1048,9 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
         v.assurance = "signed"
         v.assurance_detail = (f"Chain intact and signed with the studio key from entry "
                               f"{first_signed} on, so nobody without that key wrote or "
-                              "changed anything since. Earlier entries predate the key; "
-                              "the first signed entry vouches for them as they stood. "
+                              "changed anything since. Earlier entries predate the key: "
+                              "they have not changed since then, but anyone could have "
+                              "written them, so what they record is unproven. "
                               + SIGNATURE_SCOPE)
     elif v.signed == "yes" and v.signatures_valid:
         v.assurance = "signed"

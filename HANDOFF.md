@@ -259,6 +259,17 @@ Fixed during the live test:
   accepted: the first signed entry vouches for it (`signed: from-entry`,
   with a note). Unsigned entries *after* a signed one are still damage.
   **This changes integrity rules: give it an adversarial review.**
+  *Reviewed the same day.* The prefix rule holds against editing, inserting,
+  reordering, truncating or splicing pre-key entries, replaying a signed entry
+  and swapping the shot block. Fixed: (1) a forged unsigned history signed on
+  top by the studio server read "Signed" and ticked the *signed* check beside
+  a forged approval. The first signed entry proves only that earlier entries
+  have not changed since, not that they are true. Now the wording says so,
+  `verify` names pre-key decisions as unproven (`signed_from` gives the first
+  signed entry), and the *signed* / *verifiable process* checks need every
+  entry signed. (2) Stripping `sig` (`key_id` stays in the hash) is damage.
+  (3) Cutting entries off the front crashed `verify` and `stamp` with
+  infinite recursion in `snapshot_of`.
 - Stale-response guard, a notice that never cleared, and a form that carried
   over between tabs.
 

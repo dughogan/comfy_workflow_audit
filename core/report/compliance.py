@@ -155,6 +155,11 @@ def signals(lineage: dict[str, Any], history: dict[str, Any],
 def _check(name: str, lineage: dict[str, Any], history: dict[str, Any],
            verification: dict[str, Any]) -> bool | None:
     assurance = verification.get("assurance", "")
+    # "Signed" here means the whole record. A history signed only from some
+    # entry on still holds unsigned entries anyone could have written, so it
+    # does not prove what those entries claim.
+    whole_signed = (assurance in ("signed", "witnessed")
+                    and verification.get("signed") == "yes")
     if name == "external_id":
         return bool(lineage["shot"].get("external_ids"))
     if name == "human_breakpoints":
@@ -175,7 +180,7 @@ def _check(name: str, lineage: dict[str, Any], history: dict[str, Any],
     if name == "approved":
         return lineage["approved"] is not None
     if name == "signed":
-        return assurance in ("signed", "witnessed")
+        return whole_signed
     if name == "outputs_fingerprinted":
         if not lineage["renders"]:
             return None
@@ -185,7 +190,7 @@ def _check(name: str, lineage: dict[str, Any], history: dict[str, Any],
         if not lineage["renders"]:
             return None
         outs = lineage["final_outputs"]
-        return (assurance in ("signed", "witnessed") and bool(lineage["prompts"])
+        return (whole_signed and bool(lineage["prompts"])
                 and bool(outs) and all(o.get("sha256") for o in outs))
     if name == "models_recorded":
         return bool(lineage["models"]) if lineage["renders"] else None
