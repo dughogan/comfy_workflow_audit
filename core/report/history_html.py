@@ -206,7 +206,7 @@ def _body(history, lin, rows, v, checks) -> str:
         w("<div class='legend'><span><i class='ok'></i>commercial use permitted</span>"
           "<span><i style='background:var(--warn)'></i>conditional or not stated</span>"
           "<span><i class='stop'></i>non-commercial</span>"
-          "<span><i style='opacity:.3'></i>pale: not in the final render</span></div>")
+          "<span><i style='opacity:.3'></i>pale: removed or bypassed before the final render</span></div>")
 
     # -- prompts --------------------------------------------------------------
     w("<h2 class='sec'>Prompts and authorship<small>" + f"{len(lin['prompts'])} versions</small></h2>")
@@ -328,7 +328,7 @@ def flow_svg(lin: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     people = [p["name"] for p in lin["people"]]
     lane_of = {name: i for i, name in enumerate(people)}
     left, top, lane_h = 168, 46, 58
-    col = max(26, min(96, int(880 / max(n, 1))))
+    col = max(26, min(96, int((972 - left - 30) / max(n, 1))))
     width = left + col * n + 30
     height = top + lane_h * len(people) + 18
     show_tags = col >= 40
@@ -416,7 +416,7 @@ def lifeline_svg(lin: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     n = max(len(rows), 1)
     models = lin["models"]
     left, row_h, top = 330, 36, 8
-    col = max(26, min(96, int(880 / n)))
+    col = max(26, min(96, int((972 - left - 30) / n)))
     width = left + col * n + 30
     height = top + row_h * len(models) + 26
     s = [f"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {width} {height}' width='{width}' "
@@ -433,6 +433,9 @@ def lifeline_svg(lin: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         end = (m["removed"] - 1) if m["removed"] else n
         x0, x1 = left + col * start + 4, left + col * end - 4
         tip = (f"{m['filename']}\n{m['licence']}\ncommercial use: {m['commercial_use']}\n"
+               + ("bypassed - did not contribute to the final render\n"
+                  if not m.get("enabled", True) and not m["removed"] else "")
+               + ""
                f"added #{m['introduced']} by {m['introduced_by']}"
                + (f"\nremoved #{m['removed']} by {m['removed_by']}" if m["removed"] else ""))
         s.append(f"<g><title>{_e(tip)}</title>")
@@ -457,6 +460,8 @@ def _tags(changes: dict[str, Any], event: str) -> list[tuple[str, str]]:
         tags.append((f"+{len(changes['models_added'])}M", "var(--ok,#2f6b3f)"))
     if changes.get("models_removed"):
         tags.append((f"−{len(changes['models_removed'])}M", "var(--stop,#a32e22)"))
+    if changes.get("models_disabled"):
+        tags.append((f"off {len(changes['models_disabled'])}M", "var(--ink-3,#888)"))
     if changes.get("prompts_changed") or changes.get("prompts_added"):
         tags.append(("P", "var(--accent,#0e6e78)"))
     if event == "sourced" or changes.get("inputs_changed"):
@@ -466,7 +471,8 @@ def _tags(changes: dict[str, Any], event: str) -> list[tuple[str, str]]:
 
 _CHANGE_LABELS = [
     ("models_added", "Models added"), ("models_removed", "Models removed"),
-    ("model_strength_changed", "Model strength"), ("licence_changed", "Licence reading changed"),
+    ("model_strength_changed", "Model strength"), ("models_disabled", "Models bypassed"),
+    ("models_enabled", "Models re-enabled"), ("licence_changed", "Licence reading changed"),
     ("prompts_changed", "Prompt revised"), ("prompts_added", "Prompt added"),
     ("prompts_removed", "Prompt removed"), ("inputs_changed", "Source media changed"),
     ("packs_added", "Node packs added"), ("packs_removed", "Node packs removed"),

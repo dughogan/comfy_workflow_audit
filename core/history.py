@@ -405,6 +405,14 @@ def diff(before: dict[str, Any] | None, after: dict[str, Any]) -> dict[str, Any]
                 if a_models[k].get("strength") != b_models[k].get("strength")]
     if strength:
         out["model_strength_changed"] = sorted(strength)
+    off = sorted(a_models[k]["filename"] for k in a_models.keys() & b_models.keys()
+                 if b_models[k].get("enabled", True) and not a_models[k].get("enabled", True))
+    on = sorted(a_models[k]["filename"] for k in a_models.keys() & b_models.keys()
+                if not b_models[k].get("enabled", True) and a_models[k].get("enabled", True))
+    if off:
+        out["models_disabled"] = off
+    if on:
+        out["models_enabled"] = on
     lic = [f"{a_models[k]['filename']}: {b_models[k]['licence']} -> {a_models[k]['licence']}"
            for k in a_models.keys() & b_models.keys()
            if a_models[k]["licence"] != b_models[k]["licence"]]
@@ -485,7 +493,8 @@ def breakpoints_for(event: str, changes: dict[str, Any]) -> list[str]:
         if changes.get("inputs_changed"):
             kinds.append("source-media")
         if changes.get("models_added") or changes.get("models_removed") \
-                or changes.get("model_strength_changed"):
+                or changes.get("model_strength_changed") or changes.get("models_disabled") \
+                or changes.get("models_enabled"):
             kinds.append("model-choice")
         if changes.get("branches_toggled"):
             kinds.append("branch")
@@ -931,6 +940,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
                                         "in_final": False})
             rec["licence"] = m["licence"]
             rec["commercial_use"] = m["commercial_use"]
+            rec["enabled"] = m.get("enabled", True)
             if rec["removed"] is not None:
                 rec["removed"], rec["removed_by"] = None, ""
         current = {_model_key(m) for m in snap["models"]}
@@ -996,10 +1006,12 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
     final_render = next((e for e in reversed(entries) if e["event"] == "rendered"), None)
     basis = final_render or (entries[-1] if entries else None)
     basis_snap = snapshot_of(entries, basis) if basis else {"models": [], "prompts": []}
-    final_models = {_model_key(m) for m in basis_snap["models"]}
+    # A bypassed or muted model is in the file but never touched the pixels.
+    # For a licence question that difference is the whole answer.
+    final_models = {_model_key(m) for m in basis_snap["models"] if m.get("enabled", True)}
     for k, rec in models.items():
         rec["in_final"] = k in final_models
-    final_prompts = {pr["sha256"] for pr in basis_snap["prompts"]}
+    final_prompts = {pr["sha256"] for pr in basis_snap["prompts"] if pr.get("enabled", True)}
     for h, rec in prompts.items():
         rec["in_final"] = h in final_prompts
 
