@@ -237,6 +237,40 @@ run against a live frontend; it was only syntax-checked (`node --check`).
 8. Restart with `COMFYAUDIT_HISTORY_KEY` and `COMFYAUDIT_HISTORY_LEDGER` set and
    confirm the badge reads **Witnessed**.
 
+**Priority 1 result (2026-10-15): passed live** on ComfyUI 0.40.0 with frontend
+1.55.17, in a throwaway instance on :8002. Every step above was exercised and
+works: the load line, the History tab, the history in `extra`, *edited* before
+queue and *rendered* after with a matching SHA-256, the history in the PNG's
+`workflow` chunk (through the *edited* entry, by design), batch count 2,
+the tab-switch *pending* path, interrupted runs (no entry), `markDirty`, the
+forms, all three documents, and **Witnessed** with a key and ledger.
+
+Fixed during the live test:
+- `queuePrompt` counted jobs FIFO and multiplied the batch count by
+  `app.ui.batchCount`; a rejected prompt (missing model) still added a job, so
+  every later render was matched to the wrong one. Jobs are now matched by the
+  server's `prompt_id` (`api.queuePrompt` is wrapped; only accepted prompts
+  get one).
+- Entries sealed a *reference* to the shot's `external_ids`, so adding a
+  ShotGrid ID later rewrote earlier entries in memory (JSON round trips hid it
+  in the browser; in-process callers broke). Entries now seal a copy.
+- Turning the studio key on made every existing (unsigned) history read
+  *Altered* and refuse further entries. An unsigned **prefix** is now
+  accepted: the first signed entry vouches for it (`signed: from-entry`,
+  with a note). Unsigned entries *after* a signed one are still damage.
+  **This changes integrity rules: give it an adversarial review.**
+- Stale-response guard, a notice that never cleared, and a form that carried
+  over between tabs.
+
+Changed at Doug's request: **tracking is automatic.** Every workflow starts a
+history when it opens (*imported* if it has nodes, crediting nobody; *created*
+if blank), without marking the tab modified; there is no Start button unless
+*Record history automatically* is off. Shot name defaults to the file name;
+**Shot details** renames the shot and adds the ShotGrid ID later (`rename` on
+`stamp`). Waits for the frontend's placeholder graph to be replaced at
+startup, so no phantom shot is witnessed. New sidebar icon (CSS mask, timeline
+ending in a check).
+
 **Priority 2: known gaps.**
 
 - [ ] **FLUX.1 [dev] terms.** Confirm the current BFL licence and update the

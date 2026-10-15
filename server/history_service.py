@@ -83,7 +83,7 @@ def stamp(body: dict[str, Any]) -> dict[str, Any]:
         ledger=cfg.get("ledger", ""),
         external_ids={k: str(v) for k, v in (body.get("external_ids") or {}).items() if v},
         data_payload=body.get("data") or None,
-        force=bool(body.get("force")))
+        force=bool(body.get("force")), rename=bool(body.get("rename")))
     return {
         "workflow": result.workflow if not result.sidecar else None,
         "history": result.history,

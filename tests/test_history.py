@@ -503,6 +503,40 @@ def test_importing_someone_elses_graph_does_not_credit_the_importer():
     assert all(p["authored_by"] == "before tracking" for p in lin["prompts"])
 
 
+def test_a_shot_named_after_tracking_began_keeps_the_old_name_in_the_chain():
+    # Tracking starts on open under the file name; the real shot name and
+    # ShotGrid ID arrive later and must not rewrite what earlier entries sealed.
+    wf = H.stamp(load(), actor=ANA, keys=keys(), name="beauty-pass").workflow
+    wf = H.stamp(wf, event="note", actor=DOUG, keys=keys(), note="Shot details",
+                 name="SPI_0420", project="Pilot", external_ids={"shotgrid": "4411"},
+                 rename=True).workflow
+    hist = H.read(wf)
+    assert [e["shot"]["name"] for e in hist["entries"]] == ["beauty-pass", "SPI_0420"]
+    assert hist["entries"][-1]["shot"]["external_ids"] == {"shotgrid": "4411"}
+    assert H.verify(wf, keys=keys()).assurance == "signed"
+    # Without rename, a later name never overwrites the shot's name.
+    wf = H.stamp(wf, event="note", actor=ANA, keys=keys(), note="x", name="other").workflow
+    assert H.read(wf)["entries"][-1]["shot"]["name"] == "SPI_0420"
+
+
+def test_a_history_begun_before_the_studio_key_can_be_signed_from_then_on():
+    # Tracking starts on open, so most histories predate the key. Signing must
+    # carry on from there, but an unsigned entry after a signed one is forgery.
+    wf = H.stamp(load(), event="created", actor=ANA, keys=H.Keys()).workflow
+    wf = H.stamp(wf, event="note", actor=ANA, keys=keys(), note="key set").workflow
+    wf = H.stamp(wf, event="note", actor=ANA, keys=keys(), note="more").workflow
+    v = H.verify(wf, keys=keys())
+    assert v.assurance == "signed" and v.signed == "from-entry" and not v.problems
+    assert any("before the studio key" in n for n in v.notes)
+    # Editing a pre-key entry breaks the link the first signed entry vouches for.
+    bad = copy.deepcopy(wf)
+    bad["extra"]["comfyaudit_history"]["entries"][0]["note"] = "rewritten"
+    assert H.verify(bad, keys=keys()).assurance == "none"
+    # An unsigned entry after signing began is still damage.
+    late = H.stamp(wf, event="approved", actor=ANA, keys=H.Keys(), note="forged").workflow
+    assert H.verify(late, keys=keys()).assurance == "none"
+
+
 def test_blank_notes_do_not_count_as_human_decisions():
     wf = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
     for _ in range(3):

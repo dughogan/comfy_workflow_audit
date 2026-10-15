@@ -730,8 +730,10 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         "data": data_payload or {},
         # The shot's identity and external IDs ride inside every entry, so the
         # ShotGrid link is covered by the chain rather than sitting beside it.
-        "shot": {k: history.get("shot", {}).get(k) for k in
-                 ("id", "name", "project", "external_ids")},
+        # A copy, not a reference: adding an ID later must not reach back
+        # into what this entry sealed.
+        "shot": copy.deepcopy({k: history.get("shot", {}).get(k) for k in
+                               ("id", "name", "project", "external_ids")}),
         "snapshot": snap,
         "snapshot_sha256": snap_hash,
         "changes": changes,
@@ -768,11 +770,15 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
           external_ids: dict[str, str] | None = None,
           data_payload: dict[str, Any] | None = None,
           history: dict[str, Any] | None = None,
-          force: bool = False) -> StampResult:
+          force: bool = False, rename: bool = False) -> StampResult:
     """One call for callers: read, append, write back, witness. Pure on ``data``.
 
     ``history`` is for API-format workflows, whose history lives in a sidecar
-    the caller has already loaded.
+    the caller has already loaded. ``rename`` lets a later entry change the
+    shot's name and project; tracking starts automatically under the file
+    name, so the real shot name often arrives after the first entry. Each
+    entry seals the shot details it was made under, so a rename is visible
+    in the chain.
     """
     keys = keys or Keys.from_environment()
     existing = history if history is not None else read(data)
@@ -787,9 +793,9 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
     history = copy.deepcopy(existing) \
         or empty(name=name, project=project, external_ids=external_ids)
     shot = history["shot"]
-    if name and not shot.get("name"):
+    if name and (rename or not shot.get("name")):
         shot["name"] = name
-    if project and not shot.get("project"):
+    if project and (rename or not shot.get("project")):
         shot["project"] = project
     for k, v in (external_ids or {}).items():
         shot.setdefault("external_ids", {})[k] = v
@@ -957,14 +963,26 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
 
     v.unsigned_entries = [i for i in range(1, len(entries) + 1) if i not in signed]
     v.signed = "yes" if entries and not v.unsigned_entries else ("partly" if signed else "no")
-    if v.signed == "partly":
+    first_signed = min(signed) if signed else 0
+    late = [i for i in v.unsigned_entries if first_signed and i > first_signed]
+    if late:
         # Once a history is signed, an unsigned entry is exactly what someone
         # without the key would add - a forged approval, an attestation.
         v.problems.append(
-            f"entr{'y' if len(v.unsigned_entries) == 1 else 'ies'} "
-            f"{', '.join(map(str, v.unsigned_entries))} carr"
-            f"{'ies' if len(v.unsigned_entries) == 1 else 'y'} no signature in an "
+            f"entr{'y' if len(late) == 1 else 'ies'} "
+            f"{', '.join(map(str, late))} carr"
+            f"{'ies' if len(late) == 1 else 'y'} no signature in an "
             "otherwise signed history - added by someone without the studio key")
+    elif v.signed == "partly":
+        # Tracking starts on open, so histories routinely predate the studio
+        # key. The first signed entry's hash covers the chain before it, so it
+        # vouches for those entries as they stood when the key arrived; editing
+        # them now would break that link. They were not signed one by one.
+        v.signed = "from-entry"
+        v.notes.append(
+            f"entries 1-{first_signed - 1} were made before the studio key was set; "
+            f"entry {first_signed}, the first signed one, vouches for them as they "
+            "stood then, but they were not signed individually")
     if signed and keys.sign_key:
         v.signatures_valid = not bad_sig
 
@@ -999,6 +1017,13 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
         v.assurance_detail = ("Chain intact, every entry signed with the studio key, "
                               "and every entry's hash matches the studio ledger kept "
                               "outside the file. " + SIGNATURE_SCOPE)
+    elif v.signed == "from-entry" and v.signatures_valid:
+        v.assurance = "signed"
+        v.assurance_detail = (f"Chain intact and signed with the studio key from entry "
+                              f"{first_signed} on, so nobody without that key wrote or "
+                              "changed anything since. Earlier entries predate the key; "
+                              "the first signed entry vouches for them as they stood. "
+                              + SIGNATURE_SCOPE)
     elif v.signed == "yes" and v.signatures_valid:
         v.assurance = "signed"
         v.assurance_detail = ("Chain intact and every entry signed with the studio key, "
