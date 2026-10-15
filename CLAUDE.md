@@ -30,8 +30,9 @@ design decisions, what was learned and what's left. Priority 1 is testing
 ## Doug's machine
 
 - Primary workstation: Windows, RTX PRO 6000.
-- ComfyUI is at `C:\ai\ComfyUI\` (venv `.venv`), with custom nodes symlinked
-  from `D:\ComfyUI\custom_nodes\`.
+- ComfyUI is at `C:\ai\ComfyUI\` (venv `.venv`). Custom nodes are in
+  `C:\ai\ComfyUI\custom_nodes\`; this pack lives at
+  `C:\ai\ComfyUI\custom_nodes\comfyaudit`.
 - He also uses ComfyUI Desktop.
 - There is a Rocky Linux ComfyUI box at Bind (pip needs `sudo` with the full
   venv path).
