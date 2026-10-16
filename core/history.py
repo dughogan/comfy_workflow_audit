@@ -819,19 +819,25 @@ def ledger_diverged(ledger_path: str, history: dict[str, Any]) -> bool:
     """Has another copy of this shot carried on past, or away from, this one?
 
     True when the ledger holds entries for this shot beyond this history's
-    head, or different contents for an entry this history also has. Stamping
+    head and agrees with every entry this history has: an old copy. Stamping
     on top would create a second chain under one shot id; forking keeps both.
+    A copy the ledger contradicts is not an old copy but a replaced history,
+    so it is left for ``stamp`` to refuse rather than forked into a clean one.
     """
     entries = history.get("entries", [])
     if not ledger_path or not entries or not os.path.exists(ledger_path):
         return False
+    later = False
     for row in _ledger_rows(ledger_path, chain_shot_id(history)):
         seq = _as_int(row.get("seq"))
-        if seq is None:
+        if seq is None or seq < 1:
             continue
-        if seq > len(entries) or entries[seq - 1].get("hash") != row.get("hash"):
-            return True
-    return False
+        if seq > len(entries):
+            later = True
+        elif not isinstance(entries[seq - 1], dict) \
+                or entries[seq - 1].get("hash") != row.get("hash"):
+            return False
+    return later
 
 
 def fork(data: dict[str, Any], *, reason: str, actor: Actor | None = None,
@@ -850,7 +856,12 @@ def fork(data: dict[str, Any], *, reason: str, actor: Actor | None = None,
     parent = read(data)
     if not parent or not parent.get("entries"):
         raise ValueError("there is no history to fork")
-    check = verify({}, keys=keys, history=parent)
+    if fork_depth(parent) >= MAX_FORK_DEPTH:
+        raise ValueError(f"this shot is already a fork {MAX_FORK_DEPTH} deep; start a "
+                         "new history instead")
+    # Checked against the ledger as an old copy: later entries are expected,
+    # different ones are not.
+    check = verify({}, keys=keys, ledger=ledger, history=parent, _as_parent=True)
     if check.assurance == "none":
         raise ValueError("this shot's history is damaged and cannot be forked: "
                          f"{check.problems[0]}")
@@ -1048,7 +1059,8 @@ def _as_int(value: Any) -> int | None:
 
 
 def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
-           history: dict[str, Any] | None = None) -> Verification:
+           history: dict[str, Any] | None = None, *, _as_parent: bool = False,
+           _depth: int = 0) -> Verification:
     """Say how far a history can be relied on, naming the first thing wrong.
 
     ``problems`` are damage: anything there means the record cannot be taken at
@@ -1160,11 +1172,13 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
                            "edits are not in the history")
 
     if ledger:
-        _check_ledger(v, entries, chain_shot_id(history), ledger)
+        _check_ledger(v, entries, chain_shot_id(history), ledger, later_ok=_as_parent)
 
     parent = history.get("parent")
-    if parent is not None:
-        _check_parent(v, entries, parent, keys)
+    first = entries[0] if entries and isinstance(entries[0], dict) else {}
+    parent_signed = True
+    if parent is not None or first.get("event") == "forked":
+        parent_signed = _check_parent(v, entries, parent, keys, ledger, _depth)
 
     v.intact = not v.problems
     if v.problems:
@@ -1198,38 +1212,81 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
             "the signatures could not be checked without the studio key") +
             ". That catches accidental damage and casual edits; it would not stop "
             "someone who deliberately rebuilt the chain.")
+    if v.assurance in ("signed", "witnessed") and not parent_signed:
+        # A fork's own entries can all be signed while the record it carries
+        # was written by anyone: an unsigned history with a forged approval,
+        # copied once through ComfyUI, would otherwise read as signed whole.
+        # The parent is the record's prefix, so it is treated like one.
+        v.signed, v.signed_from, v.assurance = "from-entry", 1, "signed"
+        v.assurance_detail = ("This record's own entries are signed with the studio key, "
+                              "so nobody without that key wrote or changed them. The "
+                              "parent record it was forked from is not signed throughout: "
+                              "it has not changed since the fork, but what it records is "
+                              "unproven. " + SIGNATURE_SCOPE)
     return v
 
 
-def _check_parent(v: Verification, entries: list[dict[str, Any]],
-                  parent: dict[str, Any], keys: Keys) -> None:
+#: How deep forks of forks may nest. Far beyond any real version history,
+#: and well inside what verify's recursion and the JSON encoder can take.
+MAX_FORK_DEPTH = 64
+
+
+def fork_depth(history: dict[str, Any] | None) -> int:
+    """How many parents a record carries, nested one inside the next."""
+    depth, h = 0, history
+    while isinstance(h, dict) and isinstance(h.get("parent"), dict) and depth <= MAX_FORK_DEPTH:
+        h = h["parent"].get("history")
+        depth += 1
+    return depth
+
+
+def _check_parent(v: Verification, entries: list[dict[str, Any]], parent: Any,
+                  keys: Keys, ledger: str, depth: int) -> bool:
     """A forked record carries its parent frozen; both must hold, and agree.
 
-    The parent is checked without the ledger: it carried on after the fork,
-    so the ledger has entries the frozen copy rightly does not.
+    The parent is checked against the ledger as an old copy: the shot carried
+    on after the fork, so later entries there are expected, but different
+    contents for an entry the parent has are a rewrite. Returns whether the
+    parent is signed throughout, which the record as a whole can be no more
+    than.
     """
-    first = entries[0] if entries else {}
+    first = entries[0] if entries and isinstance(entries[0], dict) else {}
     link = (first.get("data") or {}).get("parent") or {}
     phist = parent.get("history") if isinstance(parent, dict) else None
+    if first.get("event") == "forked" and parent is None:
+        v.problems.append("the record begins with a fork from another record, but that "
+                          "record has been removed from the file")
+        return False
     if first.get("event") != "forked" or not isinstance(phist, dict):
         v.problems.append("the record names a parent but does not begin with the fork from it")
-        return
+        return False
+    if depth >= MAX_FORK_DEPTH:
+        v.problems.append(f"the record's parents are nested more than {MAX_FORK_DEPTH} "
+                          "deep, past what can be checked")
+        return False
     pentries = phist.get("entries") or []
-    if not pentries or link.get("head") != pentries[-1].get("hash") \
-            or link.get("shot") != chain_shot_id(phist):
+    if (not pentries or not isinstance(pentries[-1], dict)
+            or link.get("head") != pentries[-1].get("hash")
+            or link.get("shot") != chain_shot_id(phist)):
         v.problems.append("the parent record carried in this file is not the one the "
                           "fork was made from")
-    pv = verify({}, keys=keys, history=phist)
+    pv = verify({}, keys=keys, ledger=ledger, history=phist, _as_parent=True,
+                _depth=depth + 1)
     for problem in pv.problems:
         v.problems.append(f"the parent record: {problem}")
     if pv.assurance not in ("none", "absent"):
         v.notes.append(f"forked from {link.get('name') or 'another record'} at its entry "
                        f"{link.get('seq')}; the parent record is "
                        f"{ASSURANCE_LABELS.get(pv.assurance, pv.assurance).lower()}")
+    whole = pv.assurance in ("signed", "witnessed") and pv.signed == "yes"
+    if not whole and pv.assurance not in ("none", "absent"):
+        v.notes.append("the parent record is not signed throughout, so what it records "
+                       "- above all any decision in it - is unproven")
+    return whole
 
 
 def _check_ledger(v: Verification, entries: list[dict[str, Any]], shot_id: str,
-                  ledger: str) -> None:
+                  ledger: str, *, later_ok: bool = False) -> None:
     if not os.path.exists(ledger):
         v.ledger = "absent"
         v.notes.append("the ledger file named for this check does not exist")
@@ -1252,7 +1309,11 @@ def _check_ledger(v: Verification, entries: list[dict[str, Any]], shot_id: str,
     beyond = sorted(s for s in seen if s > len(entries))
     unwitnessed = [i for i in range(1, len(entries) + 1) if i not in seen]
     # Checked mildest first, so the ledger label ends on the most serious finding.
-    if beyond:
+    if beyond and later_ok:
+        # An old copy (a fork's parent, an earlier render's sidecar): the
+        # shot went on after it, so the ledger rightly holds more.
+        v.notes.append("the ledger shows the shot carried on after this copy")
+    elif beyond:
         v.ledger = "missing entries"
         v.problems.append(f"the ledger has {len(beyond)} later entr"
                           f"{'y' if len(beyond) == 1 else 'ies'} that this file "
@@ -1268,7 +1329,7 @@ def _check_ledger(v: Verification, entries: list[dict[str, Any]], shot_id: str,
                           f"{'y' if len(rewritten) == 1 else 'ies'} "
                           f"{', '.join(map(str, rewritten))} at different times - "
                           "the history was rewritten after it was written")
-    if not (rewritten or mismatched or beyond):
+    if not (rewritten or mismatched or (beyond and not later_ok)):
         if unwitnessed:
             v.ledger = "incomplete"
             v.notes.append(f"entr{'y' if len(unwitnessed) == 1 else 'ies'} "

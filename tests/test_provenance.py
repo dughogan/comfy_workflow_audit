@@ -151,3 +151,163 @@ def test_sidecars_can_be_switched_off(studio, monkeypatch, tmp_path):
     wf = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
     history_service.stamp({"workflow": wf, "event": "rendered", "outputs": [{"filename": "f.png"}]})
     assert not os.path.exists(str(frame) + ".provenance.json")
+
+
+# ---------------------------------------------------------------------------
+# adversarial review of forks and sidecars (2026-10-16): attacks without the key
+# ---------------------------------------------------------------------------
+
+NOKEY = H.Keys()
+
+
+def forged(shot_id=None, *, name="SH0120", approve=True):
+    """A history written by someone without the studio key, optionally under a real shot's id."""
+    h = H.empty(name=name)
+    if shot_id:
+        h["shot"]["id"] = shot_id
+    wf = H.stamp(H.write(load(), h), event="created", actor=ANA, keys=NOKEY).workflow
+    if approve:
+        wf = H.stamp(wf, event="approved", actor=H.Actor(name="Legal"), keys=NOKEY,
+                     note="cleared for delivery").workflow
+    return wf
+
+
+def test_a_rewritten_copy_of_a_witnessed_shot_is_refused_not_forked(studio):
+    # The ledger contradicts this copy (same shot, different entries): that is
+    # a replaced history, not an old copy. Auto-fork must not turn it into a
+    # clean signed record that merely "came from" the shot.
+    ledger = studio["ledger"]
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys(), ledger=ledger, name="SH0120").workflow
+    wf = H.stamp(wf, event="reviewed", actor=ANA, keys=keys(), ledger=ledger, note="ok").workflow
+    fake = forged(H.chain_shot_id(H.read(wf)))
+    assert not H.ledger_diverged(ledger, H.read(fake))
+    with pytest.raises(ValueError):
+        history_service.stamp({"workflow": fake, "event": "note", "note": "back in"})
+
+
+def test_a_fork_cannot_launder_a_parent_the_ledger_contradicts(studio):
+    ledger = studio["ledger"]
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys(), ledger=ledger, name="SH0120").workflow
+    fake = forged(H.chain_shot_id(H.read(wf)))
+    with pytest.raises(ValueError):
+        H.fork(fake, reason="duplicated", actor=ANA, keys=keys(), ledger=ledger)
+    # Built without the ledger, the fork still fails a check made with it.
+    out = H.fork(fake, reason="duplicated", actor=ANA, keys=keys())
+    v = H.verify(out.workflow, keys=keys(), ledger=ledger)
+    assert v.assurance == "none" and any("the parent record" in p for p in v.problems)
+
+
+def test_a_fork_of_an_unsigned_history_is_not_signed_as_a_whole(studio):
+    # Anyone can write an unsigned history with a legal approval in it; one
+    # honest fork entry on top must not make the record read as signed.
+    out = history_service.relocate({"workflow": forged(), "duplicate_of": "x.json",
+                                    "path": "workflows/y.json"})
+    v = H.verify({}, keys=keys(), history=out["history"])
+    assert v.assurance in ("signed", "witnessed")
+    assert v.signed != "yes"
+    assert any("parent" in n and "unproven" in n for n in v.notes)
+    from comfyaudit.core.report import compliance
+    assert compliance._check("signed", H.lineage(out["history"]), out["history"],  # noqa: SLF001
+                             v.as_dict()) is False
+    # A fork of a fully signed history is signed as a whole.
+    good = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
+    out = H.fork(good, reason="copy", actor=ANA, keys=keys())
+    assert H.verify(out.workflow, keys=keys()).signed == "yes"
+
+
+def test_stripping_the_parent_off_a_fork_is_damage(studio):
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
+    out = H.fork(wf, reason="copy", actor=ANA, keys=keys())
+    bare = copy.deepcopy(out.workflow)
+    del bare["extra"]["comfyaudit_history"]["parent"]
+    assert H.verify(bare, keys=keys()).assurance == "none"
+
+
+def test_deeply_nested_parents_do_not_crash_verify(studio):
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys()).workflow
+    hist = H.read(H.fork(wf, reason="copy", actor=ANA, keys=keys()).workflow)
+    for _ in range(600):
+        hist = {**hist, "parent": {"history": hist, "reason": "", "file": ""}}
+    v = H.verify({}, keys=keys(), history=hist)
+    assert v.assurance == "none"
+
+
+def _render(monkeypatch, tmp_path, wf, name="beauty_0001.exr", data=b"half-float pixels"):
+    frame = tmp_path / name
+    if not frame.exists():
+        frame.write_bytes(data)
+    monkeypatch.setattr(history_service, "output_path", lambda item: str(frame))
+    out = history_service.stamp({"workflow": wf, "event": "rendered",
+                                 "outputs": [{"filename": name, "type": "output"}]})
+    return frame, out
+
+
+def _hand_written_sidecar(frame, hist):
+    e = hist["entries"][-1]
+    doc = {"comfyaudit_provenance": 1, "file": frame.name, "entry": e["seq"],
+           "entry_hash": e["hash"], "at": e["at"],
+           "shot": {k: e["shot"].get(k) for k in ("id", "name", "project", "external_ids")},
+           "history": hist}
+    with open(str(frame) + ".provenance.json", "w", encoding="utf-8") as fh:
+        json.dump(doc, fh)
+    return doc
+
+
+def test_verify_file_names_the_shot_the_chain_records(studio, monkeypatch, tmp_path, capsys):
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys(), name="SH0120").workflow
+    frame, _ = _render(monkeypatch, tmp_path, wf)
+    side = str(frame) + ".provenance.json"
+    with open(side, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    doc["shot"] = {**doc["shot"], "name": "SH0999", "external_ids": {"shotgrid": "9999"}}
+    with open(side, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh)
+    capsys.readouterr()
+    code = history_cli.verify_file(str(frame), keys=keys())
+    out = capsys.readouterr().out
+    assert code == history_cli.EXIT_ALTERED or ("SH0999" not in out and "9999" not in out)
+
+
+def test_verify_file_needs_the_entry_signed_when_the_key_is_set(studio, tmp_path):
+    frame = tmp_path / "plate.exr"
+    frame.write_bytes(b"someone else's pixels")
+    # A provenance file written by hand, without the key, for any file at all.
+    wf = H.stamp(forged(approve=False), event="rendered", actor=ANA, keys=NOKEY,
+                 outputs=[str(frame)]).workflow
+    _hand_written_sidecar(frame, H.read(wf))
+    assert history_cli.verify_file(str(frame), keys=keys()) == history_cli.EXIT_ALTERED
+    # One honest signed stamp on top makes the history "signed from entry 3",
+    # but the render entry is still one anyone could have written.
+    signed = H.read(H.stamp(wf, event="note", actor=ANA, keys=keys(), note="hi").workflow)
+    doc = _hand_written_sidecar(frame, H.read(wf))
+    doc["history"] = signed
+    with open(str(frame) + ".provenance.json", "w", encoding="utf-8") as fh:
+        json.dump(doc, fh)
+    assert H.verify({}, keys=keys(), history=signed).assurance == "signed"
+    assert history_cli.verify_file(str(frame), keys=keys()) == history_cli.EXIT_ALTERED
+
+
+def test_verify_file_fails_when_the_ledger_contradicts_the_history(studio, tmp_path):
+    ledger = studio["ledger"]
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys(), ledger=ledger, name="SH0120").workflow
+    frame = tmp_path / "f.exr"
+    frame.write_bytes(b"px")
+    # Without the key, the same shot rebuilt with a render of this file.
+    fake = H.stamp(forged(H.chain_shot_id(H.read(wf)), approve=False), event="rendered",
+                   actor=ANA, keys=NOKEY, outputs=[str(frame)]).workflow
+    _hand_written_sidecar(frame, H.read(fake))
+    assert history_cli.verify_file(str(frame), keys=NOKEY, ledger=ledger) == history_cli.EXIT_ALTERED
+
+
+def test_a_render_cannot_take_over_another_shots_provenance_file(studio, monkeypatch, tmp_path):
+    mine = H.stamp(load(), event="created", actor=ANA, keys=keys(), name="SH0120").workflow
+    frame, _ = _render(monkeypatch, tmp_path, mine)
+    side = str(frame) + ".provenance.json"
+    with open(side, encoding="utf-8") as fh:
+        before = fh.read()
+    theirs = H.stamp(load(), event="created", actor=H.Actor(name="Mallory"), keys=keys(),
+                     name="SH0999").workflow
+    _render(monkeypatch, tmp_path, theirs)
+    with open(side, encoding="utf-8") as fh:
+        assert fh.read() == before
+    assert history_cli.verify_file(str(frame), keys=keys()) == 0

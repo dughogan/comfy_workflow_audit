@@ -132,7 +132,8 @@ def stamp(body: dict[str, Any]) -> dict[str, Any]:
         resolve=input_path, path=_path(body))
     if result.entry and result.entry["event"] == "rendered" and cfg.get("sidecars", True):
         for path, row in files:
-            if path:
+            # An input is somebody's source, not this render's output.
+            if path and row.get("kind") != "input":
                 write_sidecar(path, row, result.history, result.entry)
     return {
         "workflow": result.workflow if not result.sidecar else None,
@@ -171,6 +172,18 @@ def write_sidecar(path: str, row: dict[str, Any], history: dict[str, Any],
         "history": history,
     }
     side = path + SIDECAR_SUFFIX
+    if os.path.isfile(side):
+        # Outputs are named by whoever posts the stamp. A file another shot
+        # rendered keeps that shot's provenance: naming it here must not
+        # replace it with this shot's claim.
+        try:
+            with open(side, encoding="utf-8") as fh:
+                held = json.load(fh).get("history") or {}
+            theirs = H.chain_shot_id(held) if isinstance(held, dict) else ""
+        except (OSError, ValueError, AttributeError):
+            theirs = ""
+        if theirs and theirs != H.chain_shot_id(history):
+            return ""
     tmp = side + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(doc, fh, separators=(",", ":"), default=str)

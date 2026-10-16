@@ -129,22 +129,36 @@ def verify_file(path: str, *, keys: H.Keys, ledger: str = "") -> int:
         return 2
     with open(side, encoding="utf-8") as fh:
         doc = json.load(fh)
-    history = doc.get("history") or {}
-    v = H.verify({}, keys=keys, history=history)
+    doc = doc if isinstance(doc, dict) else {}
+    history = doc.get("history")
+    history = history if isinstance(history, dict) else {}
+    # Checked against the ledger as an old copy: later entries are expected
+    # (the shot went on), different ones mean the history was replaced.
+    v = H.verify({}, keys=keys, ledger=ledger if ledger and os.path.exists(ledger) else "",
+                 history=history, _as_parent=True)
     failures = list(v.problems)
     entries = history.get("entries") or []
     seq = doc.get("entry")
-    entry = entries[seq - 1] if isinstance(seq, int) and 0 < seq <= len(entries) else None
+    entry = entries[seq - 1] if type(seq) is int and 0 < seq <= len(entries) else None
+    entry = entry if isinstance(entry, dict) else None
     if not entry or entry.get("hash") != doc.get("entry_hash"):
         failures.append("the entry this provenance file names is not in its history as recorded")
+    if keys.sign_key and entry and (v.assurance not in ("signed", "witnessed")
+                                    or seq in v.unsigned_entries):
+        # Anyone can write an unsigned history naming any file as its render.
+        failures.append(f"entry {seq} is not signed with the studio key, so anyone could "
+                        "have written it")
     actual = H.file_sha256(output) if os.path.isfile(output) else ""
-    recorded = {o.get("sha256") for o in (entry or {}).get("outputs", []) if o.get("sha256")}
+    recorded = {o.get("sha256") for o in (entry or {}).get("outputs", [])
+                if isinstance(o, dict) and o.get("sha256")}
     if not actual:
         failures.append(f"{os.path.basename(output)} is not there to check")
     elif actual not in recorded:
         failures.append(f"{os.path.basename(output)} is not the file entry {seq} recorded - "
                         "its contents have changed since it was rendered")
-    shot = doc.get("shot") or {}
+    # What is said about the shot comes from the entry, which the chain
+    # covers - never from the sidecar's own summary fields, which nothing does.
+    shot = (entry or {}).get("shot") or {}
     label = H.ASSURANCE_LABELS[v.assurance]
     if failures:
         print(f"DOES NOT MATCH: {os.path.basename(output)}")
@@ -152,12 +166,13 @@ def verify_file(path: str, *, keys: H.Keys, ledger: str = "") -> int:
             print(f"  - {f}")
         return EXIT_ALTERED
     print(f"MATCHES: {os.path.basename(output)} is the output of entry {seq} "
-          f"({str(doc.get('at', ''))[:16].replace('T', ' ')}) of {shot.get('name') or 'the shot'}"
+          f"({str(entry.get('at', ''))[:16].replace('T', ' ')}) of {shot.get('name') or 'the shot'}"
           + "".join(f", {k} {val}" for k, val in (shot.get("external_ids") or {}).items()) + ".")
     print(f"History: {label}. {v.assurance_detail}")
     if ledger and os.path.exists(ledger):
         rows = H._ledger_rows(ledger, H.chain_shot_id(history))  # noqa: SLF001
-        if any(r.get("seq") == seq and r.get("hash") == entry["hash"] for r in rows):
+        if any(H._as_int(r.get("seq")) == seq and r.get("hash") == entry["hash"]  # noqa: SLF001
+               for r in rows):
             print(f"Ledger: entry {seq} was witnessed by the studio ledger.")
         else:
             print(f"Ledger: entry {seq} is not in the studio ledger.")
