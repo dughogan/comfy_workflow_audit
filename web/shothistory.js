@@ -768,7 +768,7 @@ function detailsForm() {
     label("Shot name", input(f.name, (v) => { f.name = v; })),
     label("Project / show", input(f.project, (v) => { f.project = v; }, "optional")),
     label("Studio asset ID", h("div", { style: { display: "flex", gap: "6px" } },
-      choose([["shotgrid", "ShotGrid"], ["ftrack", "ftrack"], ["sparky", "Sparky"], ["other", "Other"]], f.system, (v) => { f.system = v; }),
+      choose([["shotgrid", "ShotGrid (beta)"], ["ftrack", "ftrack"], ["sparky", "Sparky"], ["other", "Other"]], f.system, (v) => { f.system = v; }),
       input(f.asset, (v) => { f.asset = v; }, "e.g. Shot 4411"))),
     h("div", { style: { display: "flex", gap: "8px" } },
       btn("Save", submit, "primary"), btn("Cancel", () => { state.form = null; rerender(); })));
@@ -1173,13 +1173,22 @@ function doneStep() {
   if (sg.note_id || sg.error) {
     wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", marginBottom: "8px",
       color: sg.error ? TONE.warn : UI.dim } },
-      sg.error ? `ShotGrid: ${sg.error} The delivery itself is sealed.`
-        : `Posted to ShotGrid as note ${sg.note_id} on ${sg.shot?.code || "the shot"}`
+      sg.error ? `ShotGrid (beta): ${sg.error} The delivery itself is sealed.`
+        : `Posted to ShotGrid (beta) as note ${sg.note_id} on ${sg.shot?.code || "the shot"}`
           + (sg.attached ? ", with the package attached" : "")
           + (sg.hash_field ? `; the history head is in ${sg.hash_field}.` : ".")));
   }
   wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", marginBottom: "10px" } },
     `Signed off by ${c.by || "you"} and sealed into the history. Save the workflow so the delivered history goes with the file.`));
+  // Where the studio's legal team reviews packages: their own copy of ComfyAudit Review,
+  // named by the server's COMFYAUDIT_REVIEW_URL. Nothing is shown when it is not set.
+  if (/^https?:\/\//i.test(out.review_url || "")) {
+    wrap.append(caption("Send to legal"));
+    wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", marginBottom: "10px" } },
+      "Open ", h("a", { href: out.review_url, target: "_blank", rel: "noopener noreferrer",
+        style: { color: BRAND.yellow } }, "ComfyAudit Review"),
+      ` and drop in ${slug}.delivery.zip.`));
+  }
   wrap.append(caption("The package"));
   for (const [file, what] of [
     [`${slug}.json`, "The workflow, with its history, the verdict and the sign-off sealed in"],

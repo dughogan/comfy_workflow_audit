@@ -376,3 +376,55 @@ def test_per_person_signing_from_the_sign_in_header(web, studio, monkeypatch, tm
     status, _, raw, _ = call(web, "POST", "/me", json.dumps({"name": "Someone"}),
                              {"Content-Type": "application/json"})
     assert status == 400
+
+
+# -- the studio's own front end (review-web/), on another origin --------------------
+
+FRONT = "https://review.studio.example"
+
+
+def test_the_front_end_origin_may_call_the_api_and_no_other(web, studio, monkeypatch):
+    monkeypatch.setenv("COMFYAUDIT_REVIEW_CORS_ORIGINS", f"{FRONT}, http://localhost:8096")
+    status, h, _, _ = call(web, "OPTIONS", "/p/x/decide", headers={
+        "Origin": FRONT, "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Private-Network": "true"})
+    assert status == 204 and h["access-control-allow-origin"] == FRONT
+    assert h["access-control-allow-credentials"] == "true"
+    assert h["access-control-allow-private-network"] == "true"
+    assert call(web, "OPTIONS", "/status", headers={"Origin": "https://evil.example"})[0] == 403
+    status, h, raw, _ = call(web, "GET", "/status", headers={"Origin": FRONT})
+    data = json.loads(raw)
+    assert status == 200 and h["access-control-allow-origin"] == FRONT
+    assert data["app"] == "ComfyAudit Review API" and data["signing"] == "studio-key"
+    assert "access-control-allow-origin" not in call(web, "GET", "/status",
+                                                      headers={"Origin": "https://evil.example"})[1]
+    # The front end posts the zip, then JSON with the reviewer's typed name.
+    status, h, raw, _ = call(web, "POST", "/open?filename=SH0120.delivery.zip", package(),
+                             {"Origin": FRONT, "Content-Type": "application/zip"})
+    assert status == 200 and h["access-control-allow-origin"] == FRONT
+    pid = json.loads(raw)["id"]
+    status, _, raw, _ = call(web, "POST", f"/p/{pid}/answer",
+                             json.dumps({"tag": SHOT_TAG, "note": "INV-77", "reviewer": "Sam Okafor"}),
+                             {"Origin": FRONT, "Content-Type": "application/json"})
+    assert status == 200, raw
+    assert H.read(studio.workflow(pid))["entries"][-1]["actor"]["name"] == "Sam Okafor"
+    # A form post from that origin is not how the front end talks: refused.
+    status, _, _, _ = call(web, "POST", f"/p/{pid}/decide", "decision=clear&reason=x",
+                           {"Origin": FRONT, "Content-Type": "application/x-www-form-urlencoded"})
+    assert status == 403
+
+
+def test_a_typed_name_never_overrides_the_sign_in(web, studio, monkeypatch, tmp_path):
+    secret = tmp_path / "sam.key"
+    secret.write_text("sam-personal-secret")
+    ring = tmp_path / "keyring.json"
+    ring.write_text(json.dumps({"people": {"sokafor": {"name": "Sam Okafor", "role": "legal",
+                                                       "secret_file": str(secret)}}}))
+    pid = studio.add(package())
+    monkeypatch.setenv("COMFYAUDIT_HISTORY_KEYRING", str(ring))
+    monkeypatch.setenv("COMFYAUDIT_TRUSTED_USER_HEADER", "X-Studio-User")
+    status, _, raw, _ = call(web, "POST", f"/p/{pid}/answer",
+                             json.dumps({"tag": SHOT_TAG, "note": "x", "reviewer": "Someone Else"}),
+                             {"Content-Type": "application/json", "X-Studio-User": "sokafor"})
+    assert status == 200, raw
+    assert H.read(studio.workflow(pid))["entries"][-1]["actor"]["name"] == "Sam Okafor"

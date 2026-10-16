@@ -159,6 +159,18 @@ def identity(signed_in: str = "", declared: str = "") -> dict[str, Any]:
                 "role": "", "can_sign": False, "key": "", "problem": str(exc)}
 
 
+def status(me: dict[str, Any]) -> dict[str, Any]:
+    """What a front end needs to know about this server before it shows anything.
+
+    No paths and no key material: only how decisions here are signed and who
+    the caller is."""
+    keys = _studio_keys()
+    return {"app": "ComfyAudit Review API", "version": __version__,
+            "signing": "per-person" if per_person() else ("studio-key" if keys.sign_key else "none"),
+            "ledger": bool(_ledger()), "shotgrid": shotgrid.configured(),
+            "you": me}
+
+
 # ---------------------------------------------------------------------------
 # reading a package
 # ---------------------------------------------------------------------------

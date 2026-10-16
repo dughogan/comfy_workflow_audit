@@ -538,6 +538,59 @@ what is theirs, and clear the shot or send it back.
   (stand-in only), the multipart upload from a browser (pytest only; the pane
   cannot pick files).
 
+**Review as a static, Comfy-styled web page (2026-10-16, Doug's direction).**
+`review-web/`: plain HTML/CSS/JS, no build, no dependencies, Comfy brand (Ink
+ground, Yellow for the one action, Plum/Lilac, Geist, slanted Comfy-mark buttons,
+the extruded C while a package is read). **Each studio deploys its own copy**
+(Vercel or any static host); the repo holds no hosted URL anywhere, on Doug's
+instruction. `review-web/README.md` is the deployment guide.
+- *In the browser, nothing uploaded:* `package.js` reads the zip (central
+  directory + `DecompressionStream('deflate-raw')`), checks every file's SHA-256
+  against `package.json` with WebCrypto, and **recomputes the history's hash
+  chain**: a raw-number JSON parser keeps every number as written (`7.0` stays
+  `7.0`) and objects as Maps, and a serializer matches Python's
+  `json.dumps(sort_keys, separators, ensure_ascii=False)`. Verified against real
+  packages from ComfyUI (Chain intact). Signatures need the key, so the studio
+  server checks those. `buildView()` returns the same shape as `review/app.py`'s
+  shot view, so one page draws both.
+- *Writes go to the studio's server:* `python -m comfyaudit.review` is now also
+  a CORS JSON API: `COMFYAUDIT_REVIEW_CORS_ORIGINS` (exact origins, credentials,
+  Private Network Access preflight), `GET /status` (signing mode, who you are; no
+  paths), any call from a listed origin answers JSON, and form posts from it are
+  refused. In typed-name mode the page sends `reviewer` in the JSON body (a
+  cross-site cookie would not come back); a sign-in header always wins over it.
+  Opening a package in connected mode sends the zip to that server only, then
+  draws the server's view (signature-checked) with the browser's own re-check
+  beside it.
+- *Documents* open in a `sandbox="allow-scripts"` `srcdoc` frame (opaque
+  origin). A separate sandboxed `viewer.html` was tried first; the desktop
+  app's browser pane refuses sandboxed frames that load a URL
+  (ERR_BLOCKED_BY_CLIENT), and srcdoc inherits the page's CSP, so the page's
+  CSP allows inline scripts. Low risk: the page never builds HTML from data.
+- *Demo mode* (`?demo`): two packages of a fictional show ("Harbor Lights",
+  "Northlight Post (demo)", invented people) built by
+  `tools/build_review_web.py` with the real delivery code and a published demo
+  key; demo answers and decisions stay in the tab, marked demo, never signed.
+  The same script exports `data/rules.json` from the regulations KB.
+- *ComfyUI side:* `COMFYAUDIT_REVIEW_URL` (no default; http(s) only) goes into the
+  delivery result, `package.json` (`review_url`) and the package README ("Legal:
+  review this package at ..."), and the panel's done step shows "Send to legal:
+  Open ComfyAudit Review and drop in <shot>.delivery.zip" only when it is set.
+  ShotGrid is labelled **(beta)** in the panel (Shot details choice, done-step
+  line).
+- *Tested:* pytest (CORS allow/deny, preflight, `/status`, reviewer field,
+  sign-in beats typed name, review_url in package). Live in the browser pane:
+  demo (show answer inherited, clear refused then cleared, document viewer, Esc),
+  connected to a local API over CORS with a real package from the :8004
+  ComfyUI (server says Witnessed, browser re-check agrees; shot answer and send
+  back signed; updated workflow fetch; show dashboard), phone width. **Not
+  tested:** the panel's "Send to legal" line in a live ComfyUI (pytest covers the
+  result; `node --check` only), a real HTTPS deployment, Chrome's Private Network
+  Access prompt, and the document frame in a normal browser outside the pane.
+- **Stage on clearing** is still the call from the first build (a delivered
+  shot stays delivered with the clearance on top); asked the coordinating
+  session whether Doug wants it promoted to *cleared* or packaging changed.
+
 **Priority 2: known gaps.**
 
 - [ ] **FLUX.1 [dev] terms.** Confirm the current BFL licence and update the

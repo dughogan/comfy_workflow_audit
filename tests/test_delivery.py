@@ -175,3 +175,21 @@ def test_what_is_left_for_legal_is_sealed_and_listed_not_asked_of_the_artist(stu
     readme = zipfile.ZipFile(io.BytesIO(base64.b64decode(out["zip_b64"]))).read("README.txt").decode()
     assert "Left for legal to confirm (1)" in readme
     assert "[ ] TPN: written client approval for AI use (TPN)" in readme
+
+
+def test_the_package_points_legal_at_the_studios_own_review_app_only_when_one_is_set(studio, monkeypatch):
+    wf = H.stamp(load(), event="created", actor=ANA, keys=H.Keys.from_environment(),
+                 name="SH0120").workflow
+    monkeypatch.delenv("COMFYAUDIT_REVIEW_URL", raising=False)
+    out = delivery.deliver({"workflow": wf, "name": "SH0120", "exception": "Test."})
+    z = zipfile.ZipFile(io.BytesIO(base64.b64decode(out["zip_b64"])))
+    assert out["review_url"] == "" and "Legal: review" not in z.read("README.txt").decode()
+    assert json.loads(z.read("SH0120.package.json"))["review_url"] == ""
+    monkeypatch.setenv("COMFYAUDIT_REVIEW_URL", "https://review.studio.example/")
+    out = delivery.deliver({"workflow": wf, "name": "SH0120", "exception": "Test."})
+    z = zipfile.ZipFile(io.BytesIO(base64.b64decode(out["zip_b64"])))
+    assert out["review_url"] == "https://review.studio.example/"
+    assert "Legal: review this package at https://review.studio.example/" in z.read("README.txt").decode()
+    assert json.loads(z.read("SH0120.package.json"))["review_url"] == "https://review.studio.example/"
+    monkeypatch.setenv("COMFYAUDIT_REVIEW_URL", "javascript:alert(1)")
+    assert delivery.review_url() == ""

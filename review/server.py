@@ -59,6 +59,14 @@ FILE_CSP = ("sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; 
             "font-src https://fonts.gstatic.com data:; img-src data: blob:; media-src data: blob:")
 
 
+def cors_origins() -> set[str]:
+    """Origins allowed to call this server from a browser: the studio's own copy of the
+    Review web front end (``review-web/``), e.g. ``https://review.studio.example``.
+    ``COMFYAUDIT_REVIEW_CORS_ORIGINS``, comma-separated, exact. None by default."""
+    return {o.strip().rstrip("/") for o in os.environ.get("COMFYAUDIT_REVIEW_CORS_ORIGINS", "").split(",")
+            if o.strip()}
+
+
 class Handler(BaseHTTPRequestHandler):
     review: app_mod.Review
     server_version = "ComfyAuditReview"
@@ -104,12 +112,17 @@ class Handler(BaseHTTPRequestHandler):
             return {"mode": "sign-in", "name": "", "role": "", "can_sign": False, "key": "",
                     "problem": str(exc)}
 
-    def _person(self) -> app_mod.Person:
-        return app_mod.person(self._signed_in(), self._cookie("ca_name"))
+    def _person(self, fields: dict[str, str] | None = None) -> app_mod.Person:
+        # Names typed by the reviewer (no studio sign-in): the cookie on this
+        # server's own pages, or ``reviewer`` in a JSON body from the studio's
+        # front end, where a cross-site cookie would not come back. Either is
+        # only a declared name; with a sign-in header it is ignored.
+        declared = self._cookie("ca_name") or (fields or {}).get("reviewer", "")
+        return app_mod.person(self._signed_in(), declared)
 
     def _wants_json(self) -> bool:
         query = parse_qs(urlsplit(self.path).query)
-        if query.get("format", [""])[0] == "json":
+        if query.get("format", [""])[0] == "json" or self.headers.get("Origin", "") in cors_origins():
             return True
         accept = self.headers.get("Accept", "")
         return accept.split(",")[0].strip().lower() == "application/json" or \
@@ -122,6 +135,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "same-origin")
         self.send_header("Cache-Control", "no-store")
+        origin = self.headers.get("Origin", "")
+        if origin and origin in cors_origins():
+            # The studio's front end, on its own origin. Credentials so the
+            # studio's sign-in proxy (and its header) applies to its calls too.
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Credentials", "true")
+            self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
+            self.send_header("Vary", "Origin")
         if getattr(self, "_new_csrf", ""):
             self.send_header("Set-Cookie", f"ca_csrf={self._new_csrf}; Path=/; HttpOnly; SameSite=Strict")
         for k, v in (extra or {}).items():
@@ -194,6 +215,11 @@ class Handler(BaseHTTPRequestHandler):
     def _check_post(self, fields: dict[str, str]) -> None:
         """Only this app's own pages, or a JSON client, may change anything."""
         origin = self.headers.get("Origin", "")
+        if origin and origin in cors_origins():
+            if not self.headers.get("Content-Type", "").lower().startswith(
+                    ("application/json", "application/zip", "application/octet-stream")):
+                raise PermissionError("The Review front end sends JSON or a zip, not a form.")
+            return
         if origin and origin != "null" and urlsplit(origin).netloc != self.headers.get("Host", ""):
             raise PermissionError("This request came from another site.")
         if origin == "null":
@@ -208,6 +234,20 @@ class Handler(BaseHTTPRequestHandler):
             raise PermissionError("This form has expired. Go back, reload the page and try again.")
 
     # -- routes ---------------------------------------------------------------------
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        """CORS preflight, for the studio's front end only."""
+        origin = self.headers.get("Origin", "")
+        if origin not in cors_origins():
+            return self._send(403, b"", "text/plain")
+        extra = {"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                 "Access-Control-Allow-Headers": "Content-Type, Accept",
+                 "Access-Control-Max-Age": "600"}
+        if self.headers.get("Access-Control-Request-Private-Network", "").lower() == "true":
+            # A public page calling a server on the studio network (Chrome's
+            # Private Network Access); only ever for an origin listed above.
+            extra["Access-Control-Allow-Private-Network"] = "true"
+        self._send(204, b"", "text/plain", extra)
+
     def do_HEAD(self) -> None:  # noqa: N802
         self.do_GET()
 
@@ -228,6 +268,8 @@ class Handler(BaseHTTPRequestHandler):
             data = self.review.home()
             return self._json(200, "review-home", data) if self._wants_json() else \
                 self._html(200, pages.home(data, me, csrf, **self._msg()))
+        if parts == ["status"]:
+            return self._json(200, "review-status", app_mod.status(me))
         if parts == ["me"]:
             return self._json(200, "review-identity", me) if self._wants_json() else \
                 self._html(200, pages.me_page(me, csrf, app_mod.per_person(), **self._msg()))
@@ -312,7 +354,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, "review-opened", {"id": pid, "url": f"/p/{pid}"})
             return self._redirect(f"/p/{pid}?done=opened")
         if len(parts) == 3 and parts[0] == "p" and parts[2] in ("answer", "decide"):
-            pid, who = parts[1], self._person()
+            pid, who = parts[1], self._person(fields)
             if parts[2] == "answer":
                 out = self.review.answer(pid, tag=fields.get("tag", ""), note=fields.get("note", ""),
                                          scope=fields.get("scope", ""), who=who)

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ComfyAudit Review</title>
+<meta name="description" content="Open a ComfyAudit delivery package in your browser, see what was decided, and clear the shot or send it back.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+<header class="top">
+  <a class="brands" href="#/" aria-label="ComfyAudit Review home">
+    <img src="assets/comfy-logo.svg" alt="Comfy" class="logo-comfy">
+    <span class="app-name"><strong>ComfyAudit Review</strong></span>
+  </a>
+  <nav class="topnav">
+    <span class="where" id="where"></span>
+    <a href="#/settings" class="navlink">Studio server</a>
+  </nav>
+</header>
+<main id="view" class="wrap" tabindex="-1"></main>
+<footer class="foot wrap">
+  <p>Packages are opened and checked in this browser. Nothing is uploaded unless you connect your
+  studio's own ComfyAudit server, and then only to it. This page is produced from the package's
+  recorded history and ComfyAudit's knowledge bases: evidence to take to counsel, not legal advice.</p>
+</footer>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script src="app.js?v=1" type="module"></script>
+</body>
+</html>

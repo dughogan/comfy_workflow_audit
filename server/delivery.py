@@ -169,6 +169,14 @@ def _slug(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._") or "shot"
 
 
+def review_url() -> str:
+    """Where the studio's legal team reviews packages: its own deployed copy of ComfyAudit
+    Review (``review-web/``). ``COMFYAUDIT_REVIEW_URL``; no default, so nothing points
+    anywhere a studio did not choose."""
+    url = os.environ.get("COMFYAUDIT_REVIEW_URL", "").strip()
+    return url if re.match(r"^https?://", url, re.I) else ""
+
+
 def deliver(body: dict[str, Any]) -> dict[str, Any]:
     cfg = settings_mod.history_settings()
     report, assessed = _assess(body)
@@ -240,7 +248,7 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
             zf.writestr(f"{slug}{suffix}", content[key])
         for arcname, data in signed_files:
             zf.writestr(arcname, data)
-        zf.writestr("README.txt", _readme(shot, clearance, signed))
+        zf.writestr("README.txt", _readme(shot, clearance, signed, review_url()))
     # The index goes in last, so it can fingerprint everything else.
     with zipfile.ZipFile(buf, "a", zipfile.ZIP_DEFLATED) as zf:
         index = _index(slug, history, clearance, verification, signed, zf)
@@ -251,6 +259,7 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
         tracked = shotgrid.push_delivery(history, clearance, who.name,
                                          (f"{slug}.delivery.zip", buf.getvalue()))
     return {
+        "review_url": review_url(),
         "shotgrid": tracked,
         "workflow": workflow,
         "history": history,
@@ -333,6 +342,7 @@ def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
         },
         "content_credentials": signed,
         "knowledge_bases": clearance.get("audited_with", {}),
+        "review_url": review_url(),
         "files": files,
     })
 
@@ -411,7 +421,7 @@ def _answer_lines(answers: list[dict[str, Any]]) -> list[str]:
 
 
 def _readme(shot: str, clearance: dict[str, Any],
-            signed: list[dict[str, Any]] | None = None) -> str:
+            signed: list[dict[str, Any]] | None = None, review: str = "") -> str:
     lines = [
         f"Delivery package: {shot}",
         "",
@@ -426,6 +436,8 @@ def _readme(shot: str, clearance: dict[str, Any],
         "  carries its data as JSON in <script id='comfyaudit-data'>.",
         "",
         *_signing_lines(signed or []),
+        *([f"Legal: review this package at {review}", f"(open it and drop in {_slug(shot)}.delivery.zip).", ""]
+          if review else []),
         *_legal_lines(clearance.get("for_legal") or []),
         *_answer_lines(clearance.get("answers_relied_on") or []),
         "Check the history: comfyaudit history verify <workflow.json> (with the studio key and",
