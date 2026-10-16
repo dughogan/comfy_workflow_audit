@@ -77,6 +77,8 @@ EVENTS = {
     "handoff": "Handed to another person or vendor",
     "sourced": "Source asset declared",
     "promoted": "Moved to a new production stage",
+    "forked": "Branched into a new record from a copy of the shot",
+    "moved": "Workflow file moved, renamed or opened elsewhere",
 }
 
 #: Where a shot sits. Work in ``sandbox`` is exploration and never ships;
@@ -211,6 +213,11 @@ class Keys:
     @classmethod
     def from_environment(cls, confidentiality: str = "") -> "Keys":
         sign = os.environ.get("COMFYAUDIT_HISTORY_KEY", "")
+        key_file = os.environ.get("COMFYAUDIT_HISTORY_KEY_FILE", "")
+        if not sign and key_file and os.path.isfile(key_file):
+            # The same file the server signs with, so the CLI checks what it wrote.
+            with open(key_file, encoding="utf-8") as fh:
+                sign = fh.read().strip()
         enc = os.environ.get("COMFYAUDIT_HISTORY_ENC_KEY", "")
         env_mode = (os.environ.get("COMFYAUDIT_HISTORY_CONFIDENTIALITY", "")
                     or ("encrypt" if enc else "none"))
@@ -726,7 +733,7 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
            keys: Keys | None = None, force: bool = False,
            data_payload: dict[str, Any] | None = None,
            matcher: licences_mod.LicenceMatcher | None = None,
-           resolve: Any = None) -> dict[str, Any] | None:
+           resolve: Any = None, path: str | None = None) -> dict[str, Any] | None:
     """Add one entry. Returns it, or None when nothing substantive changed.
 
     An ``edited`` stamp on an unchanged graph is skipped: a save that changed
@@ -783,6 +790,11 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         "confidentiality": keys.confidentiality,
         "prev": prev["hash"] if prev else "",
     }
+    if path is not None:
+        # The workflow file this entry was made in ("" for an unsaved tab).
+        # A copy saved elsewhere is how one shot becomes two; the file each
+        # entry names is how the tool notices and forks it.
+        entry["file"] = path
     if prev and prev.get("snapshot_sha256") == snap_hash:
         del entry["snapshot"]
         entry["snapshot_ref"] = prev["seq"] if "snapshot" in prev else prev["snapshot_ref"]
@@ -793,6 +805,71 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         entry["sig"] = _sign(entry["hash"], keys)
     entries.append(entry)
     return entry
+
+
+def file_of(history: dict[str, Any] | None) -> str | None:
+    """The workflow file the latest entry was made in; None if never recorded."""
+    for e in reversed((history or {}).get("entries", [])):
+        if "file" in e:
+            return e["file"]
+    return None
+
+
+def ledger_diverged(ledger_path: str, history: dict[str, Any]) -> bool:
+    """Has another copy of this shot carried on past, or away from, this one?
+
+    True when the ledger holds entries for this shot beyond this history's
+    head, or different contents for an entry this history also has. Stamping
+    on top would create a second chain under one shot id; forking keeps both.
+    """
+    entries = history.get("entries", [])
+    if not ledger_path or not entries or not os.path.exists(ledger_path):
+        return False
+    for row in _ledger_rows(ledger_path, chain_shot_id(history)):
+        seq = _as_int(row.get("seq"))
+        if seq is None:
+            continue
+        if seq > len(entries) or entries[seq - 1].get("hash") != row.get("hash"):
+            return True
+    return False
+
+
+def fork(data: dict[str, Any], *, reason: str, actor: Actor | None = None,
+         keys: Keys | None = None, ledger: str = "", path: str | None = None,
+         parent_file: str = "", resolve: Any = None, name: str = "") -> StampResult:
+    """Start a new record for a copy of a shot, carrying its parent along.
+
+    Save As, a duplicated tab, or an old render opened again all leave two
+    workflows claiming one shot. In VFX a copy is often the next version of
+    the same shot, so the fork keeps its name, project and studio IDs, takes a
+    new record id, and embeds the parent's chain, frozen as it was, so the
+    file still carries its whole life. A copy of a cleared or delivered shot
+    is new work: it starts back in production.
+    """
+    keys = keys or Keys.from_environment()
+    parent = read(data)
+    if not parent or not parent.get("entries"):
+        raise ValueError("there is no history to fork")
+    check = verify({}, keys=keys, history=parent)
+    if check.assurance == "none":
+        raise ValueError("this shot's history is damaged and cannot be forked: "
+                         f"{check.problems[0]}")
+    top = parent["entries"][-1]
+    sealed = top.get("shot") or {}
+    new = empty(name=name or sealed.get("name") or parent["shot"].get("name", ""),
+                project=sealed.get("project") or parent["shot"].get("project", ""),
+                external_ids=dict(sealed.get("external_ids") or {}))
+    stage = parent["shot"].get("stage", "sandbox")
+    new["shot"]["stage"] = "production" if stage in ("cleared", "delivered") else stage
+    new["parent"] = {"history": copy.deepcopy(parent), "reason": reason, "file": parent_file}
+    link = {"shot": chain_shot_id(parent), "head": top["hash"], "seq": top["seq"],
+            "name": sealed.get("name", ""), "file": parent_file}
+    entry = append(new, data, event="forked", actor=actor, keys=keys, force=True,
+                   data_payload={"parent": link, "reason": reason}, resolve=resolve,
+                   path=path)
+    if entry and ledger:
+        witness(ledger, new, entry)
+    return StampResult(write(data, new), new, entry)
 
 
 def _selections(entries: list[dict[str, Any]], snap: dict[str, Any],
@@ -827,7 +904,8 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
           external_ids: dict[str, str] | None = None,
           data_payload: dict[str, Any] | None = None,
           history: dict[str, Any] | None = None,
-          force: bool = False, rename: bool = False, resolve: Any = None) -> StampResult:
+          force: bool = False, rename: bool = False, resolve: Any = None,
+          path: str | None = None) -> StampResult:
     """One call for callers: read, append, write back, witness. Pure on ``data``.
 
     ``history`` is for API-format workflows, whose history lives in a sidecar
@@ -870,7 +948,7 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
             raise ValueError("a source declaration names the input node it is about")
     entry = append(history, data, event=event, actor=actor, note=note,
                    outputs=outputs, keys=keys, force=force, data_payload=payload,
-                   resolve=resolve)
+                   resolve=resolve, path=path)
     if entry and event == "promoted":
         shot["stage"] = payload["stage"]
     if entry and ledger:
@@ -1084,6 +1162,10 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
     if ledger:
         _check_ledger(v, entries, chain_shot_id(history), ledger)
 
+    parent = history.get("parent")
+    if parent is not None:
+        _check_parent(v, entries, parent, keys)
+
     v.intact = not v.problems
     if v.problems:
         v.assurance = "none"
@@ -1117,6 +1199,33 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
             ". That catches accidental damage and casual edits; it would not stop "
             "someone who deliberately rebuilt the chain.")
     return v
+
+
+def _check_parent(v: Verification, entries: list[dict[str, Any]],
+                  parent: dict[str, Any], keys: Keys) -> None:
+    """A forked record carries its parent frozen; both must hold, and agree.
+
+    The parent is checked without the ledger: it carried on after the fork,
+    so the ledger has entries the frozen copy rightly does not.
+    """
+    first = entries[0] if entries else {}
+    link = (first.get("data") or {}).get("parent") or {}
+    phist = parent.get("history") if isinstance(parent, dict) else None
+    if first.get("event") != "forked" or not isinstance(phist, dict):
+        v.problems.append("the record names a parent but does not begin with the fork from it")
+        return
+    pentries = phist.get("entries") or []
+    if not pentries or link.get("head") != pentries[-1].get("hash") \
+            or link.get("shot") != chain_shot_id(phist):
+        v.problems.append("the parent record carried in this file is not the one the "
+                          "fork was made from")
+    pv = verify({}, keys=keys, history=phist)
+    for problem in pv.problems:
+        v.problems.append(f"the parent record: {problem}")
+    if pv.assurance not in ("none", "absent"):
+        v.notes.append(f"forked from {link.get('name') or 'another record'} at its entry "
+                       f"{link.get('seq')}; the parent record is "
+                       f"{ASSURANCE_LABELS.get(pv.assurance, pv.assurance).lower()}")
 
 
 def _check_ledger(v: Verification, entries: list[dict[str, Any]], shot_id: str,
@@ -1373,6 +1482,9 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
                 "project": top.get("project", ""), "external_ids": {},
                 "started": top.get("started", "")}
     shot["stage"] = stage
+    if entries and entries[0].get("event") == "forked":
+        link = (entries[0].get("data") or {}).get("parent") or {}
+        shot["parent"] = {**link, "reason": (entries[0].get("data") or {}).get("reason", "")}
 
     return {
         "shot": shot,

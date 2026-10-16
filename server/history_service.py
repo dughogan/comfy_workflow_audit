@@ -8,6 +8,7 @@ canvas to adopt. The key never travels to the browser.
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -89,10 +90,17 @@ def input_path(value: str) -> str:
     return real if any(real.startswith(r + os.sep) for r in roots) else ""
 
 
+def _path(body: dict[str, Any]) -> str | None:
+    """The workflow file the canvas says it is editing; None when it did not say."""
+    if "path" not in body:
+        return None
+    return str(body.get("path") or "") if body.get("persisted", True) else ""
+
+
 def stamp(body: dict[str, Any]) -> dict[str, Any]:
     cfg = settings_mod.history_settings()
     workflow = body["workflow"]
-    outputs = []
+    outputs, files = [], []
     for item in body.get("outputs") or []:
         if isinstance(item, dict) and item.get("filename"):
             path = output_path(item)
@@ -100,22 +108,135 @@ def stamp(body: dict[str, Any]) -> dict[str, Any]:
             if item.get("type") and item["type"] != "output":
                 row["kind"] = item["type"]
             outputs.append(row)
+            files.append((path, row))
+    k, ledger, who = keys(cfg), cfg.get("ledger", ""), actor(cfg)
+    forked = None
+    existing = H.read(workflow)
+    if existing and ledger and H.ledger_diverged(ledger, existing):
+        # Another copy of this shot has carried on past this one - an old
+        # render opened again, a file restored from backup. Stamping on top
+        # would put two chains under one shot id, so this copy becomes its own
+        # record, with the chain it came from carried along.
+        made = H.fork(workflow, reason="the studio ledger shows this shot carried on in "
+                      "another copy", actor=who, keys=k, ledger=ledger, path=_path(body),
+                      resolve=input_path)
+        workflow, forked = made.workflow, _brief(made.entry)
     result = H.stamp(
-        workflow, event=str(body.get("event", "edited")), actor=actor(cfg),
-        note=str(body.get("note", "") or ""), outputs=outputs, keys=keys(cfg),
+        workflow, event=str(body.get("event", "edited")), actor=who,
+        note=str(body.get("note", "") or ""), outputs=outputs, keys=k,
         name=str(body.get("name", "") or ""), project=str(body.get("project", "") or ""),
-        ledger=cfg.get("ledger", ""),
-        external_ids={k: str(v) for k, v in (body.get("external_ids") or {}).items() if v},
+        ledger=ledger,
+        external_ids={kk: str(v) for kk, v in (body.get("external_ids") or {}).items() if v},
         data_payload=body.get("data") or None,
         force=bool(body.get("force")), rename=bool(body.get("rename")),
-        resolve=input_path)
+        resolve=input_path, path=_path(body))
+    if result.entry and result.entry["event"] == "rendered" and cfg.get("sidecars", True):
+        for path, row in files:
+            if path:
+                write_sidecar(path, row, result.history, result.entry)
     return {
         "workflow": result.workflow if not result.sidecar else None,
         "history": result.history,
         "recorded": result.entry is not None,
         "entry": _brief(result.entry),
+        "forked": forked,
         "summary": summary(result.history, workflow=result.workflow, cfg=cfg),
     }
+
+
+SIDECAR_SUFFIX = ".provenance.json"
+
+
+def write_sidecar(path: str, row: dict[str, Any], history: dict[str, Any],
+                  entry: dict[str, Any]) -> str:
+    """Put the shot's history next to an output, so the file carries its own life.
+
+    PNGs embed the workflow, but EXR, video and 3D outputs mostly do not, and
+    even a PNG stops at the entry before its own render. The sidecar holds the
+    history through the entry that produced this file, and the file's
+    fingerprint, so ``comfyaudit history verify-file`` can show this exact
+    file came from that entry.
+    """
+    shot = entry.get("shot") or {}
+    doc = {
+        "comfyaudit_provenance": 1,
+        "file": os.path.basename(path),
+        "sha256": row.get("sha256", ""),
+        "bytes": row.get("bytes"),
+        "entry": entry["seq"],
+        "entry_hash": entry["hash"],
+        "at": entry["at"],
+        "shot": {k: shot.get(k) for k in ("id", "name", "project", "external_ids")},
+        "verify": f"comfyaudit history verify-file {os.path.basename(path)}",
+        "history": history,
+    }
+    side = path + SIDECAR_SUFFIX
+    tmp = side + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, separators=(",", ":"), default=str)
+    os.replace(tmp, side)
+    return side
+
+
+def _userdata(path: str) -> str:
+    """A workflow path as the frontend names it, resolved inside the user folder."""
+    try:
+        import folder_paths
+        root = os.path.realpath(os.path.join(folder_paths.get_user_directory(), "default"))
+    except Exception:  # noqa: BLE001
+        return ""
+    real = os.path.realpath(os.path.join(root, path))
+    return real if real.startswith(root + os.sep) else ""
+
+
+def relocate(body: dict[str, Any]) -> dict[str, Any]:
+    """The open workflow's history was last written in another file. Moved, or copied?
+
+    If the file the history last named still holds this shot, two files now
+    claim it: this one is a copy (Save As, a duplicated tab, a render opened
+    again) and becomes its own record, with the original carried along. If
+    that file is gone or holds something else, the workflow was moved or
+    renamed, which is recorded and nothing more.
+    """
+    cfg = settings_mod.history_settings()
+    workflow = body["workflow"]
+    history = H.read(workflow)
+    if not history:
+        return {"error": "This workflow has no history."}
+    before = H.file_of(history) or ""
+    now = _path(body) or ""
+    k, ledger, who = keys(cfg), cfg.get("ledger", ""), actor(cfg)
+    copied = False
+    if body.get("duplicate_of"):
+        copied, before = True, str(body["duplicate_of"])
+    elif before and before != now:
+        old = _userdata(before)
+        if old and os.path.isfile(old):
+            try:
+                with open(old, encoding="utf-8") as fh:
+                    other = H.read(json.load(fh))
+                copied = bool(other) and H.chain_shot_id(other) == H.chain_shot_id(history)
+            except (OSError, ValueError):
+                copied = False
+    if copied:
+        reason = (f"duplicated from {before}" if body.get("duplicate_of") else
+                  f"saved as a copy of {before}" if now else f"opened again outside {before}")
+        # A shot only ever named after an unsaved tab takes the copy's name.
+        temporary = (history["shot"].get("name") or "").lower().startswith("unsaved workflow")
+        made = H.fork(workflow, reason=reason, actor=who, keys=k, ledger=ledger,
+                      path=_path(body), parent_file=before, resolve=input_path,
+                      name=str(body.get("name", "") or "") if temporary else "")
+        return {"history": made.history, "forked": _brief(made.entry), "recorded": True,
+                "summary": summary(made.history, workflow=made.workflow, cfg=cfg)}
+    if before == now:
+        return {"history": history, "recorded": False,
+                "summary": summary(history, workflow=workflow, cfg=cfg)}
+    made = H.stamp(workflow, event="moved", actor=who, keys=k, ledger=ledger,
+                   data_payload={"from": before, "to": now}, path=_path(body),
+                   resolve=input_path)
+    return {"history": made.history, "recorded": made.entry is not None,
+            "entry": _brief(made.entry),
+            "summary": summary(made.history, workflow=made.workflow, cfg=cfg)}
 
 
 def _brief(entry: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -158,6 +279,8 @@ def summary(history: dict[str, Any] | None, *, workflow: dict[str, Any] | None =
         "stages": list(H.STAGES),
         "origins": H.ORIGINS,
         "commercial": _commercial(history),
+        "file": H.file_of(history),
+        "shot_id": H.chain_shot_id(history),
         "clearance": H.delivery_clearance(history),
     }
 

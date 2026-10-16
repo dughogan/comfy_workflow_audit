@@ -134,6 +134,11 @@ const SETTINGS = [
     category: ["ComfyAudit", "Shot history", "Copyright"],
   },
   {
+    id: "ComfyAudit.History.Sidecars", name: "Provenance file next to every render", type: "boolean", defaultValue: true,
+    tooltip: "Write <render>.provenance.json beside each output, holding the shot's history through the entry that made it and the file's fingerprint. EXR, video and 3D outputs cannot carry the workflow themselves; with this, every output can be verified on its own.",
+    category: ["ComfyAudit", "Shot history", "Sidecars"],
+  },
+  {
     id: "ComfyAudit.History.Clients", name: "Clients", type: "text", defaultValue: "",
     tooltip: "Who commissioned the work, comma separated (Netflix, ...). Adds that client's published AI rules for vendors.",
     category: ["ComfyAudit", "Shot history", "Clients"],
@@ -209,14 +214,99 @@ async function stamp(event, extra = {}, { quiet = false } = {}) {
   graph.extra = graph.extra || {};
   const owner = graph.extra;
   const workflow = graph.serialize();
-  const data = await post("stamp", { workflow, event, name: shotDefaultName(), ...extra });
+  const data = await post("stamp", { workflow, event, name: shotDefaultName(), ...where(), ...extra });
   if (app.graph !== graph || graph.extra !== owner) return null;
   if (data.history) {
     owner[EXTRA_KEY] = data.history;
-    if (data.recorded && !quiet) markDirty();
+    if ((data.recorded && !quiet) || data.forked) markDirty();
   }
+  if (data.forked) state.notice = forkNotice(data.forked);
   state.summary = data.summary;
   return data;
+}
+
+/** Which workflow file the open tab is ("" for an unsaved one). */
+function where() {
+  const wf = app.extensionManager?.workflow?.activeWorkflow;
+  return { path: wf?.path || "", persisted: !!wf?.isPersisted };
+}
+
+function forkNotice() {
+  return "This copy of the shot is now its own record, carrying the history it came from. Save it to keep that.";
+}
+
+function chainShotId(history) {
+  return history?.entries?.[0]?.shot?.id || "";
+}
+
+function lastFile(history) {
+  for (const e of [...(history?.entries || [])].reverse()) {
+    if ("file" in e) return e.file;
+  }
+  return null;
+}
+
+/** In flight, by workflow key, so one tab is checked once at a time. */
+const placing = new Set();
+
+/**
+ * Is this tab where its history says it was made? Save As, a duplicated tab
+ * or a render opened again leave two workflows claiming one shot; the server
+ * forks the copy into its own record. A moved or renamed file is noted.
+ */
+async function checkPlacement() {
+  const history = app.graph?.extra?.[EXTRA_KEY];
+  if (!history) return;
+  const key = workflowKey();
+  if (placing.has(key)) return;
+  const here = where();
+  const now = here.persisted ? here.path : "";
+  const before = lastFile(history);
+  const id = chainShotId(history);
+  let duplicateOf = "";
+  if (!here.persisted) {
+    for (const wf of app.extensionManager?.workflow?.openWorkflows || []) {
+      if (wf === app.extensionManager.workflow.activeWorkflow) continue;
+      const other = wf?.changeTracker?.activeState?.extra?.[EXTRA_KEY];
+      if (other && chainShotId(other) === id) { duplicateOf = wf.path || "another tab"; break; }
+    }
+  }
+  if (!duplicateOf && before === "" && now) {
+    // First save of a tab tracked while unsaved: note the file, and if the
+    // shot still carries the tab's temporary name, take the file's.
+    placing.add(key);
+    try {
+      const temporary = /^Unsaved Workflow/i.test(history.shot?.name || "");
+      await stamp("moved", { data: { from: "", to: now },
+        ...(temporary ? { name: shotDefaultName(), rename: true } : {}) });
+      rerender();
+    } catch (e) {
+      console.warn("[comfyaudit] could not record the first save", e);
+    } finally {
+      placing.delete(key);
+    }
+    return;
+  }
+  if (!duplicateOf && (before === null || before === "" || before === now)) return;
+  placing.add(key);
+  const graph = app.graph;
+  const owner = graph.extra;
+  try {
+    const data = await post("relocate", { workflow: graph.serialize(), ...here, name: shotDefaultName(),
+      ...(duplicateOf ? { duplicate_of: duplicateOf } : {}) });
+    if (app.graph !== graph || graph.extra !== owner) return;
+    if (data.recorded && data.history) {
+      owner[EXTRA_KEY] = data.history;
+      markDirty();
+    }
+    if (data.forked) state.notice = forkNotice(data.forked);
+    if (data.summary) state.summary = data.summary;
+    rerender();
+  } catch (e) {
+    console.warn("[comfyaudit] could not check where this workflow came from", e);
+  } finally {
+    placing.delete(key);
+  }
 }
 
 function shotDefaultName() {
@@ -234,6 +324,7 @@ function onWorkflowShown() {
   clearTimeout(shownTimer);
   shownTimer = setTimeout(async () => {
     await autoStart();
+    await checkPlacement();
     if (mount) flushPending().then(refresh);
   }, 150);
 }
@@ -283,6 +374,8 @@ async function act(fn) {
 
 async function beforeQueue() {
   if (!tracked() || !getSetting("ComfyAudit.History.Auto", true)) return;
+  // A save or Save As since the last entry changes which file this is.
+  await checkPlacement();
   await flushPending();
   try { await stamp("edited"); } catch (e) { console.warn("[comfyaudit] history stamp failed", e); }
 }
@@ -547,6 +640,11 @@ function homeView(s) {
   wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "10px" } },
     ids.length ? ids.map(([k, v]) => `${k} ${v}`).join(" - ") : "Not linked to a studio asset ID",
     " - ", h("a", { href: "#", style: { color: UI.dim }, onclick: (e) => { e.preventDefault(); state.form = {}; rerender(); } }, "edit")));
+  if (s.shot?.parent) {
+    const p = s.shot.parent;
+    wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, margin: "-4px 0 10px", lineHeight: "1.45" } },
+      `Forked from ${p.name || "another record"} at its entry ${p.seq}${p.reason ? ` - ${p.reason}` : ""}. The history it came from travels with this file.`));
+  }
   if (state.form) wrap.append(detailsForm());
   for (const p of s.problems || []) wrap.append(h("div", { style: { fontSize: "12px", color: TONE.stop, marginBottom: "4px" } }, p));
 

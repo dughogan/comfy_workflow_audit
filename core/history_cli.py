@@ -54,6 +54,12 @@ def add_parsers(sub) -> None:
     ve.add_argument("workflow")
     ve.add_argument("--ledger", default=os.environ.get("COMFYAUDIT_HISTORY_LEDGER", ""))
 
+    vf = hsub.add_parser("verify-file", help="check an output against the provenance file "
+                         "beside it (exit 3 if it does not match)")
+    vf.add_argument("workflow", metavar="output",
+                    help="a rendered file, or its .provenance.json")
+    vf.add_argument("--ledger", default=os.environ.get("COMFYAUDIT_HISTORY_LEDGER", ""))
+
     lg = hsub.add_parser("log", help="print the history as a timeline")
     lg.add_argument("workflow")
     lg.add_argument("--reveal", action="store_true", help="decrypt protected prompts (needs the key)")
@@ -104,6 +110,60 @@ def _load(path: str) -> tuple[dict, dict | None]:
     return data, H.read(data)
 
 
+SIDECAR_SUFFIX = ".provenance.json"
+
+
+def verify_file(path: str, *, keys: H.Keys, ledger: str = "") -> int:
+    """Is this output the one its provenance file says, from an intact history?
+
+    Three things have to hold: the history in the sidecar is intact (and
+    signed, when the key is set), the entry the sidecar names is in that
+    history unchanged, and this file's contents match the fingerprint that
+    entry recorded. The ledger, when given, confirms that entry was witnessed;
+    it is expected to hold later entries, because the shot went on.
+    """
+    output = path[: -len(SIDECAR_SUFFIX)] if path.endswith(SIDECAR_SUFFIX) else path
+    side = output + SIDECAR_SUFFIX
+    if not os.path.isfile(side):
+        print(f"no provenance file beside {output} (looked for {os.path.basename(side)})")
+        return 2
+    with open(side, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    history = doc.get("history") or {}
+    v = H.verify({}, keys=keys, history=history)
+    failures = list(v.problems)
+    entries = history.get("entries") or []
+    seq = doc.get("entry")
+    entry = entries[seq - 1] if isinstance(seq, int) and 0 < seq <= len(entries) else None
+    if not entry or entry.get("hash") != doc.get("entry_hash"):
+        failures.append("the entry this provenance file names is not in its history as recorded")
+    actual = H.file_sha256(output) if os.path.isfile(output) else ""
+    recorded = {o.get("sha256") for o in (entry or {}).get("outputs", []) if o.get("sha256")}
+    if not actual:
+        failures.append(f"{os.path.basename(output)} is not there to check")
+    elif actual not in recorded:
+        failures.append(f"{os.path.basename(output)} is not the file entry {seq} recorded - "
+                        "its contents have changed since it was rendered")
+    shot = doc.get("shot") or {}
+    label = H.ASSURANCE_LABELS[v.assurance]
+    if failures:
+        print(f"DOES NOT MATCH: {os.path.basename(output)}")
+        for f in failures:
+            print(f"  - {f}")
+        return EXIT_ALTERED
+    print(f"MATCHES: {os.path.basename(output)} is the output of entry {seq} "
+          f"({str(doc.get('at', ''))[:16].replace('T', ' ')}) of {shot.get('name') or 'the shot'}"
+          + "".join(f", {k} {val}" for k, val in (shot.get("external_ids") or {}).items()) + ".")
+    print(f"History: {label}. {v.assurance_detail}")
+    if ledger and os.path.exists(ledger):
+        rows = H._ledger_rows(ledger, H.chain_shot_id(history))  # noqa: SLF001
+        if any(r.get("seq") == seq and r.get("hash") == entry["hash"] for r in rows):
+            print(f"Ledger: entry {seq} was witnessed by the studio ledger.")
+        else:
+            print(f"Ledger: entry {seq} is not in the studio ledger.")
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
     if args.command == "guide":
         from .report import licensing_guide
@@ -114,6 +174,8 @@ def run(args: argparse.Namespace) -> int:
 
     cmd = args.history_command
     path = args.workflow
+    if cmd == "verify-file":
+        return verify_file(path, keys=H.Keys.from_environment(), ledger=args.ledger)
     data, history = _load(path)
     keys = H.Keys.from_environment(confidentiality=getattr(args, "confidentiality", "") or "")
 

@@ -313,10 +313,27 @@ the next person to change the shot gets a *handoff* breakpoint. Review stays
 deliberate (sign-off). Server resolves inputs only inside ComfyUI's
 input/output/temp folders.
 
-Next, agreed with Doug: provenance **sidecars** next to every output (EXR,
-video and 3D outputs don't embed the workflow; a PNG's history stops before its
-own render entry), and **fork tracking** for Save As, duplicated tabs and
-workflows reloaded from an older PNG (today two files can claim one shot id).
+**The history follows its files (2026-10-15).**
+- *Sidecars:* each render gets `<output>.provenance.json` beside it
+  (`history_service.write_sidecar`): the history through the entry that
+  made it, plus the file's fingerprint. `comfyaudit history verify-file
+  <output>` checks the chain, that the entry is unchanged, and that the file
+  is the one recorded (exit 3 if not); the ledger confirms the entry was
+  witnessed. Setting: *Provenance file next to every render* (default on).
+  The CLI now reads `COMFYAUDIT_HISTORY_KEY_FILE` like the server.
+- *Forks:* every entry records the workflow file it was made in (`file`,
+  "" when unsaved). `H.fork` starts a new record (new id; same name,
+  project and studio IDs; cleared/delivered drop to production) with the
+  parent chain embedded frozen under `history.parent`; `verify` checks
+  the parent and the link to its head. Triggers: Save As or a copy where the
+  old file still holds the shot (`history/relocate`; a missing old file is
+  a rename, recorded as `moved`), a duplicated tab (another open tab with
+  the same shot), and a stamp onto a copy the ledger shows the shot has moved
+  past (`H.ledger_diverged`, auto-fork). A shot only ever named after an
+  unsaved tab takes its file's name on first save or fork.
+- Not covered: two machines editing the same file without a shared ledger
+  (no way to see the other copy); renders whose save node does not report
+  outputs to the frontend get no sidecar.
 Also: `dreamshaper_8` and many community fine-tunes aren't in the licence KB.
 
 **Priority 2: known gaps.**

@@ -174,6 +174,8 @@ HISTORY_EO = f"{PREFIX}.History.EOInsurance"
 HISTORY_COPYRIGHT = f"{PREFIX}.History.CopyrightClaim"
 #: Who commissioned the work (Netflix, ...), which brings in that client's AI rules.
 HISTORY_CLIENTS = f"{PREFIX}.History.Clients"
+#: Write a provenance sidecar next to every render.
+HISTORY_SIDECARS = f"{PREFIX}.History.Sidecars"
 
 CONFIDENTIALITY_OPTIONS = {
     "prompts readable": "none",
@@ -206,6 +208,7 @@ def history_settings(user: str = "default") -> dict[str, Any]:
         "tpn_vendor": bool(s.get(HISTORY_TPN)),
         "eo_insurance": bool(s.get(HISTORY_EO)),
         "copyright_claim": bool(s.get(HISTORY_COPYRIGHT)),
+        "sidecars": bool(s.get(HISTORY_SIDECARS, True)),
         "clients": [c.strip() for c in str(s.get(HISTORY_CLIENTS, "") or "").replace(";", ",").split(",")
                     if c.strip()],
     }
