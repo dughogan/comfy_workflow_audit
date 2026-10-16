@@ -3,10 +3,10 @@
 **Every ComfyUI workflow's life, recorded as it happens, and packaged for legal.**
 Built for studios putting ComfyUI in final pixels.
 
-[![Watch the ComfyAudit demo (1:32)](docs/comfyaudit-demo-poster.jpg)](docs/comfyaudit-demo.mp4)
+https://github.com/user-attachments/assets/586dfb6f-a57e-4b72-9a48-64d60e54f40f
 
-*Watch the demo (1 min 32 s): tracking, Life of the shot, Package for delivery,
-and ComfyAudit Review for legal.*
+*The demo (1 min 32 s): tracking, Life of the shot, Package for delivery, and
+ComfyAudit Review for legal. No player? [Download it](docs/comfyaudit-demo.mp4).*
 
 ComfyAudit does three things:
 
