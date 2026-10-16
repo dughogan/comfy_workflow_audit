@@ -186,6 +186,28 @@ def lookup(body: dict[str, Any]) -> dict[str, Any]:
     return {"configured": True, "found": bool(shot), "shot": shot}
 
 
+def push_review(history: dict[str, Any], label: str, reason: str, who: str) -> dict[str, Any]:
+    """After a legal decision in ComfyAudit Review: a Note on the shot. Never fails the
+    decision, which is already signed into the history."""
+    ref = shot_ref(history)
+    if not configured() or not ref:
+        return {}
+    entries = history.get("entries") or []
+    head = entries[-1].get("hash", "") if entries else ""
+    try:
+        client = Client()
+        shot = client.find_shot(ref)
+        if not shot:
+            return {"error": f"ShotGrid has no shot {ref}; nothing was posted."}
+        content = "\n".join([f"Legal review: {label}", f"Reason: {reason}", f"By: {who}",
+                             f"History head: {head}"])
+        posted = client.post_delivery(shot, f"ComfyAudit legal review: {label} - {shot['code'] or ref}",
+                                      content, head=head)
+        return {"shot": shot, **posted}
+    except ShotGridError as exc:
+        return {"error": str(exc)}
+
+
 def push_delivery(history: dict[str, Any], clearance: dict[str, Any], who: str,
                   package: tuple[str, bytes] | None) -> dict[str, Any]:
     """After delivery: a Note on the shot. Never fails the delivery, which is already sealed."""

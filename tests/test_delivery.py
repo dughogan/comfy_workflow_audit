@@ -170,7 +170,8 @@ def test_what_is_left_for_legal_is_sealed_and_listed_not_asked_of_the_artist(stu
     assert "error" not in out, out
     sealed = H.delivery_clearance(H.read(out["workflow"]))
     assert sealed["for_legal"] == [{"rule": "tpn-ai", "title": "TPN: written client approval for AI use",
-                                    "jurisdiction": "TPN", "items": ["Client's written approval on file"]}]
+                                    "jurisdiction": "TPN", "items": ["Client's written approval on file"],
+                                    "tags": ["tpn-ai:0"]}]
     readme = zipfile.ZipFile(io.BytesIO(base64.b64decode(out["zip_b64"]))).read("README.txt").decode()
     assert "Left for legal to confirm (1)" in readme
     assert "[ ] TPN: written client approval for AI use (TPN)" in readme

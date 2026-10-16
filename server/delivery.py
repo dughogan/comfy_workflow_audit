@@ -189,7 +189,10 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
     # workflow has attested yet. Sealed, so legal sees exactly what was open.
     clearance["for_legal"] = [{"rule": c["rule"], "title": c["title"],
                                "jurisdiction": c["jurisdiction"],
-                               "items": [i["text"] for i in c["items"]]}
+                               "items": [i["text"] for i in c["items"]],
+                               # Parallel to items, so a reviewer (ComfyAudit Review, an
+                               # agent) can answer each one by its tag.
+                               "tags": [i.get("tag", "") for i in c["items"]]}
                               for c in assessed["confirmations"]]
     # Show and studio answers this sign-off relied on, sealed with their
     # signatures so the package proves them without the studio's answer store.

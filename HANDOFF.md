@@ -458,8 +458,8 @@ package seals the answers it relied on (`clearance.answers_relied_on`, with
 signatures) and lists them in the README and `package.json`. In the panel,
 "What legal will check" is grouped into this shot / the whole show / the studio.
 Live-tested: an answer recorded on one shot of "Pilot" was inherited by another
-shot given "pilot". Not yet: a way for legal to answer without ComfyUI (from
-the package, or a small web page on the ComfyUI server).
+shot given "pilot". Legal answers without ComfyUI in **ComfyAudit Review**
+(below).
 
 **Desktop, the gate and API exports (2026-10-16).** Tested live in Doug's
 ComfyUI Desktop (ComfyUI 0.41.2, newer than the 0.40.0 test instance): auto
@@ -473,6 +473,70 @@ history is missing or altered, the shot is below a minimum stage, or
 **Export (API Format)** on a tracked shot, since that format has no room for
 the history. **ShotGrid is labelled beta**: built from Autodesk's REST docs and
 tested only against a local stand-in; it needs a run on a real site.
+
+**ComfyAudit Review, legal's own web app (2026-10-16).** `review/`, run with
+`python -m comfyaudit.review` (stdlib `http.server`, no ComfyUI, no JavaScript in
+its own pages) on an internal studio server. Legal and production staff open a
+`.delivery.zip` (upload, or pick from `COMFYAUDIT_REVIEW_INBOX`), read it, answer
+what is theirs, and clear the shot or send it back.
+- *Config, env only:* `COMFYAUDIT_REVIEW_DIR` (default `~/.comfyaudit/review`),
+  `_INBOX`, `_HOST`/`_PORT` (127.0.0.1:8095), `_MAX_MB`. Signing, ledger, answers
+  and ShotGrid use the ComfyUI side's variables, so both sides share one key,
+  ledger and `COMFYAUDIT_ANSWERS_FILE` (set it on both, or they keep separate
+  answers). With `COMFYAUDIT_TRUSTED_USER_HEADER` + keyring, each person signs
+  with their own key (same doubled-header refusal and deployment rule as
+  ComfyUI); without it, reviewers type their name (cookie) and the studio key
+  signs. **No signing key = read-only**: an unsigned entry after signed ones is
+  damage.
+- *Opening:* a package is kept as received (`packages/<sha12>/package.zip`, id =
+  first 16 hex of its SHA-256; reopening finds the same review) beside a
+  `workflow.json` that gains legal's entries. Every file is checked against
+  `package.json` (changed, missing, unlisted), and the history with `H.verify`.
+  The decision shown is read from the signed sign-off entry, never the unsigned
+  index (a disagreement is flagged). An altered package or history is shown but
+  nothing can be recorded against it.
+- *Left for legal:* what the sign-off sealed (`clearance.for_legal`), grouped
+  into studio / show / this shot, each rule collapsed. **Delivery now seals
+  `tags` beside `items`** so each can be answered by tag; older packages are
+  matched by text. An item counts as answered by a shot note in the chain or a
+  show/studio answer in the store (live, so packages made before the answer
+  inherit it too). Show/studio answers go to `answers.Store`; shot answers are
+  signed `note` entries with `data.evidence`. Scope is the KB item's, never the
+  reviewer's choice.
+- *Decision:* clear = `approved`, send back = `rejected`, both with
+  `data.legal_review` {decision, package sha256, verdict at sign-off, items
+  still open}, the reason as the note, actor role from the keyring or `legal`.
+  Clearing with items open needs an explicit tick and records them. **Stage
+  product call:** packaging already promotes to *delivered*, so clearing a
+  delivered shot leaves it delivered (clearance on top; promoting back to
+  *cleared* would undo the `final_deliverable` check); a shot still in
+  sandbox/production is promoted to *cleared*. Send back promotes to
+  *production*, and `lineage.approved` goes to None. ShotGrid gets a Note via
+  `shotgrid.push_review` when configured. The updated workflow is offered for
+  download; **the artist must continue from it**: their own copy is now an old
+  copy in the shared ledger, so ComfyUI auto-forks it into a new record (honest,
+  but a new shot id; the show page groups forks by root shot).
+- *Pages:* home (upload, inbox with "already open", shows, recent), shot,
+  show dashboard (shots by legal state + the show's and studio's answers),
+  who-you-are. Every page embeds its data (`machine.block`, kinds
+  `review-home|shot|show|identity`) and answers `?format=json`; every POST also
+  takes JSON (agents). Package documents are served as received under a
+  `sandbox` CSP (scripts run in an opaque origin). Form posts need a
+  double-submit token and a same-origin `Origin`; JSON/zip posts rely on CORS
+  preflight. **Comfy branded** per comfy.org/brand (read 2026-10-16): logo
+  and icon inlined from `review/brand/` (yellow mark on a Comfy Ink bar,
+  unrecoloured), Ink / Yellow / Plum / Warm White palette, light and dark;
+  "PP Formula" only if installed (no external fonts: air-gapped servers).
+- *Tested:* `tests/test_review.py` (14 tests, incl. real HTTP, tampering,
+  per-person header signing, CSRF). Live: packages made on the throwaway
+  ComfyUI (:8004, studio key + ledger), reviewed in the browser: show answer,
+  shot answer, clear refused then cleared with open items, send back, a package
+  made before the answer inheriting it live and one made after sealing it,
+  dashboard, all three documents (life page playback under the sandbox),
+  phone width. `comfyaudit history verify` on the downloaded workflow:
+  WITNESSED. Not tested: a real sign-in proxy (pytest only), ShotGrid
+  (stand-in only), the multipart upload from a browser (pytest only; the pane
+  cannot pick files).
 
 **Priority 2: known gaps.**
 
