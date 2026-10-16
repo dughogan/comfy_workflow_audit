@@ -640,7 +640,11 @@ wherever the `.json` goes. Each render also carries it in the PNG's workflow
 metadata (up to the moment it was queued) and gets a
 `<render>.provenance.json` beside it: the history up to the entry that made
 that render, plus the render's fingerprint, checkable on its own with
-`comfyaudit history verify-file`. An optional ledger file
+`comfyaudit history verify-file`. If that file is lost, the saved workflow is
+enough: `comfyaudit history verify-file render.png --workflow shot.json` finds
+the entry that recorded the render, by its contents rather than its name
+(including renders made before a Save As), and checks the whole history. It
+needs the workflow to have been saved after the render. An optional ledger file
 (`COMFYAUDIT_HISTORY_LEDGER`) keeps an independent copy of every entry, so a
 history that was removed or rewritten shows up.
 

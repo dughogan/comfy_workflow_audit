@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+from typing import Any
 
 from . import graph
 from . import history as H
@@ -55,9 +56,12 @@ def add_parsers(sub) -> None:
     ve.add_argument("--ledger", default=os.environ.get("COMFYAUDIT_HISTORY_LEDGER", ""))
 
     vf = hsub.add_parser("verify-file", help="check an output against the provenance file "
-                         "beside it (exit 3 if it does not match)")
+                         "beside it, or against a saved workflow (exit 3 if it does not match)")
     vf.add_argument("workflow", metavar="output",
                     help="a rendered file, or its .provenance.json")
+    vf.add_argument("--workflow", dest="against", default="",
+                    help="check against this saved workflow's history instead of the "
+                         "provenance file (for when that file is lost)")
     vf.add_argument("--ledger", default=os.environ.get("COMFYAUDIT_HISTORY_LEDGER", ""))
 
     om = hsub.add_parser("omc", help="write the history as MovieLabs OMC-JSON v2.8")
@@ -117,8 +121,80 @@ def _load(path: str) -> tuple[dict, dict | None]:
 SIDECAR_SUFFIX = ".provenance.json"
 
 
-def verify_file(path: str, *, keys: H.Keys, ledger: str = "") -> int:
+def _renders_of(history: dict[str, Any], digest: str, depth: int = 0) -> list[tuple[int, dict[str, Any], dict[str, Any]]]:
+    """Every entry that recorded an output with these contents: (generation, entry, history).
+
+    Generation 0 is this shot; 1 is the history it was forked from, and so on,
+    since a render made before a Save As is recorded in the parent.
+    """
+    found = [(depth, e, history) for e in history.get("entries") or []
+             if isinstance(e, dict) and any(isinstance(o, dict) and o.get("sha256") == digest
+                                            for o in e.get("outputs") or [])]
+    parent = (history.get("parent") or {}).get("history") if isinstance(history.get("parent"), dict) else None
+    if isinstance(parent, dict) and depth < H.MAX_FORK_DEPTH:
+        found += _renders_of(parent, digest, depth + 1)
+    return found
+
+
+def verify_against_workflow(path: str, workflow: str, *, keys: H.Keys, ledger: str = "") -> int:
+    """Is this output recorded in this workflow's history, and is that history intact?
+
+    For when the provenance file beside a render is gone: the saved workflow
+    holds the whole history, including each render's fingerprint. The file is
+    matched by its contents, never its name, so a renamed or protected-name
+    render still matches, and a different file with the same name does not.
+    """
+    output = path[: -len(SIDECAR_SUFFIX)] if path.endswith(SIDECAR_SUFFIX) else path
+    if not os.path.isfile(output):
+        print(f"{os.path.basename(output)} is not there to check")
+        return 2
+    try:
+        data, history = _load(workflow)
+    except (OSError, ValueError) as exc:
+        print(f"could not read {workflow}: {exc}")
+        return 2
+    if not history:
+        print(f"{os.path.basename(workflow)} carries no shot history")
+        return 2
+    v = H.verify(data, keys=keys, ledger=ledger if ledger and os.path.exists(ledger) else "")
+    failures = list(v.problems)
+    digest = H.file_sha256(output)
+    found = _renders_of(history, digest)
+    if not found:
+        failures.append(
+            f"{os.path.basename(output)} is not recorded as an output anywhere in this "
+            "workflow's history. Either it is a different file, it was changed after it "
+            "was rendered, or the workflow was not saved after this render.")
+    # This shot's own record first, then the nearest parent; the latest entry within it.
+    nearest = min((f[0] for f in found), default=0)
+    generation, entry, _ = ([f for f in found if f[0] == nearest] or [(0, {}, history)])[-1]
+    seq = entry.get("seq")
+    if (keys.sign_key and found and generation == 0
+            and (v.assurance not in ("signed", "witnessed") or seq in v.unsigned_entries)):
+        failures.append(f"entry {seq} is not signed with the studio key, so anyone could "
+                        "have written it")
+    if failures:
+        print(f"DOES NOT MATCH: {os.path.basename(output)} against {os.path.basename(workflow)}")
+        for f in failures:
+            print(f"  - {f}")
+        return EXIT_ALTERED
+    shot = entry.get("shot") or {}
+    where = "" if generation == 0 else (
+        " in the history this shot was forked from" if generation == 1
+        else f" in an ancestor {generation} forks back")
+    print(f"MATCHES: {os.path.basename(output)} is the output of entry {seq} "
+          f"({str(entry.get('at', ''))[:16].replace('T', ' ')}) of "
+          f"{shot.get('name') or 'the shot'}{where}"
+          + "".join(f", {k} {val}" for k, val in (shot.get("external_ids") or {}).items()) + ".")
+    print(f"History: {H.ASSURANCE_LABELS[v.assurance]}. {v.assurance_detail}")
+    return 0
+
+
+def verify_file(path: str, *, keys: H.Keys, ledger: str = "", workflow: str = "") -> int:
     """Is this output the one its provenance file says, from an intact history?
+
+    With ``workflow``, the saved workflow is the evidence instead of the
+    provenance file (see ``verify_against_workflow``).
 
     Three things have to hold: the history in the sidecar is intact (and
     signed, when the key is set), the entry the sidecar names is in that
@@ -126,10 +202,14 @@ def verify_file(path: str, *, keys: H.Keys, ledger: str = "") -> int:
     entry recorded. The ledger, when given, confirms that entry was witnessed;
     it is expected to hold later entries, because the shot went on.
     """
+    if workflow:
+        return verify_against_workflow(path, workflow, keys=keys, ledger=ledger)
     output = path[: -len(SIDECAR_SUFFIX)] if path.endswith(SIDECAR_SUFFIX) else path
     side = output + SIDECAR_SUFFIX
     if not os.path.isfile(side):
-        print(f"no provenance file beside {output} (looked for {os.path.basename(side)})")
+        print(f"no provenance file beside {output} (looked for {os.path.basename(side)}).")
+        print("If you have the saved workflow, check the file against its history instead:")
+        print(f"  comfyaudit history verify-file {os.path.basename(output)} --workflow <shot.json>")
         return 2
     with open(side, encoding="utf-8") as fh:
         doc = json.load(fh)
@@ -194,7 +274,8 @@ def run(args: argparse.Namespace) -> int:
     cmd = args.history_command
     path = args.workflow
     if cmd == "verify-file":
-        return verify_file(path, keys=H.Keys.from_environment(), ledger=args.ledger)
+        return verify_file(path, keys=H.Keys.from_environment(), ledger=args.ledger,
+                           workflow=getattr(args, "against", ""))
     data, history = _load(path)
     keys = H.Keys.from_environment(confidentiality=getattr(args, "confidentiality", "") or "")
 
