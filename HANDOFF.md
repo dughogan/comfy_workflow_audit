@@ -405,7 +405,7 @@ environment only, never ComfyUI settings.
   sign-off, exception, head hash), attaches the zip, and writes the head hash
   to the field. A ShotGrid failure never undoes a delivery. **Tested only
   against a local fake of the documented endpoints** (`tests/test_shotgrid.py`);
-  run once on a trial site or Imageworks' sandbox before Sony relies on it.
+  run once on a trial site or a studio sandbox before a studio relies on it.
   Things a real site may differ on: the upload flow for S3-backed sites
   (signed URL, no auth header), and whether the script user may create Notes.
 
@@ -426,7 +426,7 @@ environment only, never ComfyUI settings.
 - [x] **C2PA signing.** Done 2026-10-16 (above). Today an unsigned manifest *definition* is exported.
       Wire it to `c2patool` or a signing service when a studio certificate
       exists, and embed it at delivery.
-- [x] **MovieLabs OMC export.** Done 2026-10-16 (above). Sony mentioned MovieLabs, not OMC itself, but
+- [x] **MovieLabs OMC export.** Done 2026-10-16 (above). The studio mentioned MovieLabs, not OMC itself, but
       Doug wants studios to read exported history natively. Export each shot
       as OMC Assets plus Provenance (OMC v2.8 has a generic Provenance entity,
       and a creator can be a software Service). Alongside it, fill C2PA 2.4's
