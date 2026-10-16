@@ -621,6 +621,53 @@ function stat(n, text) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Working indicator: the Comfy C                                      */
+/* ------------------------------------------------------------------ */
+
+/* The C mark from the Comfy motion pack (src/brand.js), extruded the way the
+ * pack's logo pieces do it: flat slices stacked along Z, yellow face, plum
+ * sides, turning slowly. With reduced motion it holds still and breathes. */
+const C_MARK = { w: 521, h: 562, d: "M108.7 560.9C97.9 558.3 86.9 548.6 83.0 538.3C79.1 527.8 79.7 522.9 90.0 486.9C99.8 452.6 100.3 449.5 96.3 444.1C91.2 437.4 91.9 437.5 58.2 437.0L27.5 436.5L21.2 433.6C13.2 429.9 5.0 421.3 2.1 413.5C-2.5 401.2 -3.3 404.9 31.0 284.4C48.1 224.5 63.4 172.6 65.1 169.1C73.0 152.0 87.3 138.2 104.4 131.1C116.5 126.1 125.7 125.0 157.5 125.0C185.1 125.0 185.8 125.0 189.0 122.7C194.7 118.9 195.8 116.3 205.6 82.0C215.9 45.7 218.9 38.5 228.0 27.2C237.1 16.1 252.0 6.5 267.0 2.3C273.1 0.6 280.1 0.5 384.0 0.5L494.5 0.5L500.2 3.3C512.9 9.5 520.2 20.6 520.8 34.5C521.2 42.4 520.8 43.9 507.6 90.0C500.1 116.1 492.6 140.4 491.0 143.9C481.3 164.6 463.9 179.1 441.0 185.6C435.0 187.3 427.8 187.5 343.5 188.0L252.5 188.5L249.2 190.8C247.4 192.1 245.3 194.4 244.5 196.0C242.6 199.7 198.0 355.9 198.0 358.9C198.0 362.6 201.7 369.6 204.8 371.7C207.4 373.4 212.3 373.5 296.5 374.0L385.5 374.5L391.5 376.9C404.5 382.1 413.0 394.5 413.8 409.0C414.2 417.4 414.1 417.8 401.1 463.4C393.8 488.6 386.8 512.0 385.4 515.4C378.6 532.1 363.8 547.2 346.4 555.1C331.8 561.7 338.4 561.4 220.0 561.6C158.5 561.7 110.9 561.5 108.7 560.9Z" };
+const BRAND = { yellow: "#F2FF59", plum: "#49378B", lilac: "#DBD6F2" };
+
+function installLoaderStyle() {
+  if (document.getElementById("comfyaudit-loader-style")) return;
+  document.head.append(h("style", { id: "comfyaudit-loader-style" }, `
+@keyframes comfyaudit-c-turn { 0% { transform: rotateX(-12deg) rotateY(-28deg); } 50% { transform: rotateX(8deg) rotateY(28deg); } 100% { transform: rotateX(-12deg) rotateY(-28deg); } }
+@keyframes comfyaudit-c-breathe { 0%, 100% { opacity: .65; transform: scale(.96); } 50% { opacity: 1; transform: scale(1); } }
+.comfyaudit-c-slab { animation: comfyaudit-c-turn 2.6s cubic-bezier(.45,0,.55,1) infinite; }
+@media (prefers-reduced-motion: reduce) { .comfyaudit-c-slab { animation: comfyaudit-c-breathe 2.4s ease-in-out infinite; } }`));
+}
+
+function comfyLoader(text, sub = "") {
+  installLoaderStyle();
+  const H = 56, k = H / C_MARK.h, W = C_MARK.w * k, depth = 14, N = 12;
+  const slab = h("div", { class: "comfyaudit-c-slab", style: { position: "absolute", inset: "0", transformStyle: "preserve-3d" } });
+  for (let i = 0; i < N; i++) {
+    const front = i === N - 1;
+    // Sides shade from plum at the back to lilac near the face, so the
+    // extrusion reads as depth rather than a flat outline.
+    const t = i / (N - 1);
+    const mix = (a, b) => Math.round(a + (b - a) * t);
+    const side = `rgb(${mix(0x49, 0xa8)}, ${mix(0x37, 0x9c)}, ${mix(0x8b, 0xe0)})`;
+    const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svgEl.setAttribute("viewBox", `0 0 ${C_MARK.w} ${C_MARK.h}`);
+    svgEl.setAttribute("width", W); svgEl.setAttribute("height", H);
+    svgEl.style.cssText = `position:absolute;left:0;top:0;overflow:visible;transform:translateZ(${(-depth / 2 + (i * depth) / (N - 1)).toFixed(2)}px)`;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", C_MARK.d);
+    path.setAttribute("fill", front ? BRAND.yellow : side);
+    svgEl.append(path);
+    slab.append(svgEl);
+  }
+  const stage = h("div", { "aria-hidden": "true", style: { position: "relative", width: `${W}px`, height: `${H}px`, perspective: "420px", margin: "6px auto 14px" } }, slab);
+  return h("div", { role: "status", "aria-live": "polite", style: { textAlign: "center", padding: "18px 6px 8px" } },
+    stage,
+    h("div", { style: { fontSize: "12.5px", fontWeight: "600", marginBottom: "4px" } }, text),
+    sub ? h("div", { style: { fontSize: "11.5px", color: UI.dim, lineHeight: "1.55" } }, sub) : null);
+}
+
+/* ------------------------------------------------------------------ */
 /* Overlay for the documents                                           */
 /* ------------------------------------------------------------------ */
 
@@ -968,13 +1015,15 @@ function sourceRow(src) {
     })));
 }
 
+/* One rule legal will check. Read-only for the artist; whoever holds the
+ * evidence (legal, production) can record it here when they open the shot. */
 function confirmationRule(rule) {
-  const box = h("details", { style: { border: `1px solid ${UI.line}`, borderRadius: "5px", padding: "6px 10px", margin: "0 0 6px", fontSize: "12px" } },
-    h("summary", { style: { cursor: "pointer", lineHeight: "1.45" } }, `${rule.title} `,
-      h("span", { style: { color: UI.dim, fontSize: "11px" } }, `${rule.jurisdiction} - ${rule.items.length}`)));
+  const box = h("div", { style: { padding: "6px 0", borderTop: `1px solid ${UI.line}`, fontSize: "12px" } },
+    h("div", { style: { lineHeight: "1.45" } }, `${rule.title} `,
+      h("span", { style: { color: UI.dim, fontSize: "11px" } }, rule.jurisdiction)));
   for (const item of rule.items) {
     const f = pkg.open[item.tag] || (pkg.open[item.tag] = { note: "", open: false });
-    const row = h("div", { style: { padding: "6px 0", borderTop: `1px solid ${UI.line}`, lineHeight: "1.45" } }, item.text);
+    const row = h("div", { style: { padding: "4px 0 2px 10px", color: UI.dim, lineHeight: "1.45" } }, item.text, " ");
     if (f.open) {
       row.append(input(f.note, (v) => { f.note = v; }, "What confirms it, e.g. client email of 14 Oct", true));
       row.append(h("div", { style: { display: "flex", gap: "6px", marginTop: "6px" } },
@@ -985,7 +1034,8 @@ function confirmationRule(rule) {
         }), "primary"),
         btn("Cancel", () => { f.open = false; rerender(); })));
     } else {
-      row.append(h("div", { style: { marginTop: "4px" } }, btn("Confirm", () => { f.open = true; rerender(); })));
+      row.append(h("a", { href: "#", style: { color: UI.dim, fontSize: "11px" },
+        onclick: (e) => { e.preventDefault(); f.open = true; rerender(); } }, "I have the evidence"));
     }
     box.append(row);
   }
@@ -1018,10 +1068,19 @@ function fixStep() {
     for (const src of r.sources) wrap.append(sourceRow(src));
   }
   if ((r.confirmations || []).length) {
-    wrap.append(caption(`For legal to confirm (${r.confirmations.length} rules)`));
-    wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "8px", lineHeight: "1.45" } },
-      "Things only a person can attest: an approval received, a disclosure placed. Each one is recorded in the history."));
-    for (const rule of r.confirmations) wrap.append(confirmationRule(rule));
+    // These are facts about the production (a client's written approval, a
+    // credit disclosure), not about the workflow. The artist is not the person
+    // who knows them, so nothing here waits on the artist: they travel with
+    // the package as legal's open checklist.
+    const n = r.confirmations.reduce((k, rule) => k + rule.items.length, 0);
+    wrap.append(caption(`Left for legal (${n})`));
+    wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "6px", lineHeight: "1.45" } },
+      "Nothing for you to do here. These are production facts legal checks, such as a client's written approval or a credit disclosure. They go in the package as an open checklist."));
+    const list = h("details", { style: { border: `1px solid ${UI.line}`, borderRadius: "5px", padding: "6px 10px", margin: "0 0 8px" } },
+      h("summary", { style: { cursor: "pointer", fontSize: "12px" } }, `What legal will check (${r.confirmations.length} rules)`));
+    for (const rule of r.confirmations) list.append(confirmationRule(rule));
+    if (Object.values(pkg.open).some((f) => f.open)) list.open = true;
+    wrap.append(list);
   }
   wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "10px" } },
     btn("Continue to sign-off", () => { pkg.step = "signoff"; rerender(); }, "primary"),
@@ -1101,15 +1160,15 @@ function packageView() {
   const wrap = h("div", {});
   wrap.append(stepsBar());
   if (pkg.step === "profile") wrap.append(profileStep());
-  else if (pkg.step === "checking") wrap.append(h("div", { style: { fontSize: "12px", color: UI.dim, lineHeight: "1.6" } },
+  else if (pkg.step === "checking") wrap.append(comfyLoader("Checking this workflow",
     "Reading the graph, resolving every model and node pack against the licence knowledge base, and checking the rules that apply to this production."));
   else if (pkg.step === "error") wrap.append(h("div", {},
     h("div", { style: { color: TONE.stop, fontSize: "12px", whiteSpace: "pre-wrap", marginBottom: "10px" } }, pkg.error),
     h("div", { style: { display: "flex", gap: "6px" } }, btn("Try again", runCheck, "primary"), btn("Back", leavePackage))));
   else if (pkg.step === "fix") wrap.append(fixStep());
   else if (pkg.step === "signoff") wrap.append(signoffStep());
-  else if (pkg.step === "delivering") wrap.append(h("div", { style: { fontSize: "12px", color: UI.dim } },
-    "Re-checking, sealing the sign-off into the history and building the package..."));
+  else if (pkg.step === "delivering") wrap.append(comfyLoader("Packaging the shot",
+    "Re-checking, sealing the sign-off into the history and building the package."));
   else if (pkg.step === "done") wrap.append(doneStep());
   return wrap;
 }

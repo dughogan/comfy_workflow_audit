@@ -179,6 +179,12 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
                                  "subjects": f["subjects"]} for f in assessed["fixes"]]
     clearance["exception"] = exception
     clearance["audited_with"] = assessed["versions"]
+    # What the sign-off leaves for legal: production facts no one in the
+    # workflow has attested yet. Sealed, so legal sees exactly what was open.
+    clearance["for_legal"] = [{"rule": c["rule"], "title": c["title"],
+                               "jurisdiction": c["jurisdiction"],
+                               "items": [i["text"] for i in c["items"]]}
+                              for c in assessed["confirmations"]]
 
     keys = history_service.signer(cfg, body)
     ledger = cfg.get("ledger", "")
@@ -275,6 +281,19 @@ def _signing_lines(signed: list[dict[str, Any]]) -> list[str]:
     return lines + [""]
 
 
+def _legal_lines(open_items: list[dict[str, Any]]) -> list[str]:
+    if not open_items:
+        return []
+    n = sum(len(r["items"]) for r in open_items)
+    lines = [f"Left for legal to confirm ({n}): production facts nobody in the workflow has",
+             "attested. Each is also in the legal report under the rule it belongs to; record",
+             "each one in the shot's history once it is confirmed.", ""]
+    for r in open_items:
+        lines.append(f"[ ] {r['title']} ({r['jurisdiction']})")
+        lines += [f"    - {t}" for t in r["items"]]
+    return lines + [""]
+
+
 def _readme(shot: str, clearance: dict[str, Any],
             signed: list[dict[str, Any]] | None = None) -> str:
     lines = [
@@ -298,6 +317,7 @@ def _readme(shot: str, clearance: dict[str, Any],
         "  unsigned; sign and embed it with c2patool or the studio's signing service.",
         "",
         *_signing_lines(signed or []),
+        *_legal_lines(clearance.get("for_legal") or []),
         "Check the history: comfyaudit history verify <workflow.json> (with the studio key and",
         "ledger set). This package was produced by an automated tool; it is evidence to take",
         "to counsel, not legal advice.",

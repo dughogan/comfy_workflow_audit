@@ -155,3 +155,21 @@ def test_delivery_seals_the_clearance_and_returns_the_package(studio):
     names = zipfile.ZipFile(io.BytesIO(base64.b64decode(out["zip_b64"]))).namelist()
     assert sorted(names) == sorted(["SH0120.json", "SH0120.c2pa.json", "SH0120.legal-report.html",
                                     "SH0120.clearance-sheet.html", "SH0120.life.html", "SH0120.omc.json", "README.txt"])
+
+
+def test_what_is_left_for_legal_is_sealed_and_listed_not_asked_of_the_artist(studio, monkeypatch):
+    open_rule = [{"rule": "tpn-ai", "title": "TPN: written client approval for AI use",
+                  "jurisdiction": "TPN", "items": [{"text": "Client's written approval on file",
+                                                    "tag": "tpn-ai:0"}]}]
+    monkeypatch.setattr(delivery, "_confirmations", lambda lin, history, cfg: open_rule)
+    wf = H.stamp(load(), event="created", actor=ANA, keys=H.Keys.from_environment(),
+                 name="SH0120").workflow
+    # Nothing was confirmed, and delivery still goes ahead: these are legal's to check.
+    out = delivery.deliver({"workflow": wf, "name": "SH0120", "exception": "Test."})
+    assert "error" not in out, out
+    sealed = H.delivery_clearance(H.read(out["workflow"]))
+    assert sealed["for_legal"] == [{"rule": "tpn-ai", "title": "TPN: written client approval for AI use",
+                                    "jurisdiction": "TPN", "items": ["Client's written approval on file"]}]
+    readme = zipfile.ZipFile(io.BytesIO(base64.b64decode(out["zip_b64"]))).read("README.txt").decode()
+    assert "Left for legal to confirm (1)" in readme
+    assert "[ ] TPN: written client approval for AI use (TPN)" in readme
