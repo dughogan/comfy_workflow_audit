@@ -1,1587 +1,2174 @@
 {
-  "_comment": [
-    "Licence knowledge base for comfyaudit.",
-    "",
-    "This file is data, not law. Every entry carries a `source` you can open and",
-    "a `confidence` saying how sure the mapping from filename to licence is.",
-    "Licences change - Stability relicensed SD3 mid-flight, BFL revised the FLUX",
-    "dev terms to v2.0 - so treat `checked` as a best-before date and re-verify",
-    "anything that gates a delivery.",
-    "",
-    "Studios are expected to extend this: add entries to `models` for your own",
-    "internally trained weights, or override ours, and pass the file with",
-    "  comfyaudit audit wf.json --licences my-licences.json"
-  ],
-  "version": "2026-08-22",
-  "checked": "2026-08-22",
-  "licences": {
-    "apache-2.0": {
-      "name": "Apache License 2.0",
-      "spdx": "Apache-2.0",
-      "commercial_use": "yes",
-      "fee": "none",
-      "redistribution": "yes",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [],
-      "url": "https://www.apache.org/licenses/LICENSE-2.0",
-      "summary": "Permissive. Commercial use, modification and redistribution allowed; keep the notice file and state changes.",
-      "conditions": {}
-    },
-    "mit": {
-      "name": "MIT License",
-      "spdx": "MIT",
-      "commercial_use": "yes",
-      "fee": "none",
-      "redistribution": "yes",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [],
-      "url": "https://opensource.org/license/mit",
-      "summary": "Permissive. Commercial use allowed; retain the copyright notice.",
-      "conditions": {}
-    },
-    "bsd-3-clause": {
-      "name": "BSD 3-Clause License",
-      "spdx": "BSD-3-Clause",
-      "commercial_use": "yes",
-      "fee": "none",
-      "redistribution": "yes",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "No use of the author's name to endorse derived products."
-      ],
-      "url": "https://opensource.org/license/bsd-3-clause",
-      "summary": "Permissive. Commercial use allowed with attribution and no endorsement claims.",
-      "conditions": {}
-    },
-    "cc-by-4.0": {
-      "name": "Creative Commons Attribution 4.0",
-      "spdx": "CC-BY-4.0",
-      "commercial_use": "yes",
-      "fee": "none",
-      "redistribution": "yes",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Credit must be given to the creator."
-      ],
-      "url": "https://creativecommons.org/licenses/by/4.0/",
-      "summary": "Commercial use allowed provided you attribute the creator.",
-      "conditions": {}
-    },
-    "cc-by-nc-4.0": {
-      "name": "Creative Commons Attribution-NonCommercial 4.0",
-      "spdx": "CC-BY-NC-4.0",
-      "commercial_use": "no",
-      "fee": "unknown",
-      "redistribution": "conditional",
-      "output_ownership": "unclear",
-      "attribution_required": true,
-      "restrictions": [
-        "Non-commercial use only.",
-        "Commercial use requires a separate agreement with the rights holder."
-      ],
-      "url": "https://creativecommons.org/licenses/by-nc/4.0/",
-      "summary": "Blocks commercial use. Client work, advertising and paid delivery are all commercial.",
-      "conditions": {
-        "outputs_commercial": "no"
-      }
-    },
-    "cc-by-nc-sa-4.0": {
-      "name": "Creative Commons Attribution-NonCommercial-ShareAlike 4.0",
-      "spdx": "CC-BY-NC-SA-4.0",
-      "commercial_use": "no",
-      "fee": "unknown",
-      "redistribution": "conditional",
-      "output_ownership": "unclear",
-      "attribution_required": true,
-      "restrictions": [
-        "Non-commercial use only.",
-        "Derivatives must be shared under the same licence."
-      ],
-      "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
-      "summary": "Blocks commercial use, and any derivative model must carry the same terms.",
-      "conditions": {
-        "outputs_commercial": "no",
-        "copyleft_reach": "model-only"
-      }
-    },
-    "creativeml-openrail-m": {
-      "name": "CreativeML Open RAIL-M",
-      "spdx": "creativeml-openrail-m",
-      "commercial_use": "yes",
-      "fee": "none",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": false,
-      "restrictions": [
-        "Use-based restrictions in Attachment A travel with the model and must be passed on to anyone you give it to.",
-        "Prohibited uses include generating content that harms minors, disinformation, and unlawful discrimination."
-      ],
-      "url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license",
-      "summary": "Commercial use and commercial output are permitted; the use restrictions must be reproduced downstream.",
-      "conditions": {
-        "prohibited_uses": [
-          "a use-restriction schedule travels with the weights and must be passed on"
-        ]
-      }
-    },
-    "creativeml-openrail-plus-plus-m": {
-      "name": "CreativeML Open RAIL++-M",
-      "spdx": "openrail++",
-      "commercial_use": "yes",
-      "fee": "none",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": false,
-      "restrictions": [
-        "Use-based restrictions travel with the model and any derivative.",
-        "Same prohibited-use list as Open RAIL-M."
-      ],
-      "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md",
-      "summary": "Commercial use permitted. Outputs are yours; the use restrictions must be passed downstream.",
-      "conditions": {
-        "prohibited_uses": [
-          "a use-restriction schedule travels with the weights and must be passed on"
-        ]
-      }
-    },
-    "stability-community": {
-      "name": "Stability AI Community License",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "revenue-threshold",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Free for commercial use only while the entity's total annual revenue is under USD $1,000,000.",
-        "Above that threshold an Enterprise Licence must be negotiated with Stability AI.",
-        "Revenue is measured across the whole entity, not just AI-derived revenue.",
-        "Attribution: derivative works must state 'Powered by Stability AI'."
-      ],
-      "url": "https://stability.ai/community-license-agreement",
-      "summary": "Free commercially below USD $1M annual company revenue; a paid enterprise licence above it. The threshold is measured on total company revenue, not AI revenue.",
-      "conditions": {
-        "revenue_cap_usd": 1000000,
-        "revenue_basis": "total annual entity revenue, not AI-derived revenue",
-        "separate_licence_holder": "Stability AI",
-        "attribution_visible": "Powered by Stability AI"
-      }
-    },
-    "stability-nc-research": {
-      "name": "Stability AI Non-Commercial Research Community License",
-      "spdx": "",
-      "commercial_use": "no",
-      "fee": "paid",
-      "redistribution": "conditional",
-      "output_ownership": "unclear",
-      "attribution_required": true,
-      "restrictions": [
-        "Research and non-commercial use only; commercial use needs a separate Stability licence."
-      ],
-      "url": "https://stability.ai/license",
-      "summary": "Research only. Any paid delivery needs a commercial licence from Stability.",
-      "conditions": {
-        "outputs_commercial": "no",
-        "commercial_licence_available": true,
-        "separate_licence_holder": "Stability AI"
-      }
-    },
-    "flux1-dev-nc": {
-      "name": "FLUX.1 [dev] Non-Commercial License",
-      "spdx": "",
-      "commercial_use": "no",
-      "fee": "paid",
-      "redistribution": "conditional",
-      "output_ownership": "restricted",
-      "attribution_required": true,
-      "restrictions": [
-        "Non-commercial and non-production use only.",
-        "Outputs may not be used for any commercial purpose without a licence from Black Forest Labs.",
-        "Commercial licences are granted at BFL's sole discretion and may carry a fee, royalty or revenue share.",
-        "Commercial deployments are required to report usage through the BFL API.",
-        "Content filtering measures are required for all use."
-      ],
-      "url": "https://bfl.ai/legal/non-commercial-license-terms",
-      "summary": "Non-commercial for the weights. Its clauses on outputs contradict each other, so outputs are treated as non-commercial until the licence holder confirms otherwise.",
-      "conditions": {
-        "outputs_commercial": "no",
-        "commercial_licence_available": true,
-        "separate_licence_holder": "Black Forest Labs"
-      },
-      "conflicts": [
-        {
-          "summary": "The licence text both permits commercial use of outputs and restricts commercial or production use of anything the model produces.",
-          "clauses": [
-            "Outputs clause: Output may be used for any purpose, including commercial purposes, except training a competing model.",
-            "Restrictions clause: the model, its derivatives or any data it produces may not be used for commercial or production purposes."
-          ],
-          "reading": "Treated here as non-commercial for outputs (the stricter reading) until Black Forest Labs or counsel confirms otherwise.",
-          "source": "https://scancode-licensedb.aboutcode.org/flux-1-nc.html",
-          "checked": "2026-10-15"
-        }
-      ]
-    },
-    "tencent-hunyuan-community": {
-      "name": "Tencent Hunyuan Community License",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "revenue-threshold",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Territory is worldwide EXCLUDING the European Union, the United Kingdom and South Korea - the licence is not granted for use in those jurisdictions.",
-        "Products with more than 100 million monthly active users require a separate licence from Tencent.",
-        "Derivative works must carry 'Built with Tencent Hunyuan' attribution."
-      ],
-      "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo/blob/main/LICENSE.txt",
-      "summary": "Commercial use allowed outside the EU, UK and South Korea. A UK or EU based facility is outside the granted territory.",
-      "conditions": {
-        "territory_excluded": [
-          "EU",
-          "GB",
-          "KR"
-        ],
-        "territory_note": "the licence grant excludes these territories outright",
-        "monthly_active_users_cap": 100000000,
-        "separate_licence_holder": "Tencent",
-        "no_competing_training": true
-      }
-    },
-    "ltx-community": {
-      "name": "LTX Video Community License",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "revenue-threshold",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Lightricks' community terms gate large-scale commercial use behind a separate agreement; check the revenue and user thresholds for the specific model version.",
-        "Attribution to Lightricks is required on derivatives."
-      ],
-      "url": "https://huggingface.co/Lightricks/LTX-Video/blob/main/License.txt",
-      "summary": "Community licence with thresholds rather than a plain open licence - read the version-specific terms before delivery.",
-      "conditions": {
-        "revenue_cap_usd": 10000000,
-        "revenue_basis": "annual entity revenue",
-        "separate_licence_holder": "Lightricks"
-      }
-    },
-    "insightface-nc": {
-      "name": "InsightFace pretrained model terms (non-commercial)",
-      "spdx": "",
-      "commercial_use": "no",
-      "fee": "paid",
-      "redistribution": "no",
-      "output_ownership": "unclear",
-      "attribution_required": true,
-      "restrictions": [
-        "The InsightFace code is MIT, but the pretrained face-analysis models (antelopev2, buffalo_l, buffalo_s) are for non-commercial research only.",
-        "Commercial use requires a licence from InsightFace.",
-        "Anything trained on InsightFace embeddings inherits the non-commercial restriction."
-      ],
-      "url": "https://github.com/deepinsight/insightface",
-      "summary": "Non-commercial, and the restriction is inherited by any face model built on these embeddings - which is why it turns up in face-swap and identity workflows that look permissive from the outside.",
-      "conditions": {
-        "outputs_commercial": "no",
-        "commercial_licence_available": true,
-        "separate_licence_holder": "InsightFace"
-      }
-    },
-    "s-lab-1.0": {
-      "name": "S-Lab License 1.0 (NTU)",
-      "spdx": "",
-      "commercial_use": "no",
-      "fee": "unknown",
-      "redistribution": "no",
-      "output_ownership": "unclear",
-      "attribution_required": true,
-      "restrictions": [
-        "Research and non-commercial use only.",
-        "Redistribution and use for commercial purposes is not permitted without explicit authorisation."
-      ],
-      "url": "https://github.com/sczhou/CodeFormer/blob/master/LICENSE",
-      "summary": "Non-commercial. Frequently missed because the model ships inside face-restoration node packs.",
-      "conditions": {
-        "outputs_commercial": "no"
-      }
-    },
-    "bria-nc": {
-      "name": "BRIA non-commercial terms (CC BY-NC 4.0 + commercial agreement)",
-      "spdx": "CC-BY-NC-4.0",
-      "commercial_use": "no",
-      "fee": "paid",
-      "redistribution": "conditional",
-      "output_ownership": "unclear",
-      "attribution_required": true,
-      "restrictions": [
-        "Released for non-commercial use; commercial use requires a paid agreement with BRIA.",
-        "A self-hosted commercial licence is sold separately."
-      ],
-      "url": "https://huggingface.co/briaai/RMBG-2.0",
-      "summary": "Background-removal weights released for non-commercial use; commercial use is sold separately by BRIA.",
-      "conditions": {
-        "outputs_commercial": "no",
-        "commercial_licence_available": true,
-        "separate_licence_holder": "Bria"
-      }
-    },
-    "llama-community": {
-      "name": "Llama Community License",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "none",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Products with more than 700 million monthly active users require a separate licence from Meta.",
-        "Derivative model names must carry the 'Llama' prefix and display 'Built with Llama'.",
-        "Acceptable Use Policy applies."
-      ],
-      "url": "https://www.llama.com/llama3_1/license/",
-      "summary": "Commercial use allowed for all but the largest platforms, with naming and attribution obligations.",
-      "conditions": {
-        "monthly_active_users_cap": 700000000,
-        "separate_licence_holder": "Meta",
-        "attribution_visible": "Built with Llama",
-        "prohibited_uses": [
-          "an acceptable-use policy is incorporated by reference"
-        ]
-      }
-    },
-    "qwen-research": {
-      "name": "Qwen research/non-commercial terms",
-      "spdx": "",
-      "commercial_use": "no",
-      "fee": "paid",
-      "redistribution": "conditional",
-      "output_ownership": "unclear",
-      "attribution_required": true,
-      "restrictions": [
-        "Some Qwen variants ship under research-only terms; confirm the exact variant."
-      ],
-      "url": "https://huggingface.co/Qwen",
-      "summary": "Certain Qwen releases are research-only while others are Apache 2.0 - the variant matters.",
-      "conditions": {
-        "outputs_commercial": "no"
-      }
-    },
-    "agpl-3.0-ultralytics": {
-      "name": "AGPL-3.0 (Ultralytics dual licence)",
-      "spdx": "AGPL-3.0-only",
-      "commercial_use": "conditional",
-      "fee": "paid",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "AGPL-3.0 requires the complete source of any product that includes the model - your integration code, scripts and configuration - to be released under AGPL-3.0.",
-        "Ultralytics state that internal company use inside an automated workflow also requires either an Enterprise Licence or open-sourcing the project.",
-        "The network clause means exposing it as a service counts as distribution.",
-        "An Enterprise Licence is sold to remove these obligations."
-      ],
-      "url": "https://www.ultralytics.com/license",
-      "summary": "Copyleft that can reach the code importing it. Ultralytics sell an Enterprise Licence that removes the obligation.",
-      "conditions": {
-        "copyleft_reach": "network",
-        "copyleft_note": "the complete source of anything that includes the model, including integration code, must be released under AGPL-3.0",
-        "commercial_licence_available": true,
-        "separate_licence_holder": "Ultralytics",
-        "vendor_position_internal_use": "Ultralytics state that internal production use also requires an Enterprise Licence"
-      }
-    },
-    "proprietary-api": {
-      "name": "Vendor API terms of service",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "paid",
-      "redistribution": "no",
-      "output_ownership": "varies",
-      "attribution_required": false,
-      "restrictions": [
-        "Governed by the vendor's terms of service, which can change without notice.",
-        "Per-call billing; costs scale with output volume and retries.",
-        "Content is transmitted to a third party - check this against client confidentiality and NDA terms.",
-        "Output ownership and indemnity vary widely between vendors."
-      ],
-      "url": "",
-      "summary": "A hosted model. Commercial rights, cost and confidentiality are set by the vendor contract, not by an open licence.",
-      "conditions": {
-        "hosted": true,
-        "data_leaves_site": true,
-        "metered": true
-      }
-    },
-    "unknown": {
-      "name": "Unknown",
-      "spdx": "",
-      "commercial_use": "unknown",
-      "fee": "unknown",
-      "redistribution": "unknown",
-      "output_ownership": "unknown",
-      "attribution_required": null,
-      "restrictions": [],
-      "url": "",
-      "summary": "No licence could be determined. Treat as unclearable until someone confirms the source.",
-      "conditions": {}
-    },
-    "faipl-1.0-sd": {
-      "name": "Fair AI Public License 1.0-SD",
-      "spdx": "fair-ai-public-1.0-sd",
-      "commercial_use": "yes",
-      "fee": "none",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "The licence does not restrict commercial use of the generated images.",
-        "It does restrict the model: modifications and derivative models must be released under this same licence, with the changes shared.",
-        "A derivative made accessible over a network must offer a way to obtain its source, in the manner of AGPL - so a fine-tune served from a studio's own inference endpoint carries a publication obligation.",
-        "Individual models released under FAIPL frequently bolt on their own extra restrictions (commonly a ban on monetised hosted inference), which travel to merges and derivatives. Read the specific model card as well as the licence."
-      ],
-      "url": "https://freedevproject.org/faipl-1.0-sd/",
-      "summary": "Outputs are unrestricted. The model itself is copyleft: derivatives must be published under the same licence, AGPL-style.",
-      "conditions": {}
-    },
-    "playground-v2-community": {
-      "name": "Playground v2 Community License",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "none",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Community licence with use-based conditions; read the model card before commercial delivery."
-      ],
-      "url": "https://huggingface.co/playgroundai/playground-v2-1024px-aesthetic/blob/main/LICENSE.md",
-      "summary": "Commercial use permitted under community terms rather than an open licence.",
-      "conditions": {
-        "no_competing_training": true,
-        "attribution_visible": "Playground v2"
-      }
-    },
-    "kolors-license": {
-      "name": "Kolors Model License",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "none",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Kwai-Kolors' own model licence; commercial terms and any user thresholds are set there, not by an OSI licence."
-      ],
-      "url": "https://raw.githubusercontent.com/Kwai-Kolors/Kolors/master/MODEL_LICENSE",
-      "summary": "Vendor model licence - check the thresholds before commercial delivery.",
-      "conditions": {
-        "territory_excluded": [
-          "EU",
-          "GB",
-          "KR"
-        ],
-        "territory_note": "the grant excludes these territories",
-        "monthly_active_users_cap": 300000000,
-        "separate_licence_holder": "Kuaishou"
-      }
-    },
-    "cogvideox-license": {
-      "name": "CogVideoX License",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "none",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "The CogVideoX-2B weights are Apache 2.0; the 5B weights ship under this separate licence. Which variant is loaded decides the answer."
-      ],
-      "url": "https://huggingface.co/THUDM/CogVideoX-5b/blob/main/LICENSE",
-      "summary": "Applies to the 5B weights only - the 2B variant is Apache 2.0.",
-      "conditions": {
-        "no_competing_training": true,
-        "prohibited_uses": [
-          "an acceptable-use schedule is incorporated by reference"
-        ]
-      }
-    },
-    "minimax-community": {
-      "name": "MiniMax Community License",
-      "spdx": "",
-      "commercial_use": "conditional",
-      "fee": "revenue-threshold",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Territory: the open-weights release excludes local deployment in the United States, the European Union, the United Kingdom and South Korea.",
-        "Free commercial use is limited to organisations under roughly USD $20M annual revenue; above that a separate agreement with MiniMax is required.",
-        "Commercial products must display 'MiniMax H3' prominently in the user interface.",
-        "Outputs may not be used to train competing models, worldwide."
-      ],
-      "url": "https://huggingface.co/MiniMaxAI",
-      "summary": "Open weights with a territory carve-out, a revenue cap and a visible-attribution requirement. Where the facility is based matters as much as what it earns.",
-      "conditions": {
-        "territory_excluded": [
-          "US",
-          "EU",
-          "GB",
-          "KR"
-        ],
-        "territory_note": "the open-weights release excludes local deployment in these territories",
-        "revenue_cap_usd": 20000000,
-        "revenue_basis": "annual organisation revenue",
-        "separate_licence_holder": "MiniMax",
-        "attribution_visible": "MiniMax H3",
-        "no_competing_training": true
-      }
-    },
-    "meta-sam": {
-      "name": "Meta SAM License",
-      "spdx": "",
-      "commercial_use": "yes",
-      "fee": "none",
-      "redistribution": "conditional",
-      "output_ownership": "user",
-      "attribution_required": true,
-      "restrictions": [
-        "Research and commercial use are both permitted, including modification and integration.",
-        "Prohibited-use terms cover military, ITAR-controlled, nuclear and weapons applications.",
-        "More restrictive than a standard permissive licence; read the terms on the weights download page."
-      ],
-      "url": "https://github.com/facebookresearch/sam3/blob/main/LICENSE",
-      "summary": "Meta's own licence rather than an OSI one. Commercial use is allowed, with a prohibited-use list attached.",
-      "conditions": {
-        "prohibited_uses": [
-          "military",
-          "ITAR-controlled",
-          "nuclear",
-          "weapons"
-        ]
-      }
-    }
+ "_comment": [
+  "Licence knowledge base for comfyaudit.",
+  "",
+  "This file is data, not law. Every entry carries a `source` you can open and",
+  "a `confidence` saying how sure the mapping from filename to licence is.",
+  "Licences change - Stability relicensed SD3 mid-flight, BFL revised the FLUX",
+  "dev terms to v2.0 - so treat `checked` as a best-before date and re-verify",
+  "anything that gates a delivery.",
+  "",
+  "Studios are expected to extend this: add entries to `models` for your own",
+  "internally trained weights, or override ours, and pass the file with",
+  "  comfyaudit audit wf.json --licences my-licences.json"
+ ],
+ "version": "2026-10-16",
+ "checked": "2026-10-16",
+ "licences": {
+  "apache-2.0": {
+   "name": "Apache License 2.0",
+   "spdx": "Apache-2.0",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "yes",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [],
+   "url": "https://www.apache.org/licenses/LICENSE-2.0",
+   "summary": "Permissive. Commercial use, modification and redistribution allowed; keep the notice file and state changes.",
+   "conditions": {}
   },
-  "models": [
+  "mit": {
+   "name": "MIT License",
+   "spdx": "MIT",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "yes",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [],
+   "url": "https://opensource.org/license/mit",
+   "summary": "Permissive. Commercial use allowed; retain the copyright notice.",
+   "conditions": {}
+  },
+  "bsd-3-clause": {
+   "name": "BSD 3-Clause License",
+   "spdx": "BSD-3-Clause",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "yes",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "No use of the author's name to endorse derived products."
+   ],
+   "url": "https://opensource.org/license/bsd-3-clause",
+   "summary": "Permissive. Commercial use allowed with attribution and no endorsement claims.",
+   "conditions": {}
+  },
+  "cc-by-4.0": {
+   "name": "Creative Commons Attribution 4.0",
+   "spdx": "CC-BY-4.0",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "yes",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Credit must be given to the creator."
+   ],
+   "url": "https://creativecommons.org/licenses/by/4.0/",
+   "summary": "Commercial use allowed provided you attribute the creator.",
+   "conditions": {}
+  },
+  "cc-by-nc-4.0": {
+   "name": "Creative Commons Attribution-NonCommercial 4.0",
+   "spdx": "CC-BY-NC-4.0",
+   "commercial_use": "no",
+   "fee": "unknown",
+   "redistribution": "conditional",
+   "output_ownership": "unclear",
+   "attribution_required": true,
+   "restrictions": [
+    "Non-commercial use only.",
+    "Commercial use requires a separate agreement with the rights holder."
+   ],
+   "url": "https://creativecommons.org/licenses/by-nc/4.0/",
+   "summary": "Blocks commercial use. Client work, advertising and paid delivery are all commercial.",
+   "conditions": {
+    "outputs_commercial": "no"
+   }
+  },
+  "cc-by-nc-sa-4.0": {
+   "name": "Creative Commons Attribution-NonCommercial-ShareAlike 4.0",
+   "spdx": "CC-BY-NC-SA-4.0",
+   "commercial_use": "no",
+   "fee": "unknown",
+   "redistribution": "conditional",
+   "output_ownership": "unclear",
+   "attribution_required": true,
+   "restrictions": [
+    "Non-commercial use only.",
+    "Derivatives must be shared under the same licence."
+   ],
+   "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+   "summary": "Blocks commercial use, and any derivative model must carry the same terms.",
+   "conditions": {
+    "outputs_commercial": "no",
+    "copyleft_reach": "model-only"
+   }
+  },
+  "creativeml-openrail-m": {
+   "name": "CreativeML Open RAIL-M",
+   "spdx": "creativeml-openrail-m",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": false,
+   "restrictions": [
+    "Use-based restrictions in Attachment A travel with the model and must be passed on to anyone you give it to.",
+    "Prohibited uses include generating content that harms minors, disinformation, and unlawful discrimination."
+   ],
+   "url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license",
+   "summary": "Commercial use and commercial output are permitted; the use restrictions must be reproduced downstream.",
+   "conditions": {
+    "prohibited_uses": [
+     "a use-restriction schedule travels with the weights and must be passed on"
+    ]
+   }
+  },
+  "creativeml-openrail-plus-plus-m": {
+   "name": "CreativeML Open RAIL++-M",
+   "spdx": "openrail++",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": false,
+   "restrictions": [
+    "Use-based restrictions travel with the model and any derivative.",
+    "Same prohibited-use list as Open RAIL-M."
+   ],
+   "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md",
+   "summary": "Commercial use permitted. Outputs are yours; the use restrictions must be passed downstream.",
+   "conditions": {
+    "prohibited_uses": [
+     "a use-restriction schedule travels with the weights and must be passed on"
+    ]
+   }
+  },
+  "stability-community": {
+   "name": "Stability AI Community License",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "revenue-threshold",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Free for commercial use only while the entity's total annual revenue is under USD $1,000,000.",
+    "Above that threshold an Enterprise Licence must be negotiated with Stability AI.",
+    "Revenue is measured across the whole entity, not just AI-derived revenue.",
+    "Attribution: derivative works must state 'Powered by Stability AI'."
+   ],
+   "url": "https://stability.ai/community-license-agreement",
+   "summary": "Free commercially below USD $1M annual company revenue; a paid enterprise licence above it. The threshold is measured on total company revenue, not AI revenue.",
+   "conditions": {
+    "revenue_cap_usd": 1000000,
+    "revenue_basis": "total annual entity revenue, not AI-derived revenue",
+    "separate_licence_holder": "Stability AI",
+    "attribution_visible": "Powered by Stability AI"
+   }
+  },
+  "stability-nc-research": {
+   "name": "Stability AI Non-Commercial Research Community License",
+   "spdx": "",
+   "commercial_use": "no",
+   "fee": "paid",
+   "redistribution": "conditional",
+   "output_ownership": "unclear",
+   "attribution_required": true,
+   "restrictions": [
+    "Research and non-commercial use only; commercial use needs a separate Stability licence."
+   ],
+   "url": "https://stability.ai/license",
+   "summary": "Research only. Any paid delivery needs a commercial licence from Stability.",
+   "conditions": {
+    "outputs_commercial": "no",
+    "commercial_licence_available": true,
+    "separate_licence_holder": "Stability AI"
+   }
+  },
+  "flux1-dev-nc": {
+   "name": "FLUX.1 [dev] Non-Commercial License",
+   "spdx": "",
+   "commercial_use": "no",
+   "fee": "paid",
+   "redistribution": "conditional",
+   "output_ownership": "restricted",
+   "attribution_required": true,
+   "restrictions": [
+    "Non-commercial and non-production use only.",
+    "Outputs may not be used for any commercial purpose without a licence from Black Forest Labs.",
+    "Commercial licences are granted at BFL's sole discretion and may carry a fee, royalty or revenue share.",
+    "Commercial deployments are required to report usage through the BFL API.",
+    "Content filtering measures are required for all use."
+   ],
+   "url": "https://bfl.ai/legal/non-commercial-license-terms",
+   "summary": "Non-commercial for the weights. Its clauses on outputs contradict each other, so outputs are treated as non-commercial until the licence holder confirms otherwise.",
+   "conditions": {
+    "outputs_commercial": "no",
+    "commercial_licence_available": true,
+    "separate_licence_holder": "Black Forest Labs"
+   },
+   "conflicts": [
     {
-      "id": "minimax-h3",
-      "family": "MiniMax H3 (Hailuo 3.0)",
-      "licence": "minimax-community",
-      "match": {
-        "filename": [
-          "minimax_h3",
-          "minimax-h3",
-          "hailuo",
-          "minimaxai"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/blog/ResterChed/minimax-h3-hailuo-3-0",
-      "notes": [
-        "Territory exclusions make this one to check against where the facility is based, not just what it earns."
-      ]
-    },
-    {
-      "id": "sam3",
-      "family": "Segment Anything 3",
-      "licence": "meta-sam",
-      "match": {
-        "filename": [
-          "sam3",
-          "sam_3",
-          "sam3.pt"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/facebookresearch/sam3/blob/main/LICENSE",
-      "notes": []
-    },
-    {
-      "id": "qwen-vl",
-      "family": "Qwen3-VL",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "qwen3vl",
-          "qwen3-vl",
-          "qwen2vl",
-          "qwen2-vl",
-          "qwen_vl"
-        ]
-      },
-      "confidence": "low",
-      "source": "https://huggingface.co/Qwen",
-      "notes": [
-        "Most Qwen vision-language releases are Apache 2.0, but the family is not uniform - confirm the exact variant."
-      ]
-    },
-    {
-      "id": "vitpose",
-      "family": "ViTPose",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "vitpose",
-          "vit-pose"
-        ]
-      },
-      "confidence": "low",
-      "source": "https://github.com/ViTAE-Transformer/ViTPose",
-      "notes": [
-        "The wholebody variants are trained on COCO-WholeBody, which carries its own dataset terms."
-      ]
-    },
-    {
-      "id": "flux1-schnell",
-      "family": "FLUX.1 [schnell]",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "flux1-schnell",
-          "flux1_schnell",
-          "flux-1-schnell",
-          "flux.1-schnell"
-        ],
-        "repo": [
-          "black-forest-labs/flux.1-schnell"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/black-forest-labs/FLUX.1-schnell",
-      "notes": [
-        "The only FLUX open-weights model that is commercially clear without a BFL agreement."
-      ]
-    },
-    {
-      "id": "flux1-krea-dev",
-      "family": "FLUX.1 Krea [dev]",
-      "licence": "flux1-dev-nc",
-      "match": {
-        "filename": [
-          "flux1-krea-dev",
-          "flux1_krea_dev",
-          "flux-krea"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/black-forest-labs/FLUX.1-Krea-dev",
-      "notes": [
-        "Ships under the FLUX.1 [dev] non-commercial terms."
-      ]
-    },
-    {
-      "id": "flux1-kontext-dev",
-      "family": "FLUX.1 Kontext [dev]",
-      "licence": "flux1-dev-nc",
-      "match": {
-        "filename": [
-          "flux1-kontext-dev",
-          "flux1_kontext",
-          "flux-kontext-dev",
-          "kontext-dev",
-          "flux1-dev-kontext",
-          "flux-1-dev-kontext"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://bfl.ai/blog/flux-1-kontext-dev",
-      "notes": [
-        "Image editing model under the FLUX.1 [dev] non-commercial licence."
-      ]
-    },
-    {
-      "id": "flux1-fill-dev",
-      "family": "FLUX.1 Fill [dev]",
-      "licence": "flux1-dev-nc",
-      "match": {
-        "filename": [
-          "flux1-fill-dev",
-          "flux1_fill",
-          "flux-fill-dev"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev",
-      "notes": [
-        "Inpainting variant; same non-commercial terms as FLUX.1 [dev]."
-      ]
-    },
-    {
-      "id": "flux1-dev",
-      "family": "FLUX.1 [dev]",
-      "licence": "flux1-dev-nc",
-      "match": {
-        "filename": [
-          "flux1-dev",
-          "flux1_dev",
-          "flux-1-dev",
-          "flux.1-dev",
-          "flux1dev"
-        ],
-        "repo": [
-          "black-forest-labs/flux.1-dev"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md",
-      "notes": [
-        "The most common licensing trap in modern ComfyUI workflows.",
-        "Fine-tunes and LoRAs built on FLUX.1 [dev] inherit the non-commercial restriction."
-      ]
-    },
-    {
-      "id": "flux-vae-ae",
-      "family": "FLUX autoencoder (ae.safetensors)",
-      "licence": "flux1-dev-nc",
-      "match": {
-        "filename_exact": [
-          "ae.safetensors",
-          "ae.sft"
-        ],
-        "filename": [
-          "flux-vae",
-          "flux-ae",
-          "flux1-ae"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/ae.safetensors",
-      "notes": [
-        "The FLUX autoencoder is distributed from the FLUX.1 [dev] repository and carries its terms.",
-        "The identical file is also mirrored under FLUX.1 [schnell] (Apache 2.0); which terms apply depends on where it was obtained."
-      ],
-      "provenance_overrides": [
-        {
-          "url_contains": "flux.1-schnell",
-          "licence": "apache-2.0",
-          "note": "This copy resolves to the FLUX.1 [schnell] repository, which is Apache 2.0, so the dev restriction does not apply to it."
-        }
-      ]
-    },
-    {
-      "id": "sdxl-base",
-      "family": "Stable Diffusion XL 1.0",
-      "licence": "creativeml-openrail-plus-plus-m",
-      "match": {
-        "filename": [
-          "sd_xl_base",
-          "sdxl_base",
-          "sd_xl_refiner",
-          "sdxl-base",
-          "sd_xl_1.0"
-        ],
-        "repo": [
-          "stabilityai/stable-diffusion-xl-base-1.0",
-          "stabilityai/stable-diffusion-xl-refiner-1.0"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0",
-      "notes": [
-        "Commercially usable. Predates the Community License, so no revenue threshold applies."
-      ]
-    },
-    {
-      "id": "sdxl-turbo",
-      "family": "SDXL Turbo",
-      "licence": "stability-nc-research",
-      "match": {
-        "filename": [
-          "sd_xl_turbo",
-          "sdxl_turbo",
-          "sdxl-turbo"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/stabilityai/sdxl-turbo",
-      "notes": [
-        "Research-only release; not for commercial delivery."
-      ]
-    },
-    {
-      "id": "sd15",
-      "family": "Stable Diffusion 1.5",
-      "licence": "creativeml-openrail-m",
-      "match": {
-        "filename": [
-          "v1-5-pruned",
-          "sd_v1-5",
-          "sd-v1-5",
-          "sd15",
-          "v1-5-pruned-emaonly"
-        ],
-        "repo": [
-          "runwayml/stable-diffusion-v1-5",
-          "stable-diffusion-v1-5/stable-diffusion-v1-5"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5",
-      "notes": [
-        "Commercially usable under Open RAIL-M. Note the ongoing training-data litigation around SD 1.x when assessing indemnity."
-      ]
-    },
-    {
-      "id": "sd21",
-      "family": "Stable Diffusion 2.1",
-      "licence": "creativeml-openrail-plus-plus-m",
-      "match": {
-        "filename": [
-          "v2-1_768",
-          "v2-1_512",
-          "sd21",
-          "sd_2-1"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/stabilityai/stable-diffusion-2-1",
-      "notes": []
-    },
-    {
-      "id": "sd3",
-      "family": "Stable Diffusion 3 Medium",
-      "licence": "stability-community",
-      "match": {
-        "filename": [
-          "sd3_medium",
-          "sd3-medium",
-          "sd3_medium_incl_clips"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/stabilityai/stable-diffusion-3-medium",
-      "notes": [
-        "Relicensed to the Community License after the original restrictive launch terms."
-      ]
-    },
-    {
-      "id": "sd35",
-      "family": "Stable Diffusion 3.5",
-      "licence": "stability-community",
-      "match": {
-        "filename": [
-          "sd3.5",
-          "sd3_5",
-          "sd35_large",
-          "sd35_medium",
-          "stable-diffusion-3.5"
-        ],
-        "repo": [
-          "stabilityai/stable-diffusion-3.5-large",
-          "stabilityai/stable-diffusion-3.5-medium"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/stabilityai/stable-diffusion-3.5-large/blob/main/LICENSE.md",
-      "notes": [
-        "Free commercially only under $1M annual company revenue; most production facilities exceed that."
-      ]
-    },
-    {
-      "id": "svd",
-      "family": "Stable Video Diffusion",
-      "licence": "stability-community",
-      "match": {
-        "filename": [
-          "svd.safetensors",
-          "svd_xt",
-          "stable_video_diffusion",
-          "svd_image_decoder"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt",
-      "notes": [
-        "Originally research-only, later moved to the Community License - verify which terms your copy shipped under."
-      ]
-    },
-    {
-      "id": "sd-vae-ft",
-      "family": "Stability SD VAE (ft-mse / ft-ema)",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "vae-ft-mse",
-          "vae-ft-ema",
-          "sdxl_vae",
-          "sdxl-vae"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/stabilityai/sd-vae-ft-mse",
-      "notes": [
-        "The SDXL VAE follows the SDXL base licence when obtained from that repository."
-      ]
-    },
-    {
-      "id": "wan",
-      "family": "Wan (2.1 / 2.2)",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "wan2.1",
-          "wan2_1",
-          "wan2.2",
-          "wan2_2",
-          "wan_2.1",
-          "wan_2.2",
-          "wanvideo",
-          "wan21",
-          "wan22"
-        ],
-        "repo": [
-          "wan-ai/wan2.1",
-          "wan-ai/wan2.2"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://github.com/Wan-Video/Wan2.2",
-      "notes": [
-        "Apache 2.0 - one of the few video models that is commercially clean out of the box."
-      ]
-    },
-    {
-      "id": "umt5",
-      "family": "UMT5 text encoder",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "umt5",
-          "umt5-xxl",
-          "umt5_xxl"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/google/umt5-xxl",
-      "notes": [
-        "Google's UMT5 is Apache 2.0; the quantised community repacks used in ComfyUI inherit those terms."
-      ]
-    },
-    {
-      "id": "hunyuan-video",
-      "family": "HunyuanVideo",
-      "licence": "tencent-hunyuan-community",
-      "match": {
-        "filename": [
-          "hunyuan_video",
-          "hunyuanvideo",
-          "hunyuan-video",
-          "hyvideo"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://github.com/Tencent-Hunyuan/HunyuanVideo/blob/main/LICENSE.txt",
-      "notes": [
-        "Territory excludes the EU, UK and South Korea - a blocker for facilities based there."
-      ]
-    },
-    {
-      "id": "hunyuan-3d",
-      "family": "Hunyuan3D",
-      "licence": "tencent-hunyuan-community",
-      "match": {
-        "filename": [
-          "hunyuan3d",
-          "hunyuan_3d"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/Tencent-Hunyuan/Hunyuan3D-2",
-      "notes": [
-        "Same territorial exclusions as other Tencent Hunyuan releases."
-      ]
-    },
-    {
-      "id": "ltx-video",
-      "family": "LTX-Video",
-      "licence": "ltx-community",
-      "match": {
-        "filename": [
-          "ltx-video",
-          "ltxv",
-          "ltx_video",
-          "ltx-2",
-          "ltx2"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/Lightricks/LTX-Video",
-      "notes": [
-        "Community licence with thresholds; confirm the terms for the exact version in use."
-      ]
-    },
-    {
-      "id": "mochi",
-      "family": "Mochi 1",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "mochi",
-          "mochi_preview"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/genmo/mochi-1-preview",
-      "notes": []
-    },
-    {
-      "id": "cogvideox",
-      "family": "CogVideoX",
-      "licence": "unknown",
-      "match": {
-        "filename": [
-          "cogvideox",
-          "cogvideo"
-        ]
-      },
-      "confidence": "low",
-      "source": "https://huggingface.co/THUDM/CogVideoX-5b",
-      "notes": [
-        "CogVideoX-2B is Apache 2.0 but the 5B weights ship under a separate CogVideoX licence.",
-        "Check which variant is loaded before assuming commercial rights."
-      ],
-      "provenance_overrides": [
-        {
-          "url_contains": "cogvideox-2b",
-          "licence": "apache-2.0",
-          "note": "The 2B variant is Apache 2.0."
-        }
-      ]
-    },
-    {
-      "id": "qwen-image",
-      "family": "Qwen-Image",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "qwen_image",
-          "qwen-image",
-          "qwen_image_edit"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://huggingface.co/Qwen/Qwen-Image",
-      "notes": [
-        "Apache 2.0. Other Qwen model families are not all licensed the same way."
-      ]
-    },
-    {
-      "id": "t5xxl",
-      "family": "T5 / T5-XXL text encoder",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "t5xxl",
-          "t5-xxl",
-          "t5_xxl",
-          "google-t5",
-          "t5v11"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/google/t5-v1_1-xxl",
-      "notes": []
-    },
-    {
-      "id": "clip-l",
-      "family": "OpenAI CLIP ViT-L/14",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "clip_l",
-          "clip-l",
-          "clip_vit_l",
-          "vit-l-14",
-          "clip-vit-large"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/openai/clip-vit-large-patch14",
-      "notes": []
-    },
-    {
-      "id": "clip-g-openclip",
-      "family": "OpenCLIP ViT-bigG / ViT-H",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "clip_g",
-          "clip-g",
-          "bigg",
-          "vit-h-14",
-          "clip_vision_h",
-          "open_clip"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/mlfoundations/open_clip",
-      "notes": [
-        "OpenCLIP code and weights are MIT; the LAION training data has its own provenance questions."
-      ]
-    },
-    {
-      "id": "controlnet-lllyasviel",
-      "family": "ControlNet (lllyasviel)",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "control_v11",
-          "control_sd15",
-          "control-lora",
-          "controlnet-canny",
-          "controlnet_depth",
-          "t2i-adapter"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/lllyasviel/ControlNet",
-      "notes": [
-        "The original ControlNet models are Apache 2.0.",
-        "Stability's Control-LoRA releases are a separate, more restrictive licence - check which family you have."
-      ]
-    },
-    {
-      "id": "ip-adapter",
-      "family": "IP-Adapter",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "ip-adapter",
-          "ip_adapter",
-          "ipadapter"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/h94/IP-Adapter",
-      "notes": [
-        "IP-Adapter itself is Apache 2.0.",
-        "The FaceID variants depend on InsightFace embeddings and are therefore non-commercial in practice."
-      ]
-    },
-    {
-      "id": "ip-adapter-faceid",
-      "family": "IP-Adapter FaceID",
-      "licence": "insightface-nc",
-      "match": {
-        "filename": [
-          "ip-adapter-faceid",
-          "ip_adapter_faceid",
-          "ipadapter-faceid",
-          "faceid-plus",
-          "faceid_plusv2"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/h94/IP-Adapter-FaceID",
-      "notes": [
-        "Explicitly released for non-commercial research use because of its InsightFace dependency."
-      ]
-    },
-    {
-      "id": "instantid",
-      "family": "InstantID",
-      "licence": "insightface-nc",
-      "match": {
-        "filename": [
-          "instantid",
-          "instant-id",
-          "ip-adapter_instant_id"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/InstantX/InstantID",
-      "notes": [
-        "The repo is labelled Apache 2.0 but requires InsightFace antelopev2, which is non-commercial. The effective licence is non-commercial."
-      ]
-    },
-    {
-      "id": "insightface-models",
-      "family": "InsightFace face analysis (antelopev2 / buffalo)",
-      "licence": "insightface-nc",
-      "match": {
-        "filename": [
-          "antelopev2",
-          "buffalo_l",
-          "buffalo_s",
-          "buffalo_m",
-          "glintr100",
-          "scrfd_10g",
-          "w600k_r50",
-          "det_10g",
-          "2d106det",
-          "genderage"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://github.com/deepinsight/insightface",
-      "notes": [
-        "Non-commercial research only. Contact InsightFace for a commercial licence."
-      ]
-    },
-    {
-      "id": "inswapper",
-      "family": "inswapper (face swap)",
-      "licence": "insightface-nc",
-      "match": {
-        "filename": [
-          "inswapper_128",
-          "inswapper"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://github.com/deepinsight/insightface/issues/2417",
-      "notes": [
-        "InsightFace withdrew public distribution of the inswapper weights; copies in circulation are unlicensed for commercial use.",
-        "Also carries obvious likeness and consent exposure in a professional context."
-      ]
-    },
-    {
-      "id": "codeformer",
-      "family": "CodeFormer",
-      "licence": "s-lab-1.0",
-      "match": {
-        "filename": [
-          "codeformer"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://github.com/sczhou/CodeFormer/blob/master/LICENSE",
-      "notes": [
-        "Bundled inside several popular face-restoration node packs, so it often arrives unnoticed."
-      ]
-    },
-    {
-      "id": "gfpgan",
-      "family": "GFPGAN",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "gfpgan",
-          "gfpganv1"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/TencentARC/GFPGAN",
-      "notes": [
-        "Apache 2.0, but the architecture borrows from StyleGAN2 whose original NVIDIA source has its own non-commercial terms - worth a legal read for broadcast delivery."
-      ]
-    },
-    {
-      "id": "real-esrgan",
-      "family": "Real-ESRGAN",
-      "licence": "bsd-3-clause",
-      "match": {
-        "filename": [
-          "realesrgan",
-          "real-esrgan",
-          "realesrnet"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://github.com/xinntao/Real-ESRGAN",
-      "notes": []
-    },
-    {
-      "id": "kim2091-upscalers",
-      "family": "Community ESRGAN upscalers (4x-UltraSharp and similar)",
-      "licence": "cc-by-nc-sa-4.0",
-      "match": {
-        "filename": [
-          "4x-ultrasharp",
-          "4x_ultrasharp",
-          "4x-ultramix",
-          "4x_nmkd",
-          "4x-animesharp"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://openmodeldb.info/models/4x-UltraSharp",
-      "notes": [
-        "Many of the most popular community upscalers are CC BY-NC-SA, which blocks commercial delivery.",
-        "Check the model's OpenModelDB entry - licences differ per author and are frequently unstated."
-      ]
-    },
-    {
-      "id": "sam",
-      "family": "Segment Anything (SAM / SAM 2)",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "sam_vit",
-          "sam2_hiera",
-          "sam2.1_hiera",
-          "mobile_sam",
-          "sam_hq"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://github.com/facebookresearch/segment-anything",
-      "notes": [
-        "SAM and SAM 2 model weights are Apache 2.0."
-      ]
-    },
-    {
-      "id": "groundingdino",
-      "family": "GroundingDINO",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "groundingdino",
-          "grounding_dino",
-          "groundingdino_swint"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/IDEA-Research/GroundingDINO",
-      "notes": []
-    },
-    {
-      "id": "yolo-ultralytics",
-      "family": "Ultralytics YOLO detectors",
-      "licence": "agpl-3.0-ultralytics",
-      "match": {
-        "filename": [
-          "yolov8",
-          "yolov10",
-          "yolov11",
-          "yolo_nas",
-          "face_yolov8",
-          "hand_yolov8",
-          "person_yolov8"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://www.ultralytics.com/license",
-      "notes": [
-        "Reaches the ADetailer-style face/hand/person detectors that ship with many custom node packs.",
-        "Ultralytics' published position is that internal production use needs an Enterprise Licence."
-      ]
-    },
-    {
-      "id": "rmbg",
-      "family": "BRIA RMBG (1.4 / 2.0)",
-      "licence": "bria-nc",
-      "match": {
-        "filename": [
-          "rmbg-1.4",
-          "rmbg_1.4",
-          "rmbg-2.0",
-          "rmbg2",
-          "briaai"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/briaai/RMBG-2.0",
-      "notes": [
-        "Common in matting workflows, where the separate commercial agreement is easy to miss."
-      ]
-    },
-    {
-      "id": "birefnet",
-      "family": "BiRefNet",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "birefnet"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/ZhengPeng7/BiRefNet",
-      "notes": [
-        "A commercially clean alternative to RMBG for background removal."
-      ]
-    },
-    {
-      "id": "depth-anything-v2",
-      "family": "Depth Anything V2",
-      "licence": "cc-by-nc-4.0",
-      "match": {
-        "filename": [
-          "depth_anything_v2_vitl",
-          "depth_anything_v2_vitb",
-          "depth-anything-v2-large",
-          "depth-anything-v2-base"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/DepthAnything/Depth-Anything-V2",
-      "notes": [
-        "The Base and Large checkpoints are CC BY-NC 4.0; only the Small checkpoint is Apache 2.0.",
-        "Depth passes delivered to a client are commercial use."
-      ]
-    },
-    {
-      "id": "depth-anything-v2-small",
-      "family": "Depth Anything V2 Small",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "depth_anything_v2_vits",
-          "depth-anything-v2-small"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/DepthAnything/Depth-Anything-V2",
-      "notes": [
-        "The Small variant is the commercially usable one in this family."
-      ]
-    },
-    {
-      "id": "midas",
-      "family": "MiDaS depth",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "midas",
-          "dpt_hybrid",
-          "dpt_beit",
-          "dpt_large"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/isl-org/MiDaS",
-      "notes": []
-    },
-    {
-      "id": "zoedepth",
-      "family": "ZoeDepth",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "zoedepth",
-          "zoe_depth"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/isl-org/ZoeDepth",
-      "notes": []
-    },
-    {
-      "id": "dwpose",
-      "family": "DWPose / RTMPose",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "dw-ll_ucoco",
-          "dw_ll_ucoco",
-          "rtmpose",
-          "yolox_l"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/IDEA-Research/DWPose",
-      "notes": [
-        "DWPose is Apache 2.0, but it is distributed alongside YOLOX detectors - confirm the detector's terms too."
-      ]
-    },
-    {
-      "id": "animatediff",
-      "family": "AnimateDiff motion modules",
-      "licence": "apache-2.0",
-      "match": {
-        "filename": [
-          "mm_sd_v15",
-          "mm_sdxl",
-          "animatediff",
-          "v3_sd15_mm",
-          "mm-stabilized"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/guoyww/AnimateDiff",
-      "notes": [
-        "Community-trained motion modules vary; only the original Guoyww releases are covered here."
-      ]
-    },
-    {
-      "id": "florence2",
-      "family": "Florence-2",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "florence-2",
-          "florence2"
-        ],
-        "repo": [
-          "microsoft/florence-2-base",
-          "microsoft/florence-2-large"
-        ]
-      },
-      "confidence": "high",
-      "source": "https://huggingface.co/microsoft/Florence-2-large",
-      "notes": []
-    },
-    {
-      "id": "llama",
-      "family": "Llama family",
-      "licence": "llama-community",
-      "match": {
-        "filename": [
-          "llama-3",
-          "llama3",
-          "llama-2",
-          "meta-llama"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://www.llama.com/llama3_1/license/",
-      "notes": []
-    },
-    {
-      "id": "taesd",
-      "family": "TAESD preview decoders",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "taesd",
-          "taesdxl",
-          "taef1",
-          "taesd3"
-        ]
-      },
-      "confidence": "medium",
-      "source": "https://github.com/madebyollin/taesd",
-      "notes": []
-    },
-    {
-      "id": "rife",
-      "family": "RIFE frame interpolation",
-      "licence": "mit",
-      "match": {
-        "filename": [
-          "rife4",
-          "rife_",
-          "flownet"
-        ]
-      },
-      "confidence": "low",
-      "source": "https://github.com/hzwer/Practical-RIFE",
-      "notes": [
-        "Practical-RIFE has had shifting terms around commercial use; verify before relying on it for delivery."
-      ]
+     "summary": "The licence text both permits commercial use of outputs and restricts commercial or production use of anything the model produces.",
+     "clauses": [
+      "Outputs clause: Output may be used for any purpose, including commercial purposes, except training a competing model.",
+      "Restrictions clause: the model, its derivatives or any data it produces may not be used for commercial or production purposes."
+     ],
+     "reading": "Treated here as non-commercial for outputs (the stricter reading) until Black Forest Labs or counsel confirms otherwise.",
+     "source": "https://scancode-licensedb.aboutcode.org/flux-1-nc.html",
+     "checked": "2026-10-15"
     }
-  ],
-  "folder_defaults": {
-    "loras": {
-      "licence": "unknown",
-      "note": "A LoRA's licence is set by whoever trained it and is rarely embedded in the file. It also inherits the obligations of the base model it was trained on - a FLUX.1 [dev] LoRA cannot be more permissive than FLUX.1 [dev]."
-    },
-    "checkpoints": {
-      "licence": "unknown",
-      "note": "Community merges usually have no stated licence and an untraceable lineage of merged parents. Treat an unmatched checkpoint as unclearable until the source page is checked."
-    },
-    "embeddings": {
-      "licence": "unknown",
-      "note": "Textual inversion embeddings inherit the base model's terms and carry the trainer's own conditions."
-    },
-    "upscale_models": {
-      "licence": "unknown",
-      "note": "Community upscalers on OpenModelDB are frequently CC BY-NC-SA. Check the author's entry before commercial delivery."
+   ]
+  },
+  "tencent-hunyuan-community": {
+   "name": "Tencent Hunyuan Community License",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "revenue-threshold",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Territory is worldwide EXCLUDING the European Union, the United Kingdom and South Korea - the licence is not granted for use in those jurisdictions.",
+    "Products with more than 100 million monthly active users require a separate licence from Tencent.",
+    "Derivative works must carry 'Built with Tencent Hunyuan' attribution."
+   ],
+   "url": "https://github.com/Tencent-Hunyuan/HunyuanVideo/blob/main/LICENSE.txt",
+   "summary": "Commercial use allowed outside the EU, UK and South Korea. A UK or EU based facility is outside the granted territory.",
+   "conditions": {
+    "territory_excluded": [
+     "EU",
+     "GB",
+     "KR"
+    ],
+    "territory_note": "the licence grant excludes these territories outright",
+    "monthly_active_users_cap": 100000000,
+    "separate_licence_holder": "Tencent",
+    "no_competing_training": true
+   }
+  },
+  "ltx-community": {
+   "name": "LTX Video Community License",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "revenue-threshold",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Lightricks' community terms gate large-scale commercial use behind a separate agreement; check the revenue and user thresholds for the specific model version.",
+    "Attribution to Lightricks is required on derivatives."
+   ],
+   "url": "https://huggingface.co/Lightricks/LTX-Video/blob/main/License.txt",
+   "summary": "Community licence with thresholds rather than a plain open licence - read the version-specific terms before delivery.",
+   "conditions": {
+    "revenue_cap_usd": 10000000,
+    "revenue_basis": "annual entity revenue",
+    "separate_licence_holder": "Lightricks"
+   }
+  },
+  "insightface-nc": {
+   "name": "InsightFace pretrained model terms (non-commercial)",
+   "spdx": "",
+   "commercial_use": "no",
+   "fee": "paid",
+   "redistribution": "no",
+   "output_ownership": "unclear",
+   "attribution_required": true,
+   "restrictions": [
+    "The InsightFace code is MIT, but the pretrained face-analysis models (antelopev2, buffalo_l, buffalo_s) are for non-commercial research only.",
+    "Commercial use requires a licence from InsightFace.",
+    "Anything trained on InsightFace embeddings inherits the non-commercial restriction."
+   ],
+   "url": "https://github.com/deepinsight/insightface",
+   "summary": "Non-commercial, and the restriction is inherited by any face model built on these embeddings - which is why it turns up in face-swap and identity workflows that look permissive from the outside.",
+   "conditions": {
+    "outputs_commercial": "no",
+    "commercial_licence_available": true,
+    "separate_licence_holder": "InsightFace"
+   }
+  },
+  "s-lab-1.0": {
+   "name": "S-Lab License 1.0 (NTU)",
+   "spdx": "",
+   "commercial_use": "no",
+   "fee": "unknown",
+   "redistribution": "no",
+   "output_ownership": "unclear",
+   "attribution_required": true,
+   "restrictions": [
+    "Research and non-commercial use only.",
+    "Redistribution and use for commercial purposes is not permitted without explicit authorisation."
+   ],
+   "url": "https://github.com/sczhou/CodeFormer/blob/master/LICENSE",
+   "summary": "Non-commercial. Frequently missed because the model ships inside face-restoration node packs.",
+   "conditions": {
+    "outputs_commercial": "no"
+   }
+  },
+  "bria-nc": {
+   "name": "BRIA non-commercial terms (CC BY-NC 4.0 + commercial agreement)",
+   "spdx": "CC-BY-NC-4.0",
+   "commercial_use": "no",
+   "fee": "paid",
+   "redistribution": "conditional",
+   "output_ownership": "unclear",
+   "attribution_required": true,
+   "restrictions": [
+    "Released for non-commercial use; commercial use requires a paid agreement with BRIA.",
+    "A self-hosted commercial licence is sold separately."
+   ],
+   "url": "https://huggingface.co/briaai/RMBG-2.0",
+   "summary": "Background-removal weights released for non-commercial use; commercial use is sold separately by BRIA.",
+   "conditions": {
+    "outputs_commercial": "no",
+    "commercial_licence_available": true,
+    "separate_licence_holder": "Bria"
+   }
+  },
+  "llama-community": {
+   "name": "Llama Community License",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Products with more than 700 million monthly active users require a separate licence from Meta.",
+    "Derivative model names must carry the 'Llama' prefix and display 'Built with Llama'.",
+    "Acceptable Use Policy applies."
+   ],
+   "url": "https://www.llama.com/llama3_1/license/",
+   "summary": "Commercial use allowed for all but the largest platforms, with naming and attribution obligations.",
+   "conditions": {
+    "monthly_active_users_cap": 700000000,
+    "separate_licence_holder": "Meta",
+    "attribution_visible": "Built with Llama",
+    "prohibited_uses": [
+     "an acceptable-use policy is incorporated by reference"
+    ]
+   }
+  },
+  "qwen-research": {
+   "name": "Qwen research/non-commercial terms",
+   "spdx": "",
+   "commercial_use": "no",
+   "fee": "paid",
+   "redistribution": "conditional",
+   "output_ownership": "unclear",
+   "attribution_required": true,
+   "restrictions": [
+    "Some Qwen variants ship under research-only terms; confirm the exact variant."
+   ],
+   "url": "https://huggingface.co/Qwen",
+   "summary": "Certain Qwen releases are research-only while others are Apache 2.0 - the variant matters.",
+   "conditions": {
+    "outputs_commercial": "no"
+   }
+  },
+  "agpl-3.0-ultralytics": {
+   "name": "AGPL-3.0 (Ultralytics dual licence)",
+   "spdx": "AGPL-3.0-only",
+   "commercial_use": "conditional",
+   "fee": "paid",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "AGPL-3.0 requires the complete source of any product that includes the model - your integration code, scripts and configuration - to be released under AGPL-3.0.",
+    "Ultralytics state that internal company use inside an automated workflow also requires either an Enterprise Licence or open-sourcing the project.",
+    "The network clause means exposing it as a service counts as distribution.",
+    "An Enterprise Licence is sold to remove these obligations."
+   ],
+   "url": "https://www.ultralytics.com/license",
+   "summary": "Copyleft that can reach the code importing it. Ultralytics sell an Enterprise Licence that removes the obligation.",
+   "conditions": {
+    "copyleft_reach": "network",
+    "copyleft_note": "the complete source of anything that includes the model, including integration code, must be released under AGPL-3.0",
+    "commercial_licence_available": true,
+    "separate_licence_holder": "Ultralytics",
+    "vendor_position_internal_use": "Ultralytics state that internal production use also requires an Enterprise Licence"
+   }
+  },
+  "proprietary-api": {
+   "name": "Vendor API terms of service",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "paid",
+   "redistribution": "no",
+   "output_ownership": "varies",
+   "attribution_required": false,
+   "restrictions": [
+    "Governed by the vendor's terms of service, which can change without notice.",
+    "Per-call billing; costs scale with output volume and retries.",
+    "Content is transmitted to a third party - check this against client confidentiality and NDA terms.",
+    "Output ownership and indemnity vary widely between vendors."
+   ],
+   "url": "",
+   "summary": "A hosted model. Commercial rights, cost and confidentiality are set by the vendor contract, not by an open licence.",
+   "conditions": {
+    "hosted": true,
+    "data_leaves_site": true,
+    "metered": true
+   }
+  },
+  "unknown": {
+   "name": "Unknown",
+   "spdx": "",
+   "commercial_use": "unknown",
+   "fee": "unknown",
+   "redistribution": "unknown",
+   "output_ownership": "unknown",
+   "attribution_required": null,
+   "restrictions": [],
+   "url": "",
+   "summary": "No licence could be determined. Treat as unclearable until someone confirms the source.",
+   "conditions": {}
+  },
+  "faipl-1.0-sd": {
+   "name": "Fair AI Public License 1.0-SD",
+   "spdx": "fair-ai-public-1.0-sd",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "The licence does not restrict commercial use of the generated images.",
+    "It does restrict the model: modifications and derivative models must be released under this same licence, with the changes shared.",
+    "A derivative made accessible over a network must offer a way to obtain its source, in the manner of AGPL - so a fine-tune served from a studio's own inference endpoint carries a publication obligation.",
+    "Individual models released under FAIPL frequently bolt on their own extra restrictions (commonly a ban on monetised hosted inference), which travel to merges and derivatives. Read the specific model card as well as the licence."
+   ],
+   "url": "https://freedevproject.org/faipl-1.0-sd/",
+   "summary": "Outputs are unrestricted. The model itself is copyleft: derivatives must be published under the same licence, AGPL-style.",
+   "conditions": {}
+  },
+  "playground-v2-community": {
+   "name": "Playground v2 Community License",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Community licence with use-based conditions; read the model card before commercial delivery."
+   ],
+   "url": "https://huggingface.co/playgroundai/playground-v2-1024px-aesthetic/blob/main/LICENSE.md",
+   "summary": "Commercial use permitted under community terms rather than an open licence.",
+   "conditions": {
+    "no_competing_training": true,
+    "attribution_visible": "Playground v2"
+   }
+  },
+  "kolors-license": {
+   "name": "Kolors Model License",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Kwai-Kolors' own model licence; commercial terms and any user thresholds are set there, not by an OSI licence."
+   ],
+   "url": "https://raw.githubusercontent.com/Kwai-Kolors/Kolors/master/MODEL_LICENSE",
+   "summary": "Vendor model licence - check the thresholds before commercial delivery.",
+   "conditions": {
+    "territory_excluded": [
+     "EU",
+     "GB",
+     "KR"
+    ],
+    "territory_note": "the grant excludes these territories",
+    "monthly_active_users_cap": 300000000,
+    "separate_licence_holder": "Kuaishou"
+   }
+  },
+  "cogvideox-license": {
+   "name": "CogVideoX License",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "The CogVideoX-2B weights are Apache 2.0; the 5B weights ship under this separate licence. Which variant is loaded decides the answer."
+   ],
+   "url": "https://huggingface.co/THUDM/CogVideoX-5b/blob/main/LICENSE",
+   "summary": "Applies to the 5B weights only - the 2B variant is Apache 2.0.",
+   "conditions": {
+    "no_competing_training": true,
+    "prohibited_uses": [
+     "an acceptable-use schedule is incorporated by reference"
+    ]
+   }
+  },
+  "minimax-community": {
+   "name": "MiniMax Community License",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "revenue-threshold",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Territory: the open-weights release excludes local deployment in the United States, the European Union, the United Kingdom and South Korea.",
+    "Free commercial use is limited to organisations under roughly USD $20M annual revenue; above that a separate agreement with MiniMax is required.",
+    "Commercial products must display 'MiniMax H3' prominently in the user interface.",
+    "Outputs may not be used to train competing models, worldwide."
+   ],
+   "url": "https://huggingface.co/MiniMaxAI",
+   "summary": "Open weights with a territory carve-out, a revenue cap and a visible-attribution requirement. Where the facility is based matters as much as what it earns.",
+   "conditions": {
+    "territory_excluded": [
+     "US",
+     "EU",
+     "GB",
+     "KR"
+    ],
+    "territory_note": "the open-weights release excludes local deployment in these territories",
+    "revenue_cap_usd": 20000000,
+    "revenue_basis": "annual organisation revenue",
+    "separate_licence_holder": "MiniMax",
+    "attribution_visible": "MiniMax H3",
+    "no_competing_training": true
+   }
+  },
+  "meta-sam": {
+   "name": "Meta SAM License",
+   "spdx": "",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Research and commercial use are both permitted, including modification and integration.",
+    "Prohibited-use terms cover military, ITAR-controlled, nuclear and weapons applications.",
+    "More restrictive than a standard permissive licence; read the terms on the weights download page."
+   ],
+   "url": "https://github.com/facebookresearch/sam3/blob/main/LICENSE",
+   "summary": "Meta's own licence rather than an OSI one. Commercial use is allowed, with a prohibited-use list attached.",
+   "conditions": {
+    "prohibited_uses": [
+     "military",
+     "ITAR-controlled",
+     "nuclear",
+     "weapons"
+    ]
+   }
+  },
+  "civitai-openrail-m-addendum": {
+   "name": "CreativeML Open RAIL-M + Civitai Attachment B",
+   "spdx": "creativeml-openrail-m",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Open RAIL-M Attachment A use restrictions travel with the weights and every derivative or merge.",
+    "Civitai Attachment B: do not sell or license the model for a fee or anything of value.",
+    "Civitai Attachment B: do not sell or license a merge for a fee or anything of value.",
+    "Civitai Attachment B: credit the creator (model name, creator, licence link) when the creator's 'credit required' toggle is on.",
+    "Hosting for third-party remote access (SaaS) is permitted by the base licence; the creator's 'use on generation services' toggle governs Civitai's own permission icons."
+   ],
+   "url": "https://huggingface.co/spaces/CompVis/stable-diffusion-license",
+   "summary": "Outputs may be used commercially. The weights may not be sold, merges may not be sold, and the RAIL-M use restrictions must be passed on.",
+   "conditions": {
+    "prohibited_uses": [
+     "a use-restriction schedule travels with the weights and must be passed on"
+    ],
+    "outputs_commercial": "yes",
+    "no_sale_of_model": true,
+    "no_sale_of_merges": true
+   }
+  },
+  "civitai-openrail-pp-m-addendum": {
+   "name": "CreativeML Open RAIL++-M + Civitai Attachment B",
+   "spdx": "openrail++",
+   "commercial_use": "yes",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Open RAIL++-M use restrictions travel with the weights and every derivative or merge.",
+    "Civitai Attachment B: do not sell or license the model for a fee or anything of value.",
+    "Civitai Attachment B: do not sell or license a merge for a fee or anything of value.",
+    "Civitai Attachment B: credit the creator when the creator's 'credit required' toggle is on."
+   ],
+   "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/blob/main/LICENSE.md",
+   "summary": "Outputs may be used commercially. The weights and merges may not be sold; the RAIL++-M use restrictions must be passed on.",
+   "conditions": {
+    "prohibited_uses": [
+     "a use-restriction schedule travels with the weights and must be passed on"
+    ],
+    "outputs_commercial": "yes",
+    "no_sale_of_model": true,
+    "no_sale_of_merges": true
+   }
+  },
+  "juggernaut-xl-rd": {
+   "name": "Juggernaut XL licence (Open RAIL-M/RAIL++-M + RunDiffusion and Civitai restrictions)",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "unknown",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "RunDiffusion (Hugging Face card): the model may not be deployed behind paid API services without explicit licensing (juggernaut@rundiffusion.com).",
+    "Civitai Juggernaut XL licence Attachment B: do not use the model on any service that monetizes image generation (subscription, per-image fee, or ad-supported).",
+    "Civitai Attachment B: do not sell or license the model or a merge; credit Juggernaut XL / KandooAI with a licence link.",
+    "Base RAIL use restrictions travel with the weights and derivatives."
+   ],
+   "url": "https://huggingface.co/RunDiffusion/Juggernaut-XL-v9",
+   "summary": "Images can be used commercially in-house; serving the model behind a paid API or monetised generation service needs a RunDiffusion licence.",
+   "conditions": {
+    "outputs_commercial": "yes",
+    "commercial_licence_available": true,
+    "separate_licence_holder": "RunDiffusion / KandooAI",
+    "no_paid_api_hosting": true,
+    "no_sale_of_model": true,
+    "no_sale_of_merges": true,
+    "prohibited_uses": [
+     "a use-restriction schedule travels with the weights and must be passed on"
+    ]
+   },
+   "conflicts": [
+    {
+     "summary": "The Hugging Face card and Civitai state different base licences and word output use differently.",
+     "clauses": [
+      "HF card metadata: license creativeml-openrail-m (the SD1.5 licence), and 'free to use this model for personal and creative work' under it.",
+      "Civitai licence panel: CreativeML Open RAIL++-M (the SDXL licence) with an Attachment B; creator text says you can 'sell the image outputs'.",
+      "Civitai permission toggles for the model: sell images and use on Civitai's generator allowed; use on other generation services and selling the model not allowed."
+     ],
+     "reading": "Both base licences permit commercial use of outputs and the creator says so explicitly on Civitai, so outputs are treated as commercially usable. Hosted/paid-API use is treated as needing a RunDiffusion licence, the stricter reading shared by both sources.",
+     "source": "https://civitai.com/models/license/348913",
+     "checked": "2026-10-16"
     }
+   ]
+  },
+  "juggernaut-xi-cc-by-nc-nd": {
+   "name": "Juggernaut XI - CC BY-NC-ND 4.0 + RunDiffusion gate terms (Hugging Face)",
+   "spdx": "CC-BY-NC-ND-4.0",
+   "commercial_use": "no",
+   "fee": "unknown",
+   "redistribution": "no",
+   "output_ownership": "unclear",
+   "attribution_required": true,
+   "restrictions": [
+    "Hugging Face card: 'non-commercial use only. Commercial use requires a license.'",
+    "No derivatives: modified versions, fine-tunes or merges may not be redistributed.",
+    "Gate terms: no paid API or generative service, no platform that competes with RunDiffusion.com, no redistributing or rehosting the weights.",
+    "Attribute RunDiffusion / KandooAI when sharing output.",
+    "Commercial licences: juggernaut@rundiffusion.com."
+   ],
+   "url": "https://huggingface.co/RunDiffusion/Juggernaut-XI-v11",
+   "summary": "Hugging Face copy is non-commercial, no-derivatives. Civitai still shows the older permissive terms for the same version - treat as non-commercial until RunDiffusion confirms.",
+   "conditions": {
+    "outputs_commercial": "no",
+    "commercial_licence_available": true,
+    "separate_licence_holder": "RunDiffusion"
+   },
+   "conflicts": [
+    {
+     "summary": "The same Juggernaut XI weights are offered under CC BY-NC-ND 4.0 on Hugging Face and under a permissive Open RAIL++-M + Attachment B on Civitai.",
+     "clauses": [
+      "Hugging Face card (repo last modified 2026-05-08): CC BY-NC-ND 4.0, 'non-commercial use only. Commercial use requires a license.'",
+      "Civitai version 782002 licence: Open RAIL++-M with Attachment B (no monetised generation services, no sale of model or merges); permission toggles allow selling images; creator text: 'you can do anything you want with Juggernaut: merge it, train it, sell the image outputs'."
+     ],
+     "reading": "Treated as non-commercial (the stricter, newer statement by the licence holder) until RunDiffusion confirms which terms apply to a given copy. A copy downloaded from Civitai before the relicensing may arguably keep the Civitai terms - counsel's call.",
+     "source": "https://huggingface.co/RunDiffusion/Juggernaut-XI-v11",
+     "checked": "2026-10-16"
+    }
+   ]
+  },
+  "pony-faipl-modified": {
+   "name": "Fair AI Public License 1.0-SD, modified by PurpleSmartAI (Pony Diffusion)",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "unknown",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "You may not run inference of the model on websites or applications allowing any form of monetization (paid inference, faster tiers, etc.).",
+    "That restriction applies to any derivative models and merges.",
+    "Commercial use of the model requires contacting PurpleSmartAI (contact@purplesmart.ai); explicit permission for commercial inference has been granted to Civitai and Hugging Face only.",
+    "FAIPL 1.0-SD copyleft: derivatives must be released under the same licence, including network-served derivatives."
+   ],
+   "url": "https://civitai.com/models/257749/pony-diffusion-v6-xl",
+   "summary": "Images from a self-run copy are not restricted by the text, but any monetised hosted inference, including of merges, needs PurpleSmartAI's permission.",
+   "conditions": {
+    "outputs_commercial": "yes",
+    "commercial_licence_available": true,
+    "separate_licence_holder": "PurpleSmartAI",
+    "no_monetised_hosted_inference": true,
+    "restriction_reaches_merges": true,
+    "copyleft_reach": "derivatives and merges must stay under FAIPL 1.0-SD"
+   },
+   "conflicts": [
+    {
+     "summary": "Civitai's licence panel names a different licence from the creator's own licence text.",
+     "clauses": [
+      "Civitai licence panel: CreativeML Open RAIL++-M (inherited from the SDXL base).",
+      "Creator description on the same page: 'licensed under a modified Fair AI Public License 1.0-SD', with the monetised-inference ban."
+     ],
+     "reading": "The creator's explicit licence text governs; the panel is Civitai's base-model default.",
+     "source": "https://civitai.com/models/257749/pony-diffusion-v6-xl",
+     "checked": "2026-10-16"
+    }
+   ]
+  },
+  "illustrious-faipl": {
+   "name": "Fair AI Public License 1.0-SD + OnomaAI monetization prohibition (Illustrious XL v0.1)",
+   "spdx": "",
+   "commercial_use": "conditional",
+   "fee": "none",
+   "redistribution": "conditional",
+   "output_ownership": "user",
+   "attribution_required": true,
+   "restrictions": [
+    "Model card: 'You are prohibited from monetizing any close-sourced fine-tuned / merged model'.",
+    "Derivative models and variants must be published openly under the same licence, disclosing the original model, datasets and merge recipes.",
+    "The card says OnomaAI does 'not restrict any upload or spread of the generation results', but outputs must not be used for the prohibited purposes in the LICENSE.",
+    "v0.1 is described as 'research-only purpose, as not tuned for aesthetics' - a description, not a licence term."
+   ],
+   "url": "https://huggingface.co/OnomaAIResearch/Illustrious-xl-early-release-v0",
+   "summary": "Outputs are not restricted by OnomaAI. A studio fine-tune or merge kept closed and monetised breaches the terms; derivatives must be published.",
+   "conditions": {
+    "outputs_commercial": "yes",
+    "copyleft_reach": "fine-tunes, merges and variants must be published under FAIPL 1.0-SD",
+    "no_closed_source_monetisation": true
+   },
+   "conflicts": [
+    {
+     "summary": "Civitai permission toggles for Illustrious XL v0.1 do not allow selling generated images, while the Hugging Face card says generated results are unrestricted.",
+     "clauses": [
+      "Civitai model 795765 permissions: allowCommercialUse = RentCivit, Rent (no 'Image' / sell images).",
+      "HF card: 'We do not restrict any upload or spread of the generation results, as we do not own any rights regard to generated materials.'"
+     ],
+     "reading": "Recorded as outputs usable commercially per the licence holder's own card; flag for review if a delivery depends on it, since the Civitai toggle says otherwise.",
+     "source": "https://civitai.com/models/795765/illustrious-xl",
+     "checked": "2026-10-16"
+    }
+   ]
   }
+ },
+ "models": [
+  {
+   "id": "minimax-h3",
+   "family": "MiniMax H3 (Hailuo 3.0)",
+   "licence": "minimax-community",
+   "match": {
+    "filename": [
+     "minimax_h3",
+     "minimax-h3",
+     "hailuo",
+     "minimaxai"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/blog/ResterChed/minimax-h3-hailuo-3-0",
+   "notes": [
+    "Territory exclusions make this one to check against where the facility is based, not just what it earns."
+   ]
+  },
+  {
+   "id": "sam3",
+   "family": "Segment Anything 3",
+   "licence": "meta-sam",
+   "match": {
+    "filename": [
+     "sam3",
+     "sam_3",
+     "sam3.pt"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/facebookresearch/sam3/blob/main/LICENSE",
+   "notes": []
+  },
+  {
+   "id": "qwen-vl",
+   "family": "Qwen3-VL",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "qwen3vl",
+     "qwen3-vl",
+     "qwen2vl",
+     "qwen2-vl",
+     "qwen_vl"
+    ]
+   },
+   "confidence": "low",
+   "source": "https://huggingface.co/Qwen",
+   "notes": [
+    "Most Qwen vision-language releases are Apache 2.0, but the family is not uniform - confirm the exact variant."
+   ]
+  },
+  {
+   "id": "vitpose",
+   "family": "ViTPose",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "vitpose",
+     "vit-pose"
+    ]
+   },
+   "confidence": "low",
+   "source": "https://github.com/ViTAE-Transformer/ViTPose",
+   "notes": [
+    "The wholebody variants are trained on COCO-WholeBody, which carries its own dataset terms."
+   ]
+  },
+  {
+   "id": "flux1-schnell",
+   "family": "FLUX.1 [schnell]",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "flux1-schnell",
+     "flux1_schnell",
+     "flux-1-schnell",
+     "flux.1-schnell"
+    ],
+    "repo": [
+     "black-forest-labs/flux.1-schnell"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/black-forest-labs/FLUX.1-schnell",
+   "notes": [
+    "The only FLUX open-weights model that is commercially clear without a BFL agreement."
+   ]
+  },
+  {
+   "id": "flux1-krea-dev",
+   "family": "FLUX.1 Krea [dev]",
+   "licence": "flux1-dev-nc",
+   "match": {
+    "filename": [
+     "flux1-krea-dev",
+     "flux1_krea_dev",
+     "flux-krea"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/black-forest-labs/FLUX.1-Krea-dev",
+   "notes": [
+    "Ships under the FLUX.1 [dev] non-commercial terms."
+   ]
+  },
+  {
+   "id": "flux1-kontext-dev",
+   "family": "FLUX.1 Kontext [dev]",
+   "licence": "flux1-dev-nc",
+   "match": {
+    "filename": [
+     "flux1-kontext-dev",
+     "flux1_kontext",
+     "flux-kontext-dev",
+     "kontext-dev",
+     "flux1-dev-kontext",
+     "flux-1-dev-kontext"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://bfl.ai/blog/flux-1-kontext-dev",
+   "notes": [
+    "Image editing model under the FLUX.1 [dev] non-commercial licence."
+   ]
+  },
+  {
+   "id": "flux1-fill-dev",
+   "family": "FLUX.1 Fill [dev]",
+   "licence": "flux1-dev-nc",
+   "match": {
+    "filename": [
+     "flux1-fill-dev",
+     "flux1_fill",
+     "flux-fill-dev"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev",
+   "notes": [
+    "Inpainting variant; same non-commercial terms as FLUX.1 [dev]."
+   ]
+  },
+  {
+   "id": "flux1-dev",
+   "family": "FLUX.1 [dev]",
+   "licence": "flux1-dev-nc",
+   "match": {
+    "filename": [
+     "flux1-dev",
+     "flux1_dev",
+     "flux-1-dev",
+     "flux.1-dev",
+     "flux1dev"
+    ],
+    "repo": [
+     "black-forest-labs/flux.1-dev"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/LICENSE.md",
+   "notes": [
+    "The most common licensing trap in modern ComfyUI workflows.",
+    "Fine-tunes and LoRAs built on FLUX.1 [dev] inherit the non-commercial restriction."
+   ]
+  },
+  {
+   "id": "flux-vae-ae",
+   "family": "FLUX autoencoder (ae.safetensors)",
+   "licence": "flux1-dev-nc",
+   "match": {
+    "filename_exact": [
+     "ae.safetensors",
+     "ae.sft"
+    ],
+    "filename": [
+     "flux-vae",
+     "flux-ae",
+     "flux1-ae"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/black-forest-labs/FLUX.1-dev/blob/main/ae.safetensors",
+   "notes": [
+    "The FLUX autoencoder is distributed from the FLUX.1 [dev] repository and carries its terms.",
+    "The identical file is also mirrored under FLUX.1 [schnell] (Apache 2.0); which terms apply depends on where it was obtained."
+   ],
+   "provenance_overrides": [
+    {
+     "url_contains": "flux.1-schnell",
+     "licence": "apache-2.0",
+     "note": "This copy resolves to the FLUX.1 [schnell] repository, which is Apache 2.0, so the dev restriction does not apply to it."
+    }
+   ]
+  },
+  {
+   "id": "sdxl-base",
+   "family": "Stable Diffusion XL 1.0",
+   "licence": "creativeml-openrail-plus-plus-m",
+   "match": {
+    "filename": [
+     "sd_xl_base",
+     "sdxl_base",
+     "sd_xl_refiner",
+     "sdxl-base",
+     "sd_xl_1.0"
+    ],
+    "repo": [
+     "stabilityai/stable-diffusion-xl-base-1.0",
+     "stabilityai/stable-diffusion-xl-refiner-1.0"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0",
+   "notes": [
+    "Commercially usable. Predates the Community License, so no revenue threshold applies."
+   ]
+  },
+  {
+   "id": "sdxl-turbo",
+   "family": "SDXL Turbo",
+   "licence": "stability-nc-research",
+   "match": {
+    "filename": [
+     "sd_xl_turbo",
+     "sdxl_turbo",
+     "sdxl-turbo"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/stabilityai/sdxl-turbo",
+   "notes": [
+    "Research-only release; not for commercial delivery."
+   ]
+  },
+  {
+   "id": "sd15",
+   "family": "Stable Diffusion 1.5",
+   "licence": "creativeml-openrail-m",
+   "match": {
+    "filename": [
+     "v1-5-pruned",
+     "sd_v1-5",
+     "sd-v1-5",
+     "sd15",
+     "v1-5-pruned-emaonly"
+    ],
+    "repo": [
+     "runwayml/stable-diffusion-v1-5",
+     "stable-diffusion-v1-5/stable-diffusion-v1-5"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5",
+   "notes": [
+    "Commercially usable under Open RAIL-M. Note the ongoing training-data litigation around SD 1.x when assessing indemnity."
+   ]
+  },
+  {
+   "id": "sd21",
+   "family": "Stable Diffusion 2.1",
+   "licence": "creativeml-openrail-plus-plus-m",
+   "match": {
+    "filename": [
+     "v2-1_768",
+     "v2-1_512",
+     "sd21",
+     "sd_2-1"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/stabilityai/stable-diffusion-2-1",
+   "notes": []
+  },
+  {
+   "id": "sd3",
+   "family": "Stable Diffusion 3 Medium",
+   "licence": "stability-community",
+   "match": {
+    "filename": [
+     "sd3_medium",
+     "sd3-medium",
+     "sd3_medium_incl_clips"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/stabilityai/stable-diffusion-3-medium",
+   "notes": [
+    "Relicensed to the Community License after the original restrictive launch terms."
+   ]
+  },
+  {
+   "id": "sd35",
+   "family": "Stable Diffusion 3.5",
+   "licence": "stability-community",
+   "match": {
+    "filename": [
+     "sd3.5",
+     "sd3_5",
+     "sd35_large",
+     "sd35_medium",
+     "stable-diffusion-3.5"
+    ],
+    "repo": [
+     "stabilityai/stable-diffusion-3.5-large",
+     "stabilityai/stable-diffusion-3.5-medium"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/stabilityai/stable-diffusion-3.5-large/blob/main/LICENSE.md",
+   "notes": [
+    "Free commercially only under $1M annual company revenue; most production facilities exceed that."
+   ]
+  },
+  {
+   "id": "svd",
+   "family": "Stable Video Diffusion",
+   "licence": "stability-community",
+   "match": {
+    "filename": [
+     "svd.safetensors",
+     "svd_xt",
+     "stable_video_diffusion",
+     "svd_image_decoder"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt",
+   "notes": [
+    "Originally research-only, later moved to the Community License - verify which terms your copy shipped under."
+   ]
+  },
+  {
+   "id": "sd-vae-ft",
+   "family": "Stability SD VAE (ft-mse / ft-ema)",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "vae-ft-mse",
+     "vae-ft-ema",
+     "sdxl_vae",
+     "sdxl-vae"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/stabilityai/sd-vae-ft-mse",
+   "notes": [
+    "The SDXL VAE follows the SDXL base licence when obtained from that repository."
+   ]
+  },
+  {
+   "id": "wan",
+   "family": "Wan (2.1 / 2.2)",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "wan2.1",
+     "wan2_1",
+     "wan2.2",
+     "wan2_2",
+     "wan_2.1",
+     "wan_2.2",
+     "wanvideo",
+     "wan21",
+     "wan22"
+    ],
+    "repo": [
+     "wan-ai/wan2.1",
+     "wan-ai/wan2.2"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://github.com/Wan-Video/Wan2.2",
+   "notes": [
+    "Apache 2.0 - one of the few video models that is commercially clean out of the box."
+   ]
+  },
+  {
+   "id": "umt5",
+   "family": "UMT5 text encoder",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "umt5",
+     "umt5-xxl",
+     "umt5_xxl"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/google/umt5-xxl",
+   "notes": [
+    "Google's UMT5 is Apache 2.0; the quantised community repacks used in ComfyUI inherit those terms."
+   ]
+  },
+  {
+   "id": "hunyuan-video",
+   "family": "HunyuanVideo",
+   "licence": "tencent-hunyuan-community",
+   "match": {
+    "filename": [
+     "hunyuan_video",
+     "hunyuanvideo",
+     "hunyuan-video",
+     "hyvideo"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://github.com/Tencent-Hunyuan/HunyuanVideo/blob/main/LICENSE.txt",
+   "notes": [
+    "Territory excludes the EU, UK and South Korea - a blocker for facilities based there."
+   ]
+  },
+  {
+   "id": "hunyuan-3d",
+   "family": "Hunyuan3D",
+   "licence": "tencent-hunyuan-community",
+   "match": {
+    "filename": [
+     "hunyuan3d",
+     "hunyuan_3d"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/Tencent-Hunyuan/Hunyuan3D-2",
+   "notes": [
+    "Same territorial exclusions as other Tencent Hunyuan releases."
+   ]
+  },
+  {
+   "id": "ltx-video",
+   "family": "LTX-Video",
+   "licence": "ltx-community",
+   "match": {
+    "filename": [
+     "ltx-video",
+     "ltxv",
+     "ltx_video",
+     "ltx-2",
+     "ltx2"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/Lightricks/LTX-Video",
+   "notes": [
+    "Community licence with thresholds; confirm the terms for the exact version in use."
+   ]
+  },
+  {
+   "id": "mochi",
+   "family": "Mochi 1",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "mochi",
+     "mochi_preview"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/genmo/mochi-1-preview",
+   "notes": []
+  },
+  {
+   "id": "cogvideox",
+   "family": "CogVideoX",
+   "licence": "unknown",
+   "match": {
+    "filename": [
+     "cogvideox",
+     "cogvideo"
+    ]
+   },
+   "confidence": "low",
+   "source": "https://huggingface.co/THUDM/CogVideoX-5b",
+   "notes": [
+    "CogVideoX-2B is Apache 2.0 but the 5B weights ship under a separate CogVideoX licence.",
+    "Check which variant is loaded before assuming commercial rights."
+   ],
+   "provenance_overrides": [
+    {
+     "url_contains": "cogvideox-2b",
+     "licence": "apache-2.0",
+     "note": "The 2B variant is Apache 2.0."
+    }
+   ]
+  },
+  {
+   "id": "qwen-image",
+   "family": "Qwen-Image",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "qwen_image",
+     "qwen-image",
+     "qwen_image_edit"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/Qwen/Qwen-Image",
+   "notes": [
+    "Apache 2.0. Other Qwen model families are not all licensed the same way."
+   ]
+  },
+  {
+   "id": "t5xxl",
+   "family": "T5 / T5-XXL text encoder",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "t5xxl",
+     "t5-xxl",
+     "t5_xxl",
+     "google-t5",
+     "t5v11"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/google/t5-v1_1-xxl",
+   "notes": []
+  },
+  {
+   "id": "clip-l",
+   "family": "OpenAI CLIP ViT-L/14",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "clip_l",
+     "clip-l",
+     "clip_vit_l",
+     "vit-l-14",
+     "clip-vit-large"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/openai/clip-vit-large-patch14",
+   "notes": []
+  },
+  {
+   "id": "clip-g-openclip",
+   "family": "OpenCLIP ViT-bigG / ViT-H",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "clip_g",
+     "clip-g",
+     "bigg",
+     "vit-h-14",
+     "clip_vision_h",
+     "open_clip"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/mlfoundations/open_clip",
+   "notes": [
+    "OpenCLIP code and weights are MIT; the LAION training data has its own provenance questions."
+   ]
+  },
+  {
+   "id": "controlnet-lllyasviel",
+   "family": "ControlNet (lllyasviel)",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "control_v11",
+     "control_sd15",
+     "control-lora",
+     "controlnet-canny",
+     "controlnet_depth",
+     "t2i-adapter"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/lllyasviel/ControlNet",
+   "notes": [
+    "The original ControlNet models are Apache 2.0.",
+    "Stability's Control-LoRA releases are a separate, more restrictive licence - check which family you have."
+   ]
+  },
+  {
+   "id": "ip-adapter",
+   "family": "IP-Adapter",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "ip-adapter",
+     "ip_adapter",
+     "ipadapter"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/h94/IP-Adapter",
+   "notes": [
+    "IP-Adapter itself is Apache 2.0.",
+    "The FaceID variants depend on InsightFace embeddings and are therefore non-commercial in practice."
+   ]
+  },
+  {
+   "id": "ip-adapter-faceid",
+   "family": "IP-Adapter FaceID",
+   "licence": "insightface-nc",
+   "match": {
+    "filename": [
+     "ip-adapter-faceid",
+     "ip_adapter_faceid",
+     "ipadapter-faceid",
+     "faceid-plus",
+     "faceid_plusv2"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/h94/IP-Adapter-FaceID",
+   "notes": [
+    "Explicitly released for non-commercial research use because of its InsightFace dependency."
+   ]
+  },
+  {
+   "id": "instantid",
+   "family": "InstantID",
+   "licence": "insightface-nc",
+   "match": {
+    "filename": [
+     "instantid",
+     "instant-id",
+     "ip-adapter_instant_id"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/InstantX/InstantID",
+   "notes": [
+    "The repo is labelled Apache 2.0 but requires InsightFace antelopev2, which is non-commercial. The effective licence is non-commercial."
+   ]
+  },
+  {
+   "id": "insightface-models",
+   "family": "InsightFace face analysis (antelopev2 / buffalo)",
+   "licence": "insightface-nc",
+   "match": {
+    "filename": [
+     "antelopev2",
+     "buffalo_l",
+     "buffalo_s",
+     "buffalo_m",
+     "glintr100",
+     "scrfd_10g",
+     "w600k_r50",
+     "det_10g",
+     "2d106det",
+     "genderage"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://github.com/deepinsight/insightface",
+   "notes": [
+    "Non-commercial research only. Contact InsightFace for a commercial licence."
+   ]
+  },
+  {
+   "id": "inswapper",
+   "family": "inswapper (face swap)",
+   "licence": "insightface-nc",
+   "match": {
+    "filename": [
+     "inswapper_128",
+     "inswapper"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://github.com/deepinsight/insightface/issues/2417",
+   "notes": [
+    "InsightFace withdrew public distribution of the inswapper weights; copies in circulation are unlicensed for commercial use.",
+    "Also carries obvious likeness and consent exposure in a professional context."
+   ]
+  },
+  {
+   "id": "codeformer",
+   "family": "CodeFormer",
+   "licence": "s-lab-1.0",
+   "match": {
+    "filename": [
+     "codeformer"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://github.com/sczhou/CodeFormer/blob/master/LICENSE",
+   "notes": [
+    "Bundled inside several popular face-restoration node packs, so it often arrives unnoticed."
+   ]
+  },
+  {
+   "id": "gfpgan",
+   "family": "GFPGAN",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "gfpgan",
+     "gfpganv1"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/TencentARC/GFPGAN",
+   "notes": [
+    "Apache 2.0, but the architecture borrows from StyleGAN2 whose original NVIDIA source has its own non-commercial terms - worth a legal read for broadcast delivery."
+   ]
+  },
+  {
+   "id": "real-esrgan",
+   "family": "Real-ESRGAN",
+   "licence": "bsd-3-clause",
+   "match": {
+    "filename": [
+     "realesrgan",
+     "real-esrgan",
+     "realesrnet"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://github.com/xinntao/Real-ESRGAN",
+   "notes": []
+  },
+  {
+   "id": "kim2091-upscalers",
+   "family": "Community ESRGAN upscalers (4x-UltraSharp and similar)",
+   "licence": "cc-by-nc-sa-4.0",
+   "match": {
+    "filename": [
+     "4x-ultrasharp",
+     "4x_ultrasharp",
+     "4x-ultramix",
+     "4x_nmkd",
+     "4x-animesharp"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://openmodeldb.info/models/4x-UltraSharp",
+   "notes": [
+    "Many of the most popular community upscalers are CC BY-NC-SA, which blocks commercial delivery.",
+    "Check the model's OpenModelDB entry - licences differ per author and are frequently unstated."
+   ]
+  },
+  {
+   "id": "sam",
+   "family": "Segment Anything (SAM / SAM 2)",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "sam_vit",
+     "sam2_hiera",
+     "sam2.1_hiera",
+     "mobile_sam",
+     "sam_hq"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://github.com/facebookresearch/segment-anything",
+   "notes": [
+    "SAM and SAM 2 model weights are Apache 2.0."
+   ]
+  },
+  {
+   "id": "groundingdino",
+   "family": "GroundingDINO",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "groundingdino",
+     "grounding_dino",
+     "groundingdino_swint"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/IDEA-Research/GroundingDINO",
+   "notes": []
+  },
+  {
+   "id": "yolo-ultralytics",
+   "family": "Ultralytics YOLO detectors",
+   "licence": "agpl-3.0-ultralytics",
+   "match": {
+    "filename": [
+     "yolov8",
+     "yolov10",
+     "yolov11",
+     "yolo_nas",
+     "face_yolov8",
+     "hand_yolov8",
+     "person_yolov8"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://www.ultralytics.com/license",
+   "notes": [
+    "Reaches the ADetailer-style face/hand/person detectors that ship with many custom node packs.",
+    "Ultralytics' published position is that internal production use needs an Enterprise Licence."
+   ]
+  },
+  {
+   "id": "rmbg",
+   "family": "BRIA RMBG (1.4 / 2.0)",
+   "licence": "bria-nc",
+   "match": {
+    "filename": [
+     "rmbg-1.4",
+     "rmbg_1.4",
+     "rmbg-2.0",
+     "rmbg2",
+     "briaai"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/briaai/RMBG-2.0",
+   "notes": [
+    "Common in matting workflows, where the separate commercial agreement is easy to miss."
+   ]
+  },
+  {
+   "id": "birefnet",
+   "family": "BiRefNet",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "birefnet"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/ZhengPeng7/BiRefNet",
+   "notes": [
+    "A commercially clean alternative to RMBG for background removal."
+   ]
+  },
+  {
+   "id": "depth-anything-v2",
+   "family": "Depth Anything V2",
+   "licence": "cc-by-nc-4.0",
+   "match": {
+    "filename": [
+     "depth_anything_v2_vitl",
+     "depth_anything_v2_vitb",
+     "depth-anything-v2-large",
+     "depth-anything-v2-base"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/DepthAnything/Depth-Anything-V2",
+   "notes": [
+    "The Base and Large checkpoints are CC BY-NC 4.0; only the Small checkpoint is Apache 2.0.",
+    "Depth passes delivered to a client are commercial use."
+   ]
+  },
+  {
+   "id": "depth-anything-v2-small",
+   "family": "Depth Anything V2 Small",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "depth_anything_v2_vits",
+     "depth-anything-v2-small"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/DepthAnything/Depth-Anything-V2",
+   "notes": [
+    "The Small variant is the commercially usable one in this family."
+   ]
+  },
+  {
+   "id": "midas",
+   "family": "MiDaS depth",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "midas",
+     "dpt_hybrid",
+     "dpt_beit",
+     "dpt_large"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/isl-org/MiDaS",
+   "notes": []
+  },
+  {
+   "id": "zoedepth",
+   "family": "ZoeDepth",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "zoedepth",
+     "zoe_depth"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/isl-org/ZoeDepth",
+   "notes": []
+  },
+  {
+   "id": "dwpose",
+   "family": "DWPose / RTMPose",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "dw-ll_ucoco",
+     "dw_ll_ucoco",
+     "rtmpose",
+     "yolox_l"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/IDEA-Research/DWPose",
+   "notes": [
+    "DWPose is Apache 2.0, but it is distributed alongside YOLOX detectors - confirm the detector's terms too."
+   ]
+  },
+  {
+   "id": "animatediff",
+   "family": "AnimateDiff motion modules",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "mm_sd_v15",
+     "mm_sdxl",
+     "animatediff",
+     "v3_sd15_mm",
+     "mm-stabilized"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/guoyww/AnimateDiff",
+   "notes": [
+    "Community-trained motion modules vary; only the original Guoyww releases are covered here."
+   ]
+  },
+  {
+   "id": "florence2",
+   "family": "Florence-2",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "florence-2",
+     "florence2"
+    ],
+    "repo": [
+     "microsoft/florence-2-base",
+     "microsoft/florence-2-large"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/microsoft/Florence-2-large",
+   "notes": []
+  },
+  {
+   "id": "llama",
+   "family": "Llama family",
+   "licence": "llama-community",
+   "match": {
+    "filename": [
+     "llama-3",
+     "llama3",
+     "llama-2",
+     "meta-llama"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://www.llama.com/llama3_1/license/",
+   "notes": []
+  },
+  {
+   "id": "taesd",
+   "family": "TAESD preview decoders",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "taesd",
+     "taesdxl",
+     "taef1",
+     "taesd3"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://github.com/madebyollin/taesd",
+   "notes": []
+  },
+  {
+   "id": "rife",
+   "family": "RIFE frame interpolation",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "rife4",
+     "rife_",
+     "flownet"
+    ]
+   },
+   "confidence": "low",
+   "source": "https://github.com/hzwer/Practical-RIFE",
+   "notes": [
+    "Practical-RIFE has had shifting terms around commercial use; verify before relying on it for delivery."
+   ]
+  },
+  {
+   "id": "dreamshaper-sd15",
+   "family": "DreamShaper (SD1.5, Lykon)",
+   "licence": "civitai-openrail-m-addendum",
+   "match": {
+    "filename": [
+     "dreamshaper",
+     "dreamshaper_8",
+     "dreamshaper-8"
+    ],
+    "repo": [
+     "lykon/dreamshaper-8"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/Lykon/dreamshaper-8",
+   "source_date": "2023-12-07 (HF repo lastModified); Civitai licence page civitai.com/models/license/128713 checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "HF metadata: license creativeml-openrail-m. Civitai (model 4384): Open RAIL-M + Attachment B (no sale of model or merges).",
+    "Civitai permissions: credit not required; sell images, use on Civitai generator and other generation services allowed; selling the model not allowed.",
+    "No conflict between the HF licence and Civitai permissions."
+   ]
+  },
+  {
+   "id": "dreamshaper-xl",
+   "family": "DreamShaper XL (Lykon)",
+   "licence": "civitai-openrail-pp-m-addendum",
+   "match": {
+    "filename": [
+     "dreamshaperxl",
+     "dreamshaper-xl",
+     "dreamshaper_xl"
+    ],
+    "repo": [
+     "lykon/dreamshaper-xl-1-0",
+     "lykon/dreamshaper-xl-lightning"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/Lykon/dreamshaper-xl-1-0",
+   "source_date": "HF metadata checked 2026-10-16; Civitai model 112902 permissions checked 2026-10-16",
+   "basis": "official-summary-fetched",
+   "notes": [
+    "HF metadata: license openrail++. Civitai permissions: credit not required; sell images and generation-service use allowed; selling the model not allowed.",
+    "The Civitai licence page for the XL versions could not be rendered (empty page); the Attachment B terms are assumed from the identical toggles on Lykon's SD1.5 page.",
+    "Turbo variants are matched separately - see dreamshaper-xl-turbo."
+   ]
+  },
+  {
+   "id": "dreamshaper-xl-turbo",
+   "family": "DreamShaper XL Turbo (Lykon, SDXL Turbo derived)",
+   "licence": "stability-nc-research",
+   "match": {
+    "filename": [
+     "dreamshaperxl_turbo",
+     "dreamshaperxl_v2turbo",
+     "dreamshaperxl_v21turbo",
+     "dreamshaper-xl-v2-turbo",
+     "dreamshaper-xl-turbo"
+    ],
+    "repo": [
+     "lykon/dreamshaper-xl-v2-turbo"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://civitai.com/models/112902/dreamshaper-xl",
+   "source_date": "Creator text on Civitai model 112902 checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "Creator (Lykon): 'Turbo currently cannot be used commercially unless you get permission from StabilityAI', pointing to a Stability membership.",
+    "Conflict: the HF repo Lykon/dreamshaper-xl-v2-turbo is tagged openrail++. Mapped to the SDXL Turbo licence already used for sdxl_turbo (the stricter reading); Stability has since folded SDXL Turbo into its Community License, so confirm the current Stability terms.",
+    "Lightning variants are not Turbo and stay on dreamshaper-xl."
+   ]
+  },
+  {
+   "id": "juggernaut-xl",
+   "family": "Juggernaut XL v1-v10 and Ragnarok (KandooAI / RunDiffusion)",
+   "licence": "juggernaut-xl-rd",
+   "match": {
+    "filename": [
+     "juggernautxl",
+     "juggernaut-xl",
+     "juggernaut_xl",
+     "juggernaut-x-rundiffusion",
+     "juggernaut_x_rundiffusion",
+     "juggernautxl_ragnarok"
+    ],
+    "repo": [
+     "rundiffusion/juggernaut-xl-v9",
+     "rundiffusion/juggernaut-x-v10"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/RunDiffusion/Juggernaut-XL-v9",
+   "source_date": "HF cards v9/v10 lastModified 2026-05-08; Civitai licence pages 348913 (v9) and 1759168 (Ragnarok) checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "HF v9/v10 cards: Open RAIL-M; 'may not be deployed behind paid API services without explicit licensing'; commercial licensing via juggernaut@rundiffusion.com.",
+    "Civitai: Open RAIL++-M + Attachment B (no monetised generation services, no sale of model/merges, credit KandooAI). Permissions: sell images and Civitai generator allowed; other generation services and selling the model not allowed; credit required.",
+    "Do not add a bare 'juggernaut' pattern: RunDiffusion also ships Juggernaut Z (Lumina-Image-2) and Juggernaut Pro Flux, whose licences were not checked."
+   ]
+  },
+  {
+   "id": "juggernaut-xi",
+   "family": "Juggernaut XI v11 (RunDiffusion)",
+   "licence": "juggernaut-xi-cc-by-nc-nd",
+   "match": {
+    "filename": [
+     "juggernaut-xi",
+     "juggernaut_xi",
+     "juggernautxl_juggxi",
+     "juggxi"
+    ],
+    "repo": [
+     "rundiffusion/juggernaut-xi-v11"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/RunDiffusion/Juggernaut-XI-v11",
+   "source_date": "HF repo lastModified 2026-05-08; Civitai licence page 782002 checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "HF (gated): CC BY-NC-ND 4.0, non-commercial, no derivatives, no paid API, no RunDiffusion competitors, no rehosting.",
+    "Civitai version 782002 (juggernautXL_juggXIByRundiffusion.safetensors) still shows Open RAIL++-M + Attachment B and allows selling images - recorded as a licence conflict.",
+    "Civitai filename juggernautXL_juggXI... also contains 'juggernautxl'; the longer 'juggernautxl_juggxi' pattern is there so XI wins the longest-match rule.",
+    "Juggernaut XI Lightning (HF RunDiffusion/Juggernaut-XI-Lightning) was not checked."
+   ]
+  },
+  {
+   "id": "realvisxl",
+   "family": "RealVisXL (SG161222)",
+   "licence": "civitai-openrail-pp-m-addendum",
+   "match": {
+    "filename": [
+     "realvisxl",
+     "realvis-xl",
+     "realvis_xl"
+    ],
+    "repo": [
+     "sg161222/realvisxl_v5.0",
+     "sg161222/realvisxl_v4.0"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/SG161222/RealVisXL_V5.0",
+   "source_date": "HF repo lastModified 2024-10-08; Civitai licence page 789646 checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "HF metadata: openrail++. Civitai: Open RAIL++-M + Attachment B (no sale of model/merges, credit SG161222).",
+    "Civitai permissions: credit required; sell images, Civitai generator and other generation services allowed; selling the model not allowed. No conflict with the stated licence.",
+    "Civitai filenames read 'realvisxlV50_<version>' even for older versions; the true version is after the underscore (creator's note)."
+   ]
+  },
+  {
+   "id": "realistic-vision-sd15",
+   "family": "Realistic Vision (SD1.5, SG161222)",
+   "licence": "civitai-openrail-m-addendum",
+   "match": {
+    "filename": [
+     "realisticvision",
+     "realistic-vision",
+     "realistic_vision"
+    ],
+    "repo": [
+     "sg161222/realistic_vision_v6.0_b1_novae",
+     "sg161222/realistic_vision_v5.1_novae"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/SG161222/Realistic_Vision_V6.0_B1_noVAE",
+   "source_date": "HF repo lastModified 2024-10-08; Civitai licence page 245598 checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "HF metadata: creativeml-openrail-m. Civitai: Open RAIL-M + Attachment B (no sale of model/merges, credit SG161222). Permissions: credit required; sell images and generation services allowed; selling the model not allowed; different permissions on merges not allowed.",
+    "Inherited-licence risk: the creator lists Dreamlike Photoreal 2.0 among merged models. Dreamlike Photoreal 2.0's modified Open RAIL-M limits commercial use of outputs to teams of 10 or fewer and bars inference on websites/apps for it and its derivatives. Whether that reaches Realistic Vision is unresolved; confidence is medium for that reason.",
+    "Other merged sources (URPM, Protogen, etc.) were not individually checked."
+   ]
+  },
+  {
+   "id": "epicrealism-sd15",
+   "family": "epiCRealism (SD1.5, epinikion)",
+   "licence": "civitai-openrail-m-addendum",
+   "match": {
+    "filename": [
+     "epicrealism",
+     "epic-realism",
+     "epic_realism"
+    ],
+    "repo": [
+     "emilianjr/epicrealism"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://civitai.com/models/25694/epicrealism",
+   "source_date": "Civitai licence page 160989 (Natural Sin) checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "Civitai: Open RAIL-M + Attachment B (no sale of model/merges, credit epinikion). Permissions: credit required; sell images and generation services allowed; selling the model not allowed.",
+    "No first-party Hugging Face repo; emilianJR/epiCRealism is a third-party mirror tagged creativeml-openrail-m.",
+    "The 'epicrealism' pattern will also catch epiCRealism XL (a separate SDXL model) whose licence was not checked."
+   ]
+  },
+  {
+   "id": "pony-diffusion-v6-xl",
+   "family": "Pony Diffusion V6 XL (PurpleSmartAI)",
+   "licence": "pony-faipl-modified",
+   "match": {
+    "filename": [
+     "ponydiffusionv6xl",
+     "ponydiffusionv6",
+     "pony-diffusion-v6",
+     "pony_diffusion_v6",
+     "ponydiffusion"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://civitai.com/models/257749/pony-diffusion-v6-xl",
+   "source_date": "Creator's licence text on Civitai model 257749 checked 2026-10-16 (V6 version republished 2026-04-29)",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "Civitai permissions: credit required; sell images and Civitai generator allowed; other generation services and selling the model not allowed - consistent with the creator's text.",
+    "The official Hugging Face repo (purplesmartai/pony-diffusion-v6-xl) returned 401 (gated or removed); third-party HF mirrors repeat the same modified-FAIPL text.",
+    "Pony-based merges and fine-tunes inherit the monetised-inference ban by the licence's own terms."
+   ]
+  },
+  {
+   "id": "illustrious-xl-v01",
+   "family": "Illustrious XL v0.1 (OnomaAI Research)",
+   "licence": "illustrious-faipl",
+   "match": {
+    "filename": [
+     "illustriousxl_v01",
+     "illustrious-xl-early-release",
+     "illustrious-xl-v0.1",
+     "illustrious_xl_v0.1",
+     "illustrious-xl-v0-1",
+     "illustriousxl",
+     "illustrious-xl",
+     "illustrious_xl"
+    ],
+    "repo": [
+     "onomaairesearch/illustrious-xl-early-release-v0"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/OnomaAIResearch/Illustrious-xl-early-release-v0",
+   "source_date": "HF repo lastModified 2025-02-13; checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "HF metadata: fair-ai-public-license-1.0-sd; Civitai licence panel: 'Illustrious License' linking to FAIPL 1.0-SD.",
+    "Generic 'illustriousxl' patterns fall back here because most community Illustrious fine-tunes derive from v0.1; v1.0/v1.1/v2.0 have their own, longer patterns.",
+    "Confidence is medium because the generic patterns will also catch community derivatives that may add their own terms."
+   ]
+  },
+  {
+   "id": "illustrious-xl-v1",
+   "family": "Illustrious XL v1.0 / v1.1 (OnomaAI Research)",
+   "licence": "creativeml-openrail-plus-plus-m",
+   "match": {
+    "filename": [
+     "illustrious-xl-v1.0",
+     "illustrious-xl-v1.1",
+     "illustrious-xl-v1-0",
+     "illustrious-xl-v1-1",
+     "illustriousxl_v10",
+     "illustriousxl_v11"
+    ],
+    "repo": [
+     "onomaairesearch/illustrious-xl-v1.0",
+     "onomaairesearch/illustrious-xl-v1.1"
+    ]
+   },
+   "confidence": "medium",
+   "source": "https://huggingface.co/OnomaAIResearch/Illustrious-XL-v1.0",
+   "source_date": "HF repos created 2025-02-13 / 2025-03-19, lastModified 2025-04-19; checked 2026-10-16",
+   "basis": "official-summary-fetched",
+   "notes": [
+    "HF metadata only: license other / sdxl-license, linking the SDXL base LICENSE.md (Open RAIL++-M). The card body has no licence text.",
+    "Earlier v1.0 was distributed closed/paid (per the v0.1 card); the open HF release carries the SDXL licence. Civitai filenames for v1.x were not verified."
+   ]
+  },
+  {
+   "id": "illustrious-xl-v2",
+   "family": "Illustrious XL v2.0 (OnomaAI Research)",
+   "licence": "creativeml-openrail-m",
+   "match": {
+    "filename": [
+     "illustrious-xl-v2.0",
+     "illustrious-xl-v2-0",
+     "illustriousxl_v20"
+    ],
+    "repo": [
+     "onomaairesearch/illustrious-xl-v2.0"
+    ]
+   },
+   "confidence": "low",
+   "source": "https://huggingface.co/OnomaAIResearch/Illustrious-XL-v2.0",
+   "source_date": "HF repo created 2025-04-18, lastModified 2025-04-19; checked 2026-10-16",
+   "basis": "official-summary-fetched",
+   "notes": [
+    "HF metadata only: license creativeml-openrail-m. Unusual for an SDXL derivative (v1.x is tagged with the SDXL RAIL++-M licence); the card body has no licence text, so confirm with OnomaAI."
+   ]
+  },
+  {
+   "id": "chroma",
+   "family": "Chroma / Chroma1 (lodestones, FLUX.1-schnell based)",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "chroma-unlocked",
+     "chroma_unlocked",
+     "chroma1-hd",
+     "chroma1_hd",
+     "chroma1-base",
+     "chroma1-radiance",
+     "chroma1"
+    ],
+    "repo": [
+     "lodestones/chroma",
+     "lodestones/chroma1-hd",
+     "lodestones/chroma1-base",
+     "lodestones/chroma1-radiance"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/lodestones/Chroma1-HD",
+   "source_date": "HF repo lastModified 2025-10-23; checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "Card: 'fully Apache 2.0 licensed'; based on FLUX.1-schnell (also Apache 2.0).",
+    "A bare 'chroma' pattern is deliberately not used - too generic."
+   ]
+  },
+  {
+   "id": "z-image-turbo",
+   "family": "Z-Image Turbo (Tongyi-MAI / Alibaba)",
+   "licence": "apache-2.0",
+   "match": {
+    "filename": [
+     "z_image_turbo",
+     "z-image-turbo",
+     "z_image",
+     "z-image"
+    ],
+    "repo": [
+     "tongyi-mai/z-image-turbo",
+     "comfy-org/z_image_turbo"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/Tongyi-MAI/Z-Image-Turbo",
+   "source_date": "HF repo created 2025-11-25, lastModified 2026-01-30; Comfy-Org repack lastModified 2026-09-23; checked 2026-10-16",
+   "basis": "official-summary-fetched",
+   "notes": [
+    "HF metadata: apache-2.0 on both the Tongyi-MAI repo and the Comfy-Org repack. Text encoder in the repack is qwen_3_4b.",
+    "KB gap: the Comfy-Org repack ships its VAE as 'ae.safetensors', which the existing filename_exact rule maps to flux1-dev-nc. A provenance override for comfy-org/z_image_turbo (and HiDream/Chroma, which use the FLUX.1-schnell VAE) would stop false non-commercial flags."
+   ]
+  },
+  {
+   "id": "hidream",
+   "family": "HiDream-I1 / HiDream-E1 (HiDream.ai)",
+   "licence": "mit",
+   "match": {
+    "filename": [
+     "hidream_i1",
+     "hidream-i1",
+     "hidream_e1",
+     "hidream-e1",
+     "hidream"
+    ],
+    "repo": [
+     "hidream-ai/hidream-i1-full",
+     "hidream-ai/hidream-i1-dev",
+     "hidream-ai/hidream-i1-fast",
+     "hidream-ai/hidream-e1-1",
+     "comfy-org/hidream-i1_comfyui"
+    ]
+   },
+   "confidence": "high",
+   "source": "https://huggingface.co/HiDream-ai/HiDream-I1-Full",
+   "source_date": "HF repo lastModified 2025-07-17; checked 2026-10-16",
+   "basis": "primary-text-fetched",
+   "notes": [
+    "Card: transformer models MIT; 'Generated images can be freely used for ... commercial applications.'",
+    "Components keep their own licences: VAE from FLUX.1 [schnell] (Apache 2.0), text encoders google/t5-v1_1-xxl (Apache 2.0) and meta-llama/Meta-Llama-3.1-8B-Instruct (Llama 3.1 Community License) - the Llama encoder should resolve to llama-community separately.",
+    "Dev, Fast and E1-1 repos are also tagged MIT."
+   ]
+  }
+ ],
+ "folder_defaults": {
+  "loras": {
+   "licence": "unknown",
+   "note": "A LoRA's licence is set by whoever trained it and is rarely embedded in the file. It also inherits the obligations of the base model it was trained on - a FLUX.1 [dev] LoRA cannot be more permissive than FLUX.1 [dev]."
+  },
+  "checkpoints": {
+   "licence": "unknown",
+   "note": "Community merges usually have no stated licence and an untraceable lineage of merged parents. Treat an unmatched checkpoint as unclearable until the source page is checked."
+  },
+  "embeddings": {
+   "licence": "unknown",
+   "note": "Textual inversion embeddings inherit the base model's terms and carry the trainer's own conditions."
+  },
+  "upscale_models": {
+   "licence": "unknown",
+   "note": "Community upscalers on OpenModelDB are frequently CC BY-NC-SA. Check the author's entry before commercial delivery."
+  }
+ }
 }

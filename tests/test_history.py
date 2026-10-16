@@ -699,7 +699,7 @@ def test_a_recorded_licence_conflict_is_flagged_everywhere(tmp_path):
     report = audit.run(str(path))
     assert report.licensing.conflicted
     assert "conflicting terms" in report.licensing.headline
-    assert any(f.id == "licence.conflicting-terms" for f in report.risk.findings)
+    assert any(f.id == "provenance.licence-contradicts-itself" for f in report.risk.findings)
     assert "Conflicting terms in the licence" in html_report.render(report)
     assert "Conflict:" in md_report.render(report)
     assert "contradict themselves" in licensing_guide.render()

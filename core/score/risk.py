@@ -120,7 +120,7 @@ def _licence_findings(models: list[ModelRef], api_node_types: list[str]) -> list
         first = next(c for c in contradictory[0].license.conflicts
                      if c.get("kind") in ("recorded", "detected"))
         out.append(Finding(
-            id="licence.conflicting-terms",
+            id="provenance.licence-contradicts-itself",
             title=f"{len(by_licence)} licence(s) contradict themselves",
             severity="high",
             category="provenance",
