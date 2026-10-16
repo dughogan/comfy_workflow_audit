@@ -323,6 +323,32 @@ def render(report: AuditReport) -> str:
                 w(f"**What to do:** {finding.recommendation}")
                 w("")
 
+    # -- shot history ------------------------------------------------------
+    hist = report.history or {}
+    if hist.get("lineage"):
+        lin, ver = hist["lineage"], hist["verification"]
+        section("Shot history")
+        from .. import history as history_mod
+        w(f"**{history_mod.ASSURANCE_LABELS.get(ver['assurance'], ver['assurance'])}.** "
+          f"{ver['assurance_detail']}")
+        w("")
+        w(f"{lin['entries']} entries by {len(lin['people'])} people "
+          f"({', '.join(p['name'] for p in lin['people'])}): "
+          f"{lin['human_steps']} recorded human decisions, {lin['renders']} model runs. "
+          f"Stage: {lin['shot'].get('stage', 'sandbox')}.")
+        w("")
+        w("| # | When | Who | What | Human break points |")
+        w("|---|---|---|---|---|")
+        for r in hist.get("timeline", []):
+            w(f"| {r['seq']} | {r['at'][:16].replace('T', ' ')} | {r['actor'].get('name', '')} "
+              f"| {r['label']}{(': ' + r['note']) if r['note'] else ''} "
+              f"| {', '.join(r['breakpoints'])} |")
+        w("")
+        for gap in lin["gaps"]:
+            w(f"- **Gap:** {gap}")
+        if lin["gaps"]:
+            w("")
+
     # -- claude review -----------------------------------------------------
     review = review_section.get_review(report)
     if review:
@@ -499,7 +525,8 @@ def _licence_section(w, section, report: AuditReport) -> None:
     w("| Licence | Models | Commercial use | Fee | Confidence |")
     w("|---|---|---|---|---|")
     for group in lic.groups:
-        w(f"| {_cell(group.licence)} | {group.count} | {group.position} | "
+        w(f"| {_cell(group.licence)} | {group.count} | {group.position}"
+          f"{' ⚠ conflicting terms' if group.conflicts else ''} | "
           f"{_cell(licensing.describe_fee(group.fee))} | {group.confidence} |")
     w("")
 
@@ -509,6 +536,13 @@ def _licence_section(w, section, report: AuditReport) -> None:
         w("")
         if group.summary:
             w(group.summary)
+            w("")
+        for c in group.conflicts:
+            w(f"> ⚠ **Conflict:** {c.get('summary', '')}")
+            for clause in c.get("clauses", []):
+                w(f"> - {clause}")
+            w(f"> *{c.get('reading', '')}*"
+              + (f" [source]({c['source']})" if c.get("source") else ""))
             w("")
         if group.restrictions:
             for restriction in group.restrictions[:10]:

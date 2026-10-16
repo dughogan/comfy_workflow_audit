@@ -140,3 +140,75 @@ def describe() -> dict[str, Any]:
         "profile": profile.describe() if profile else "",
         "registry_path": registry_path(),
     }
+
+
+# -- shot history ------------------------------------------------------------
+
+#: Who is at this workstation. Recorded on every history entry; without it the
+#: entry falls back to the operating-system account, which is rarely a name a
+#: lawyer recognises.
+HISTORY_USER = f"{PREFIX}.History.UserName"
+HISTORY_ROLE = f"{PREFIX}.History.Role"
+#: Stamp the open workflow automatically on every queue and every render.
+HISTORY_AUTO = f"{PREFIX}.History.Auto"
+#: The ledger path and the signing-key file are deliberately NOT settings.
+#: ComfyUI settings are writable by any browser that can reach the server, so a
+#: path there would let anyone redirect where the server writes, or swap in a
+#: signing key of their own. Both come from the server's environment instead:
+#: COMFYAUDIT_HISTORY_LEDGER and COMFYAUDIT_HISTORY_KEY_FILE (or the key itself
+#: in COMFYAUDIT_HISTORY_KEY).
+HISTORY_CONFIDENTIALITY = f"{PREFIX}.History.Confidentiality"
+#: Where finished work is distributed, which is what decides several rules
+#: (the EU marking obligations reach content made available in the EU, wherever
+#: it was rendered).
+HISTORY_DISTRIBUTE = f"{PREFIX}.History.DistributeIn"
+
+#: Production facts that decide which union and disclosure rules apply.
+HISTORY_UNION = f"{PREFIX}.History.UnionProduction"
+HISTORY_ADVERTISING = f"{PREFIX}.History.Advertising"
+HISTORY_FEATURE = f"{PREFIX}.History.FeatureFilm"
+HISTORY_UNION_CREW = f"{PREFIX}.History.UnionCrew"
+HISTORY_ANIMATION = f"{PREFIX}.History.Animation"
+HISTORY_TPN = f"{PREFIX}.History.TPNVendor"
+HISTORY_EO = f"{PREFIX}.History.EOInsurance"
+HISTORY_COPYRIGHT = f"{PREFIX}.History.CopyrightClaim"
+#: Who commissioned the work (Netflix, ...), which brings in that client's AI rules.
+HISTORY_CLIENTS = f"{PREFIX}.History.Clients"
+#: Write a provenance sidecar next to every render.
+HISTORY_SIDECARS = f"{PREFIX}.History.Sidecars"
+
+CONFIDENTIALITY_OPTIONS = {
+    "prompts readable": "none",
+    "prompts as fingerprints only": "redact",
+    "prompts encrypted": "encrypt",
+}
+
+
+def history_settings(user: str = "default") -> dict[str, Any]:
+    s = read_settings(user)
+    distribute = [t.strip().upper() for t in
+                  str(s.get(HISTORY_DISTRIBUTE, "") or "").replace(";", ",").split(",")
+                  if t.strip()]
+    return {
+        "user": str(s.get(HISTORY_USER, "") or "").strip(),
+        "role": str(s.get(HISTORY_ROLE, "") or "").strip(),
+        "auto": bool(s.get(HISTORY_AUTO, True)),
+        "ledger": os.environ.get("COMFYAUDIT_HISTORY_LEDGER", "").strip(),
+        "key_file": os.environ.get("COMFYAUDIT_HISTORY_KEY_FILE", "").strip(),
+        "confidentiality": CONFIDENTIALITY_OPTIONS.get(
+            s.get(HISTORY_CONFIDENTIALITY, "prompts readable"), "none"),
+        "distribute_in": distribute,
+        "territory": TERRITORY_OPTIONS.get(s.get(TERRITORY, "not set"), ""),
+        "likeness": bool(s.get(LIKENESS)),
+        "union_performers": bool(s.get(HISTORY_UNION)),
+        "advertising": bool(s.get(HISTORY_ADVERTISING)),
+        "feature": bool(s.get(HISTORY_FEATURE)),
+        "union_crew": bool(s.get(HISTORY_UNION_CREW)),
+        "animation": bool(s.get(HISTORY_ANIMATION)),
+        "tpn_vendor": bool(s.get(HISTORY_TPN)),
+        "eo_insurance": bool(s.get(HISTORY_EO)),
+        "copyright_claim": bool(s.get(HISTORY_COPYRIGHT)),
+        "sidecars": bool(s.get(HISTORY_SIDECARS, True)),
+        "clients": [c.strip() for c in str(s.get(HISTORY_CLIENTS, "") or "").replace(";", ",").split(",")
+                    if c.strip()],
+    }

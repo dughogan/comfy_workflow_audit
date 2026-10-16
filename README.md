@@ -103,6 +103,7 @@ audit is part of a pipeline rather than a question someone just asked.
 | **Audit This Workflow** | Documents the running graph. Outputs the report as Markdown and JSON, plus the risk score, automation index and a one-line licence summary as separate sockets. |
 | **Claude Review** | Optional second pass for the judgement calls — see below. |
 | **Audit Gate** | Stops the queue on conditions **you** choose. Nothing is enforced by default. |
+| **Shot History Gate** | Put it between VAE Decode and Save Image. Stops the run before anything is saved if the shot has no history, its history has been altered, it has not reached the stage you require (e.g. still in sandbox), or, if you switch it on, a model bars commercial use. |
 | **Save Audit Report** | Writes the report into your output folder as HTML, Markdown or JSON. |
 
 ## The sidebar
@@ -387,6 +388,24 @@ absolute paths, unpinned packs, seeds that drift, hosted APIs that can change
 under you, node classes nothing can install. **Licence position is deliberately
 not part of this score** — that's policy, and policy is yours.
 
+## Conflicting licence data
+
+Some licences contradict themselves, and sources sometimes disagree about what
+a file is. Neither is ever resolved silently. Three kinds are flagged:
+
+| Kind | Example |
+|---|---|
+| **Conflicting terms in the licence** | FLUX.1 [dev] permits commercial use of outputs in one clause and bars production use of anything the model produces in another. Recorded in the knowledge base with both clauses, the reading applied and the source. |
+| **Contradictory licence data** | An entry, including a studio's own override, that says two incompatible things, such as *commercial use: yes* with *outputs: non-commercial*. Detected automatically. |
+| **Sources disagree** | With `--online`, the filename, the Hugging Face tag, Civitai and the base model describe one file differently. |
+
+Each conflict appears in the licence summary, as a high-severity finding, in
+the licensing guide, and on the model's lifeline in the provenance record. The
+stricter reading is applied until the licence holder or counsel confirms
+otherwise. To record a new conflict, add a `conflicts` list to the licence's
+entry in `licences.json`, with `summary`, `clauses`, `reading`, `source` and
+`checked`.
+
 ## Looking models up
 
 With `--online` (or the node's `online_lookups` switch), models and packs are
@@ -491,6 +510,275 @@ model-derived, and carries its own confidence.
 **It sends model names and prompt text to the Anthropic API.** Web search is on
 by default so it can check a licence at source — turn it off for confidential
 work. It's opt-in for exactly that reason.
+
+## Shot history
+
+An audit answers *what is in this workflow now*. Months later, on a commercial
+job, legal asks something else: **how did this frame come to exist?** Who built
+the graph, who changed it, which models came and went, which prompts made the
+delivered pixels, where the source plates came from, and where a person, not a
+model, made the decisions.
+
+Shot history keeps that answer inside the workflow itself, under
+`extra.comfyaudit_history`. ComfyUI preserves `extra` on save and copies it into
+every PNG it renders, so the record travels with the file and with its outputs.
+Nothing contacts the network, which makes it usable on an air-gapped content
+network.
+
+### What gets recorded
+
+Every entry is a snapshot of the workflow's substance plus who acted and what
+changed:
+
+| Captured | Detail |
+|---|---|
+| **Who** | Name and role as set in *Settings → ComfyAudit → Shot history*, the machine, and the tool |
+| **Models** | Every weight, with its licence reading at that moment. Additions, removals and LoRA strength changes are diffed per entry |
+| **Prompts** | Each prompt's text (or only its SHA-256, or encrypted) and **who first wrote it** |
+| **Nodes** | Core, custom (with pack and pinned version) and hosted-API nodes |
+| **Source media** | Every supplied image, plate or clip, fingerprinted, with a declared origin and the studio's own asset ID |
+| **Settings** | Seeds, steps, CFG, sampler, resolution, bypassed branches |
+| **Outputs** | Rendered files, fingerprinted, so a delivered frame can be traced to the entry that made it |
+| **Stage** | `sandbox → production → cleared → delivered`. Sandbox work never ships; promotion is where clearance starts |
+| **Studio IDs** | The ShotGrid, ftrack or other tracking-system entity the asset was born as, so provenance starts there and not in ComfyUI |
+
+Laying out nodes, panning and resizing are not changes; a save that changed
+nothing adds nothing. Renders, reviews and approvals always record, because
+the fact that they happened is the point. Unchanged states are stored once and
+referenced, so a long life with hundreds of reviews stays small.
+
+### Human break points
+
+Every entry is tagged with the human decisions it contains: *authored*,
+*prompt*, *source-media*, *model-choice*, *branch*, *parameters*, *seed*,
+*review*, *selection*, *sourcing*, *stage*, *handoff* and *note*. The tagging
+is deliberately conservative:
+
+- Taking an existing graph under tracking credits the importer with nothing,
+  and its prompts are listed as written "before tracking".
+- Seeds a sampler advanced on its own never count as a choice.
+- A blank note is not a decision.
+
+The record calls out the gaps: renders with no person between them, a final
+render nobody reviewed, sources with no known origin, and a sign-off that a
+later render or rejection has overtaken.
+
+Read the result for what it is: a record of **process**. For copyright, the US
+Copyright Office and EU courts give most weight to human-made material that
+stays visible in the output and to human edits after generation. They treat
+prompts, selection and parameter changes alone as generally not enough. So the
+history records the origin of every source plate. Work done outside ComfyUI,
+such as comp, paint and grade, can be attested against the shot.
+
+### Can the record be trusted?
+
+| Level | What it means |
+|---|---|
+| **Witnessed** | Chain intact, every entry signed with the studio key, and every entry's hash matches a row in the studio ledger |
+| **Signed** | Chain intact and every entry signed: nobody without the key wrote or changed an entry |
+| **Unverified** | Chain intact but unsigned (or checked without the key). Catches accidents, not a determined forger |
+| **Altered** | Something was edited, removed, reordered, cut short, replaced, or an unsigned entry was slipped into a signed history; the first problem is named |
+| **No history** | The workflow carries none |
+
+Each entry hashes the one before it, so editing one breaks the chain at that
+point. Signing uses HMAC-SHA256 with a studio passphrase.
+
+The **ledger** is an append-only JSONL file outside the workflow, recording
+each entry's hash. It is keyed by the shot id sealed inside the entries, so
+editing the file's visible shot id does not dodge it. It catches a history cut
+short, replaced wholesale, or rewritten after the fact: the ledger will have
+seen the same entry with two different contents. The tool also refuses to add
+an entry on top of a damaged history, because a fresh signature would launder
+the damage.
+
+Secrets and paths come from the **server's environment only**. That includes
+`COMFYAUDIT_HISTORY_KEY` (or `COMFYAUDIT_HISTORY_KEY_FILE`),
+`COMFYAUDIT_HISTORY_ENC_KEY` and `COMFYAUDIT_HISTORY_LEDGER`. ComfyUI settings
+are writable from any browser that can reach the server, so they never hold a
+key, a key path or a ledger path.
+
+A signature proves an entry was written through a holder of the studio key. In
+ComfyUI that is the studio's ComfyAudit server. It does not prove *which*
+person wrote the entry. Names are recorded as each person declared them, and
+the record says so beside every badge. Per-person keys narrow this.
+
+Prompts are often the client's creative. Set *Prompts in the history* to
+**fingerprints only** to store just a keyed fingerprint (HMAC-SHA256). It
+proves which prompt was used without revealing it, and it cannot be confirmed
+by guessing. LoRA or embedding names written inside a protected prompt, and
+output filenames, are protected too. The environment's setting always wins
+over a weaker one chosen in the UI. Or set **encrypted** for AES-256-GCM, which needs
+`pip install cryptography`. Encryption fails closed: with the library missing it
+stores the fingerprint, never the plaintext. Models, nodes and licences always
+stay readable, since they are what the review is about.
+
+### In ComfyUI
+
+The **ComfyAudit** tab in the sidebar. Tracking is automatic: every workflow
+starts its history the moment it is opened, and each open tab keeps its own.
+
+- An *edited* entry is added just before a queue, if the graph changed, which
+  is what embeds the history in that render's metadata. A *rendered* entry is
+  added when the render finishes, with its output files fingerprinted. Bringing
+  a render back in as an input, handing the shot to someone else, Save As and
+  duplicating a tab are recorded too, without any clicks.
+- The header shows the shot's stage, commercial standing and whether its record
+  verifies, with **Package for delivery**, **Life of the shot** (the graph
+  replayed over a timeline, with a story and a log) and **Provenance record**.
+- **Shot details** names the shot and links it to its project and studio asset
+  ID. The project is what shares show-level answers between shots.
+- **Package for delivery** checks the shot, shows what would make it safe,
+  takes the sign-off and returns a zip for legal.
+
+Entries are made server-side with the studio key, then adopted into the open
+graph. Save the workflow to keep them.
+
+### Where the history lives
+
+In the workflow file itself, under `extra.comfyaudit_history`, so it goes
+wherever the `.json` goes. Each render also carries it in the PNG's workflow
+metadata (up to the moment it was queued) and gets a
+`<render>.provenance.json` beside it: the history up to the entry that made
+that render, plus the render's fingerprint, checkable on its own with
+`comfyaudit history verify-file`. If that file is lost, the saved workflow is
+enough: `comfyaudit history verify-file render.png --workflow shot.json` finds
+the entry that recorded the render, by its contents rather than its name
+(including renders made before a Save As), and checks the whole history. It
+needs the workflow to have been saved after the render. An optional ledger file
+(`COMFYAUDIT_HISTORY_LEDGER`) keeps an independent copy of every entry, so a
+history that was removed or rewritten shows up.
+
+It does not travel with **Export (API Format)**: that format has no room for
+it, and the panel asks before exporting a tracked shot that way. Copying nodes
+into another workflow does not carry it either.
+
+### ShotGrid (beta)
+
+With `COMFYAUDIT_SHOTGRID_URL`, `COMFYAUDIT_SHOTGRID_SCRIPT` and
+`COMFYAUDIT_SHOTGRID_KEY` set, Shot details checks a ShotGrid shot ID against
+your site, and delivery posts a Note on the shot with the verdict, the sign-off
+and the history's latest hash, with the package attached
+(`COMFYAUDIT_SHOTGRID_HASH_FIELD` also writes that hash to a custom field).
+
+**Beta: not yet tested against a live ShotGrid site.** It is built from
+Autodesk's REST API documentation and tested against a local stand-in of those
+endpoints only. Run it on a trial or sandbox site before relying on it, and
+please report what differs.
+
+### The provenance record
+
+A document for legal, exportable as HTML or PDF. It contains:
+
+- Whether the record can be trusted.
+- Human-in-the-loop figures.
+- **The life of the shot as a flow graph**: one lane per person, the chain
+  between entries (a line crossing lanes is a handoff), stage bands, model,
+  prompt and source markers, and break-point flags.
+- A model lifeline, from first appearance to removal, coloured by commercial
+  position.
+- Prompts with their authors, source material and its origins, stages and
+  sign-off.
+- The rules the shot may need to meet, with the evidence the record already
+  holds.
+- The complete signed log.
+
+### Rules and agreements
+
+The provenance record ends with the published rules a shot may have to meet, and
+what the record already evidences for each. The bundled knowledge base
+(`core/knowledge/data/regulations.json`) has 37 entries, each with its source,
+that source's date and a confidence level. It covers:
+
+- **Union and guild agreements:** SAG-AFTRA TV/Theatrical (2023 and 2026),
+  Commercials (2025) and Interactive Media (2025), plus the WGA and DGA AI terms
+  and the Academy's AI rules.
+- **US copyright:** the US Copyright Office's copyrightability report and its
+  registration-disclosure guidance, and *Thaler v. Perlmutter*.
+- **EU:** the AI Act's Article 50 marking and deepfake-disclosure duties and the
+  Code of Practice, the CJEU originality test, and the German and Czech AI
+  rulings.
+- **UK and China:** the UK's computer-generated works provision, China's
+  labelling measures and *Li v Liu*.
+- **US states and federal:** the California, New York and Tennessee
+  digital-replica and transparency laws, and the federal bills.
+- **Provenance and platforms:** C2PA content credentials, and the platform and
+  FTC disclosure rules.
+
+Which rules appear depends on what the history shows (identity or voice nodes,
+LLM nodes, training nodes, the production stage, supplied media). It also
+depends on what the studio sets: territory, where the work is distributed, and
+whether it is a union production, advertising or a feature.
+
+Some evidence is checked automatically, and only where the check actually
+proves the item: human-made source material, declared sources, prompt
+authorship, a reviewed final, a sign-off that covers the final render, a
+verified signature, and fingerprinted outputs. Exporting a manifest is *not*
+treated as proof that marking was applied. Neither is a reviewer standing in
+for a consulted director. Evidence only a
+person can attest, such as a signed consent rider or a disclosure in the
+credits, is recorded as a note tagged with the rule. That way it is signed into
+the chain rather than left in an email.
+
+One common assumption is answered directly. **No EU rule requires proof that a
+human was in the loop for a creative shot.** The AI Act's human-oversight
+article (Art. 14) applies only to high-risk systems, and the record says so.
+Human involvement matters for *copyright*, in the US, the EU and China, which
+is why the history records it so carefully.
+
+Refresh the research, then rebuild with `python tools/build_regulations.py`. The
+mapping from each rule to its triggers and checks is set by hand in that
+script, not inferred.
+
+### Content credentials
+
+`comfyaudit history manifest` writes a C2PA manifest *definition* for the final
+render. It opens with the required `c2pa.created` action. The people and
+decisions behind the render are carried in the tool's own assertion, keyed to
+the history's head hash. It marks generated output with the IPTC `trainedAlgorithmicMedia`
+source type, or `compositeWithTrainedAlgorithmicMedia` when supplied media went
+in, and lists the people who acted and the models used. Signing needs a
+certificate the studio holds, so sign and embed it at delivery with `c2patool`
+or your own signing service.
+
+### Command line
+
+```bash
+export COMFYAUDIT_HISTORY_KEY=...            # studio passphrase (server env only)
+export COMFYAUDIT_HISTORY_LEDGER=/studio/ledger.jsonl
+comfyaudit history stamp shot.json --event created --by "Ana Ruiz" --role compositor \
+    --name SH0120 --id shotgrid=Shot#4411 --ledger /studio/ledger.jsonl
+comfyaudit history stamp shot.json --event sourced --source 5=photographed --asset-id PLATE-0120-A
+comfyaudit history stamp shot.json --event rendered --output-file out/SH0120_0001.exr
+comfyaudit history stamp shot.json --event reviewed --by "Doug Hogan" --note "keep the grain"
+comfyaudit history stamp shot.json --event promoted --stage production
+comfyaudit history stamp shot.json --event approved --by "Lee Park" --role legal
+comfyaudit history verify shot.json --ledger /studio/ledger.jsonl    # exit 3 if altered
+comfyaudit history log shot.json
+comfyaudit history record shot.json --distribute US,EU --likeness   # provenance record
+comfyaudit history manifest shot.json                                # C2PA definition
+```
+
+UI-format workflows are updated in place. API-format prompts have nowhere to
+carry history, so theirs lives beside them as `<name>.history.json`.
+
+## Commercial licensing guide
+
+```bash
+comfyaudit guide -o licensing-guide.html
+```
+
+It is also in the History tab and at `/comfyaudit/licensing-guide`. It is a
+plain-language document for production and legal, built from the same
+knowledge base the auditor uses, so it cannot drift from it. It covers:
+
+- How model licensing actually works: outputs versus weights, inheritance,
+  conditional terms, hosted APIs, why a commercial licence is not indemnity,
+  and when code licences matter.
+- The steps from audit to a commercial licence, including what to ask a
+  licence holder for.
+- Every licence sorted into *permitted*, *permitted with conditions* and *not
+  without a separate licence*, with the terms that matter, who grants a
+  commercial licence, and a source link.
 
 ## Command line
 
@@ -617,7 +905,7 @@ reproducible six months later.
 ## Development
 
 ```bash
-python -m pytest        # 209 tests
+python -m pytest        # 257 tests
 ```
 
 The 13 agent tests need `anthropic>=1.0`; on an older SDK they fail with
@@ -625,7 +913,7 @@ The 13 agent tests need `anthropic>=1.0`; on an older SDK they fail with
 version floor talking rather than a real failure.
 
 ```bash
-python -m pytest --ignore=tests/test_agent.py   # 194, no SDK needed
+python -m pytest --ignore=tests/test_agent.py   # 244, no SDK needed
 ```
 
 The agent tests point a real Anthropic client at a local stub of the Messages

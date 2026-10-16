@@ -120,6 +120,46 @@ def _token_match(name: str, pattern: str) -> bool:
     return False
 
 
+def licence_conflicts(terms: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every way a licence entry contradicts itself.
+
+    Two kinds. *Recorded* conflicts are written into the knowledge base by a
+    person who read the licence and found its clauses disagree (FLUX.1 [dev]
+    permits commercial use of outputs in one clause and bars production use of
+    anything the model produces in another). *Detected* conflicts are fields in
+    one entry that cannot both be true - caught here so a hand-edited or
+    studio-supplied entry cannot quietly say two things at once.
+    """
+    out = [dict(c, kind="recorded") for c in terms.get("conflicts", []) or []
+           if isinstance(c, dict) and c.get("summary")]
+    commercial = terms.get("commercial_use", "unknown")
+    cond = terms.get("conditions", {}) or {}
+    name = terms.get("name", "this licence")
+
+    def detected(summary: str, *clauses: str) -> None:
+        out.append({"kind": "detected", "summary": summary, "clauses": list(clauses),
+                    "reading": "Shown as recorded; confirm against the licence text.",
+                    "source": terms.get("url", "")})
+
+    if commercial == "yes" and cond.get("outputs_commercial") == "no":
+        detected(f"{name} is recorded as allowing commercial use, but also as "
+                 "forbidding commercial use of its outputs.",
+                 "commercial_use: yes", "conditions.outputs_commercial: no")
+    if commercial == "no" and terms.get("fee") == "none" and cond.get("commercial_licence_available"):
+        detected(f"{name} is recorded as non-commercial with no fee, yet also as having "
+                 "a commercial licence available.",
+                 "commercial_use: no, fee: none", "conditions.commercial_licence_available: true")
+    if commercial == "yes" and cond.get("territory_excluded") and not cond.get("territory_note"):
+        detected(f"{name} is recorded as permissive but excludes territories without "
+                 "saying how.", "commercial_use: yes",
+                 f"conditions.territory_excluded: {cond.get('territory_excluded')}")
+    if commercial == "yes" and terms.get("output_ownership") == "restricted":
+        detected(f"{name} is recorded as allowing commercial use while restricting "
+                 "ownership of outputs.", "commercial_use: yes",
+                 "output_ownership: restricted")
+    return out
+
+
 class LicenceMatcher:
     """Resolves :class:`~comfyaudit.records.ModelRef` objects to licence terms."""
 
@@ -241,6 +281,7 @@ class LicenceMatcher:
             confidence=confidence,
             summary=terms.get("summary", ""),
             conditions=dict(terms.get("conditions", {})),
+            conflicts=licence_conflicts(terms),
         )
 
     def _unmatched(self, ref: ModelRef) -> LicenseInfo:

@@ -184,6 +184,9 @@ def build_parser() -> argparse.ArgumentParser:
     reg_rm.add_argument("key")
     reg_rm.add_argument("--kind", default="model", choices=["model", "pack"])
 
+    from . import history_cli
+    history_cli.add_parsers(sub)
+
     return parser
 
 
@@ -198,6 +201,9 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_registry(args)
     if args.command == "update-knowledge":
         return _cmd_update_knowledge(args)
+    if args.command in ("history", "guide"):
+        from . import history_cli
+        return history_cli.run(args)
     return _cmd_audit(args)
 
 

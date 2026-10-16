@@ -18,6 +18,7 @@ from typing import Any, Iterable
 
 from .. import __version__
 from ..audit import AuditReport
+from . import machine
 from . import narrative as narrative_section
 from . import review as review_section
 from ..score import clearance, licensing
@@ -339,7 +340,7 @@ code{font-family:var(--mono);font-size:.88em;background:var(--sunk);padding:1px 
 
 
 def render(report: AuditReport, standalone: bool = True) -> str:
-    body = _body(report)
+    body = _body(report) + machine.block("licence-audit", {"audit": report.to_dict()})
     style = f"<style>{CSS}</style>"
     if not standalone:
         return f"<link rel='stylesheet' href='{FONTS}'>\n{style}\n{body}"
@@ -347,7 +348,7 @@ def render(report: AuditReport, standalone: bool = True) -> str:
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        f"<title>Clearance sheet - {src_name}</title>"
+        f"<title>Licence audit - {src_name}</title>"
         f"<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>"
         f"<link rel='stylesheet' href='{FONTS}'>"
         f"{style}</head><body>{body}</body></html>"
@@ -454,6 +455,8 @@ def _body(report: AuditReport) -> str:
     _automation_section(w, section, report)
     _risk_section(w, section, report)
 
+    _history_section(w, section, report)
+
     review = review_section.get_review(report)
     if review:
         w(review_section.html(review))
@@ -465,6 +468,29 @@ def _body(report: AuditReport) -> str:
 
 
 # --------------------------------------------------------------------------
+
+
+def _history_section(w, section, report: AuditReport) -> None:
+    hist = report.history or {}
+    if not hist.get("lineage"):
+        return
+    from . import history_html
+    lin, v = hist["lineage"], hist["verification"]
+    section("Shot history", f"{lin['entries']} entries")
+    tone = {"witnessed": "ok", "signed": "ok", "consistency": "warn"}.get(v["assurance"], "stop")
+    from .. import history as history_mod
+    label = history_mod.ASSURANCE_LABELS.get(v["assurance"], v["assurance"])
+    w(f"<p class='verdict-note {tone}'><span><strong>{_e(label)}.</strong> "
+      f"{_e(v['assurance_detail'])}</span></p>")
+    w(f"<p class='lede'>{len(lin['people'])} people, {lin['human_steps']} recorded human "
+      f"decisions and {lin['renders']} model runs since "
+      f"{_e((hist['timeline'][0]['at'] if hist['timeline'] else '')[:10])}. Stage: "
+      f"{_e(lin['shot'].get('stage', 'sandbox'))}. Export the provenance record from the "
+      "History tab or <code>comfyaudit history record</code> for the full lineage.</p>")
+    w("<style>" + history_html.HISTORY_CSS + "</style>")
+    w("<div class='graphwrap'>" + history_html.flow_svg(lin, hist["timeline"]) + "</div>")
+    if lin["gaps"]:
+        w("<ul class='gaps'>" + "".join(f"<li>{_e(g)}</li>" for g in lin["gaps"]) + "</ul>")
 
 
 def _registry_section(w, section, report: AuditReport) -> None:
@@ -656,7 +682,9 @@ def _licence_section(w, section, report: AuditReport) -> None:
             f"<tr><td>{_e(group.licence)}"
             f"<span class='sub'>{_e(models)}</span></td>"
             f"<td class='num'>{group.count}</td>"
-            f"<td><span class='chip {tone}'>{_e(group.position)}</span></td>"
+            f"<td><span class='chip {tone}'>{_e(group.position)}</span>"
+            + (" <span class='chip stop'>conflicting terms</span>" if group.conflicts else "")
+            + "</td>"
             f"<td>{_e(licensing.describe_fee(group.fee))}</td>"
             f"<td>{_e(group.confidence)}</td></tr>")
     w(_table(["Licence", "Models", "Commercial use", "Fee", "Confidence"], rows))
@@ -669,6 +697,8 @@ def _licence_section(w, section, report: AuditReport) -> None:
           f"<span class='tag'>{group.count} model(s)</span></div>")
         if group.summary:
             w(f"<p>{_e(group.summary)}</p>")
+        for c in group.conflicts:
+            w(_conflict_html(c))
         if group.restrictions:
             w("<ul>" + "".join(f"<li>{_e(r)}</li>"
                                for r in group.restrictions[:10]) + "</ul>")
@@ -697,6 +727,23 @@ def _licence_section(w, section, report: AuditReport) -> None:
           "is not visible in the workflow.</p><ul>"
           + "".join(f"<li><code>{_e(t)}</code></li>" for t in lic.hosted_api_types)
           + "</ul>")
+
+
+CONFLICT_KIND = {"recorded": "Conflicting terms in the licence",
+                 "detected": "Contradictory licence data",
+                 "sources": "Sources disagree about this file"}
+
+
+def _conflict_html(c: dict) -> str:
+    """One conflict, shown in full: what disagrees, and which reading was applied."""
+    clauses = "".join(f"<li>{_e(x)}</li>" for x in c.get("clauses", []))
+    src = (f" <a href='{_e(c['source'])}'>source</a>" if c.get("source") else "")
+    checked = f" &middot; checked {_e(c['checked'])}" if c.get("checked") else ""
+    return ("<div class='verdict-note stop' style='margin:10px 0'><span>"
+            f"<strong>&#9888; {_e(CONFLICT_KIND.get(c.get('kind'), 'Conflict'))}.</strong> "
+            f"{_e(c.get('summary', ''))}"
+            + (f"<ul style='margin:6px 0'>{clauses}</ul>" if clauses else " ")
+            + f"<em>{_e(c.get('reading', ''))}</em>{src}{checked}</span></div>")
 
 
 def _models_section(w, section, report: AuditReport) -> None:

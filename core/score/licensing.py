@@ -51,6 +51,8 @@ class LicenceGroup:
     url: str = ""
     confidence: str = "low"
     models: list[str] = field(default_factory=list)
+    #: Places where this licence contradicts itself or where sources disagree.
+    conflicts: list[dict] = field(default_factory=list)
 
     @property
     def count(self) -> int:
@@ -78,7 +80,14 @@ class LicenceSummary:
             "obligations": self.obligations,
             "to_verify": self.to_verify,
             "hosted_api_types": self.hosted_api_types,
+            "conflicted": self.conflicted,
         }
+
+    @property
+    def conflicted(self) -> list[dict[str, Any]]:
+        """Licences in this workflow whose terms conflict, with the models affected."""
+        return [{"licence": g.licence, "models": g.models, "conflicts": g.conflicts}
+                for g in self.groups if g.conflicts]
 
     def position_count(self, position: str) -> int:
         return self.counts.get(position, 0)
@@ -111,6 +120,9 @@ def summarise(models: Iterable[ModelRef],
             )
             grouped[name] = group
         group.models.append(model.filename)
+        for c in (lic.conflicts if lic else []):
+            if c.get("summary") not in {x.get("summary") for x in group.conflicts}:
+                group.conflicts.append(c)
         # Within a group, report the weakest confidence: one shaky match makes
         # the whole grouping worth a second look.
         if _rank_confidence(model.license) < _rank_confidence_value(group.confidence):
@@ -136,8 +148,13 @@ def _headline(summary: LicenceSummary) -> str:
     parts = [f"{summary.counts[p]} {p}" for p in POSITION_ORDER
              if summary.counts.get(p)]
     licences = len(summary.groups)
-    return (f"{summary.total_models} model(s) across {licences} licence(s): "
+    text = (f"{summary.total_models} model(s) across {licences} licence(s): "
             + ", ".join(parts) + ".")
+    conflicted = [g for g in summary.groups if g.conflicts]
+    if conflicted:
+        text += (f" {len(conflicted)} licence(s) have conflicting terms and need "
+                 "confirming at source.")
+    return text
 
 
 def _obligations(models: list[ModelRef]) -> list[str]:

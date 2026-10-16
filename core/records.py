@@ -53,6 +53,11 @@ class LicenseInfo:
     #: reaches, whether the restriction covers outputs. See
     #: ``core/score/clearance.py`` for the keys and what each one means.
     conditions: dict = field(default_factory=dict)
+    #: Places where the licence's own terms, or the sources describing it,
+    #: contradict each other. Each is a dict with ``summary``, ``clauses``,
+    #: ``reading`` (which reading the tool applied) and ``source``. A conflict
+    #: is never resolved silently: it is shown wherever the licence appears.
+    conflicts: list = field(default_factory=list)
 
     @property
     def blocks_commercial(self) -> bool:
