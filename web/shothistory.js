@@ -163,14 +163,51 @@ function getSetting(id, fallback) {
 
 const state = { summary: null, busy: false, error: "", form: null, notice: "", view: "home" };
 let mount = null;
+/**
+ * A Map kept in the browser's storage, so a page reload in the middle of a
+ * render does not lose the render. Entries older than a week are dropped.
+ */
+class StoredMap {
+  constructor(name) {
+    this.name = name;
+    this.map = new Map();
+    try {
+      const raw = JSON.parse(localStorage.getItem(name) || "[]");
+      const cutoff = Date.now() - 7 * 864e5;
+      for (const [k, v] of raw) if ((v?.at || 0) > cutoff) this.map.set(k, v);
+    } catch (e) { /* storage unavailable: memory only */ }
+  }
+  save() { try { localStorage.setItem(this.name, JSON.stringify([...this.map])); } catch (e) { /* memory only */ } }
+  get(k) { return this.map.get(k); }
+  has(k) { return this.map.has(k); }
+  set(k, v) { this.map.set(k, v); this.save(); return this; }
+  delete(k) { const r = this.map.delete(k); this.save(); return r; }
+  keys() { return [...this.map.keys()]; }
+  get size() { return this.map.size; }
+}
+
 /** Queued prompts by the server's prompt_id, so each completion finds its own workflow. */
-const jobs = new Map();
+const jobs = new StoredMap("comfyaudit.history.jobs");
 /** The workflow being queued while app.queuePrompt runs; api.queuePrompt reads it. */
 let queueContext = null;
 /** Outputs gathered per prompt from 'executed' events. */
 const outputs = new Map();
-/** Renders that finished while a different workflow was open, by workflow key. */
-const pending = new Map();
+/** Renders that finished while a different workflow was open, by shot. */
+const pending = new StoredMap("comfyaudit.history.pending");
+
+/**
+ * Which shot the open tab is. The record id travels inside the workflow, so a
+ * render finds its shot again after a rename, a Save As or a reload; a tab
+ * not yet tracked falls back to its file path.
+ */
+function shotKey() {
+  return app.graph?.extra?.[EXTRA_KEY]?.entries?.[0]?.shot?.id || workflowKey();
+}
+
+function hold(key, outs) {
+  const prev = pending.get(key);
+  pending.set(key, { at: Date.now(), renders: [...(prev?.renders || []), outs] });
+}
 
 function workflowKey() {
   const wf = app.extensionManager?.workflow?.activeWorkflow;
@@ -325,7 +362,9 @@ function onWorkflowShown() {
   shownTimer = setTimeout(async () => {
     await autoStart();
     await checkPlacement();
-    if (mount) flushPending().then(refresh);
+    // Renders held for this shot are recorded whether or not the panel is open.
+    await flushPending();
+    if (mount) refresh();
   }, 150);
 }
 
@@ -381,15 +420,13 @@ async function beforeQueue() {
 }
 
 async function flushPending() {
-  const key = workflowKey();
-  const list = pending.get(key);
+  const key = shotKey();
+  const list = pending.get(key)?.renders;
   if (!list?.length || !tracked()) return;
   pending.delete(key);
   for (const outs of list) {
     try {
-      if (!(await stamp("rendered", { outputs: outs }))) {
-        pending.set(key, [...(pending.get(key) || []), outs]);
-      }
+      if (!(await stamp("rendered", { outputs: outs }))) hold(key, outs);
     } catch (e) { console.warn(e); }
   }
   if (!pending.size) state.notice = "";
@@ -399,7 +436,7 @@ function wrapQueue() {
   const original = app.queuePrompt?.bind(app);
   if (!original) return false;
   app.queuePrompt = async function (...args) {
-    const ctx = { key: workflowKey(), tracked: tracked() };
+    const ctx = { key: shotKey(), tracked: tracked(), at: Date.now() };
     await beforeQueue();
     queueContext = ctx;
     try { return await original(...args); } finally { queueContext = null; }
@@ -417,6 +454,8 @@ function wrapQueue() {
   }
   return true;
 }
+
+let recoverJobs = async () => {};
 
 function listen() {
   api.addEventListener("executed", ({ detail }) => {
@@ -438,21 +477,43 @@ function listen() {
     const outs = outputs.get(id) || [];
     outputs.delete(id);
     if (!success || !job?.tracked || !getSetting("ComfyAudit.History.Auto", true)) return;
-    if (job.key === workflowKey() && tracked()) {
+    if (job.key === shotKey() && tracked()) {
       try {
-        if (!(await stamp("rendered", { outputs: outs }))) {
-          pending.set(job.key, [...(pending.get(job.key) || []), outs]);
-        }
+        if (!(await stamp("rendered", { outputs: outs }))) hold(job.key, outs);
         rerender();
-      } catch (e) { console.warn("[comfyaudit] render entry failed", e); }
+      } catch (e) {
+        console.warn("[comfyaudit] render entry failed", e);
+        state.error = `A render could not be added to this shot's history: ${e.message}`;
+        rerender();
+      }
     } else {
-      pending.set(job.key, [...(pending.get(job.key) || []), outs]);
+      hold(job.key, outs);
       state.notice = "A render finished while another workflow was open. It will be recorded "
         + "when you return to that workflow.";
       rerender();
     }
   };
   api.addEventListener("execution_success", ({ detail }) => finish(detail, true));
+  // Jobs that were running when the page was reloaded: ask ComfyUI how they
+  // ended, and record the ones that finished from its record of their outputs.
+  recoverJobs = async () => {
+    for (const id of jobs.keys()) {
+      try {
+        const r = await api.fetchApi(`/history/${encodeURIComponent(id)}`);
+        const item = (await r.json())?.[id];
+        if (!item?.status?.completed && item?.status?.status_str !== "error") continue;
+        const saved = [];
+        for (const out of Object.values(item.outputs || {})) {
+          for (const list of Object.values(out || {})) {
+            if (!Array.isArray(list)) continue;
+            for (const it of list) if (it?.filename && it.type === "output") saved.push(it);
+          }
+        }
+        outputs.set(id, saved);
+        await finish({ prompt_id: id }, item.status.status_str === "success");
+      } catch (e) { /* still queued or the server is unreachable: try next load */ }
+    }
+  };
   api.addEventListener("execution_error", ({ detail }) => finish(detail, false));
   api.addEventListener("execution_interrupted", ({ detail }) => finish(detail, false));
 }
@@ -549,6 +610,13 @@ async function openRecord() {
   await act(async () => {
     const data = await post("record", { workflow: app.graph.serialize() });
     openDocument(`${shotName()} - provenance record`, data.html, `${shotName()}.provenance.html`);
+  });
+}
+
+async function openLife() {
+  await act(async () => {
+    const data = await post("life", { workflow: app.graph.serialize() });
+    openDocument(`${shotName()} - life of the shot`, data.html, `${shotName()}.life.html`);
   });
 }
 
@@ -667,7 +735,8 @@ function homeView(s) {
     stat(s.human_steps, "human decisions"), stat(s.renders, "model runs")));
 
   wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", margin: "4px 0 6px" } },
-    btn("Package for delivery", openPackage, "primary"), btn("Provenance record", openRecord)));
+    btn("Package for delivery", openPackage, "primary"), btn("Life of the shot", openLife),
+    btn("Provenance record", openRecord)));
 
   if ((commercial.changes || []).length > 1) {
     wrap.append(caption("Commercial standing over time"));
@@ -953,6 +1022,7 @@ function doneStep() {
     [`${slug}.json`, "The workflow, with its history, the verdict and the sign-off sealed in"],
     [`${slug}.legal-report.html`, "For legal: clearance, provenance, rules checklist"],
     [`${slug}.clearance-sheet.html`, "The full licence and risk audit"],
+    [`${slug}.life.html`, "The shot's life on one timeline: graph, story and log"],
     [`${slug}.c2pa.json`, "C2PA manifest definition, ready to sign and embed"],
   ]) {
     wrap.append(h("div", { style: { fontSize: "12px", padding: "6px 0", borderBottom: `1px solid ${UI.line}` } },
@@ -1044,6 +1114,7 @@ app.registerExtension({
     installIcon();
     if (!wrapQueue()) console.warn("[comfyaudit] could not hook the queue; history will only record manual entries");
     listen();
+    setTimeout(() => recoverJobs().then(() => onWorkflowShown()), 2000);
     const manager = app.extensionManager;
     if (typeof manager?.registerSidebarTab === "function") {
       manager.registerSidebarTab({

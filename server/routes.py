@@ -131,6 +131,7 @@ def register() -> bool:
     _history_route("record", history_service.record)
     _history_route("manifest", history_service.manifest)
     _history_route("relocate", history_service.relocate)
+    _history_route("life", history_service.life)
     _history_route("check", delivery.check)
     _history_route("deliver", delivery.deliver)
     _history_route("summary", lambda body: history_service.summary(

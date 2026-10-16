@@ -336,6 +336,28 @@ input/output/temp folders.
   outputs to the frontend get no sidecar.
 Also: `dreamshaper_8` and many community fine-tunes aren't in the licence KB.
 
+**Life of the shot (2026-10-16).** `core/report/life_viewer.py` renders one
+self-contained page from the history: the graph replayed at each entry (each
+snapshot now carries `topology` - node ids, types, positions, sizes, modes,
+links; titles only when prompts are readable), added/changed/removed nodes and
+non-commercial models marked, a scrubber with flags where the shot became
+non-commercial, and a story and log in sync. Opens from **Life of the shot**
+in the panel (`history/life`) and ships in the delivery zip as
+`<shot>.life.html`. Every value from the workflow reaches the page as JSON
+and is drawn with textContent.
+
+Multiple tabs and reloads: each tab's history lives in its own graph's
+`extra`; renders are matched to their shot by record id (not path), and the
+job map and held renders persist in localStorage, so a reload mid-render
+recovers the render from `/history/<prompt_id>`. Held renders are recorded
+when their tab is next shown, panel open or not. Live-tested with two tabs,
+both renders finishing during a reload.
+
+Found in that test: Python floats like 450.0 come back from the browser as
+450, which changed entry bytes and read as tampering. Topology now stores
+whole numbers as ints, and `test_a_history_survives_a_round_trip_through_the_browser`
+guards every entry. A render that cannot be recorded now says so in the panel.
+
 **Priority 2: known gaps.**
 
 - [ ] **FLUX.1 [dev] terms.** Confirm the current BFL licence and update the

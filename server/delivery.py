@@ -27,7 +27,7 @@ from typing import Any
 from ..core import history as H
 from ..core.knowledge import alternatives as alternatives_mod
 from ..core.knowledge import licences as licences_mod
-from ..core.report import compliance, history_html
+from ..core.report import compliance, history_html, life_viewer
 from ..core.report import html as html_report
 from ..core.score import clearance as clearance_mod
 from . import history_service
@@ -200,6 +200,8 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
         zf.writestr(f"{slug}.c2pa.json", json.dumps(manifest, indent=1, default=str))
         zf.writestr(f"{slug}.legal-report.html", record)
         zf.writestr(f"{slug}.clearance-sheet.html", sheet)
+        zf.writestr(f"{slug}.life.html", life_viewer.render(
+            history, verification=H.verify(workflow, keys=keys, ledger=ledger)))
         zf.writestr("README.txt", _readme(shot, clearance))
 
     return {
@@ -227,6 +229,8 @@ def _readme(shot: str, clearance: dict[str, Any]) -> str:
         f"- {_slug(shot)}.legal-report.html: the provenance record for legal - clearance, who did",
         "  what and when, models over time, prompt authorship, sources, the rules checklist.",
         f"- {_slug(shot)}.clearance-sheet.html: the full licence and risk audit behind the verdict.",
+        f"- {_slug(shot)}.life.html: the shot's life on one timeline - the graph as it stood at",
+        "  each entry, the story, and the log. Opens in any browser, offline.",
         f"- {_slug(shot)}.c2pa.json: a C2PA manifest definition for the delivered file. It is",
         "  unsigned; sign and embed it with c2patool or the studio's signing service.",
         "",

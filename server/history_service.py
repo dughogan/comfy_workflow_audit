@@ -13,7 +13,7 @@ import os
 from typing import Any
 
 from ..core import history as H
-from ..core.report import history_html, licensing_guide
+from ..core.report import history_html, licensing_guide, life_viewer
 from . import settings as settings_mod
 
 
@@ -331,6 +331,17 @@ def context(cfg: dict[str, Any], body: dict[str, Any] | None = None) -> dict[str
                  "third_party_characters", "ai_music", "intimate_imagery"):
         ctx[flag] = bool(body.get(flag) or cfg.get(flag))
     return ctx
+
+
+def life(body: dict[str, Any]) -> dict[str, Any]:
+    """The life-of-the-shot page: graph replay, story and log on one timeline."""
+    cfg = settings_mod.history_settings()
+    workflow = body["workflow"]
+    history = H.read(workflow)
+    if not history:
+        return {"error": "This workflow has no history yet."}
+    v = H.verify(workflow, keys=keys(cfg), ledger=cfg.get("ledger", ""), history=history)
+    return {"html": life_viewer.render(history, verification=v)}
 
 
 def manifest(body: dict[str, Any]) -> dict[str, Any]:

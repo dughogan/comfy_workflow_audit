@@ -352,6 +352,52 @@ def file_sha256(path: str) -> str:
     return h.hexdigest()
 
 
+def _js_number(value: Any) -> int | float:
+    """A coordinate as the browser will write it back.
+
+    Entries are hashed here and stored by the canvas, and JavaScript has one
+    number type: 450.0 comes back as 450. A float with nothing after the point
+    would change the entry's bytes on its first trip through the browser and
+    read as tampering, so whole numbers are kept as ints.
+    """
+    try:
+        v = round(float(value), 1)
+    except (TypeError, ValueError):
+        return 0
+    return int(v) if v.is_integer() else v
+
+
+def topology(data: dict[str, Any], keys: Keys | None = None) -> dict[str, Any]:
+    """The graph as it was laid out: nodes, where they sat, and how they were wired.
+
+    Enough to redraw the workflow at any point in its life. Layout is not an
+    edit (``graph_fingerprint`` ignores it), so this only rides along with
+    entries made for other reasons. Node titles are often named after the
+    brief, so they are left out when prompts are protected. Only the top-level
+    graph is drawn; subgraph contents are not.
+    """
+    keys = keys or Keys()
+    nodes = []
+    for n in data.get("nodes") or []:
+        if not isinstance(n, dict) or "id" not in n:
+            continue
+        row = {"id": str(n["id"]), "type": str(n.get("type", "")),
+               "pos": [_js_number(v) for v in (n.get("pos") or [0, 0])[:2]],
+               "size": [_js_number(v) for v in (n.get("size") or [200, 80])[:2]],
+               "mode": n.get("mode", 0)}
+        if keys.confidentiality == "none" and n.get("title"):
+            row["title"] = str(n["title"])
+        nodes.append(row)
+    links = []
+    for link in data.get("links") or []:
+        if isinstance(link, list) and len(link) >= 5:
+            links.append([str(link[1]), link[2], str(link[3]), link[4]])
+        elif isinstance(link, dict) and "origin_id" in link:
+            links.append([str(link["origin_id"]), link.get("origin_slot", 0),
+                          str(link["target_id"]), link.get("target_slot", 0)])
+    return {"nodes": nodes, "links": links}
+
+
 def snapshot(data: dict[str, Any], keys: Keys | None = None,
              matcher: licences_mod.LicenceMatcher | None = None,
              resolve: Any = None) -> dict[str, Any]:
@@ -448,6 +494,7 @@ def snapshot(data: dict[str, Any], keys: Keys | None = None,
         "seeds": seeds,
         "bypassed": modes,
         "comfyui_catalog": catalog.comfyui_version(),
+        "topology": topology(data, keys),
     }
 
 
