@@ -1,55 +1,50 @@
 # ComfyAudit
 
-**Document what's inside a ComfyUI workflow, and hand the result to someone else.**
+**Every ComfyUI workflow's life, recorded as it happens, and packaged for legal.**
+Built for studios putting ComfyUI in final pixels.
 
-Every model it loads and what each licence actually says, where the weights came
-from, the prompts, the external assets, the custom node packs and their versions,
-how much of it a human has to babysit, and what would stop it running on another
-machine.
+[![Watch the ComfyAudit demo (1:32)](docs/comfyaudit-demo-poster.jpg)](docs/comfyaudit-demo.mp4)
 
-Out of the box it just reports, and opens with a plain-language summary so the
-tables underneath make sense to whoever you forward them to.
+*Watch the demo (1 min 32 s): tracking, Life of the shot, Package for delivery,
+and ComfyAudit Review for legal.*
 
-Tell it what you've already cleared — optional — and it stops repeating itself.
-The second audit of a workflow answers a much shorter question than the first:
-*what's in here that we haven't already dealt with?*
+ComfyAudit does three things:
 
-Tell it about your facility — optional, one panel in ComfyUI's settings — and it
-also works out what all of that means for **you**: go, no-go, or
-go-with-conditions, with the reasoning shown.
+- **Audits a workflow:** every model it loads and what each licence actually
+  says for *your* studio, the custom node packs and their versions, prompts,
+  external assets, and what would stop it running elsewhere. It gives a go,
+  no-go or go-with-conditions, with the reasoning and a source for every claim.
+- **Records the shot's whole life inside the workflow file:** who built it,
+  who changed what, which models came and went, which prompts made the
+  delivered frames, where the plates came from, and where a person, not a model,
+  made the decisions. Tracking is automatic; the record is hash-chained, can be
+  signed per person, and travels with the `.json` and its renders.
+- **Packages a shot for legal:** a check against your licences and the rules for
+  your production, a sign-off sealed into the history, and a zip legal can open
+  in **ComfyAudit Review**, a browser app for legal teams that checks every file
+  locally and records their decision back into the shot.
 
-That second part matters because a licence grants rights to *someone, somewhere,
-doing something*. MiniMax H3 is a no in London and a yes in Toronto: the licence
-excludes the United Kingdom by territory and says nothing about Canada. Same
-file, same terms, opposite answers. So ComfyAudit doesn't ship an opinion about
-what your studio can live with — it takes your circumstances as input and applies
-the published terms to them.
-
-Give it no profile — the default — and it stays descriptive: here are the terms,
-here's a source for every claim, here are the facts that would settle it, written
-out in prose before any table appears.
-
-Built for the moment a workflow arrives from an artist, a vendor or a Discord
-link, and someone has to decide whether it can go on a show.
+Nothing contacts the network unless you turn on online lookups, so it works on
+an air-gapped content network. It is pure Python standard library, so installing
+it cannot disturb your environment.
 
 ---
 
 ## Install
 
-Not in the ComfyUI-Manager registry yet, so for now it's a manual install:
+Not in the ComfyUI-Manager registry yet, so for now it's a manual install. The
+folder must be named `comfyaudit`:
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/dughogan/comfyaudit
+git clone https://github.com/dughogan/comfy_workflow_audit comfyaudit
 ```
 
-Restart ComfyUI. That's it — ComfyAudit is pure standard library, so installing
-it cannot disturb your environment or fight with anything else you have.
+Restart ComfyUI. The console prints `comfyaudit … loaded`, and a **ComfyAudit**
+tab appears in the sidebar.
 
-**If ComfyUI says IMPORT FAILED**, it is almost always the directory level.
-ComfyUI loads a pack by looking for `__init__.py` directly inside
-`custom_nodes/<name>/`, so the folder it sees must be the pack itself, not a
-repository containing one:
+**If ComfyUI says IMPORT FAILED**, it is almost always the folder level. ComfyUI
+loads a pack by looking for `__init__.py` directly inside `custom_nodes/<name>/`:
 
 ```
 custom_nodes/
@@ -59,114 +54,124 @@ custom_nodes/
     nodes/
 ```
 
-If you cloned a repository that has the pack nested one level down, either move
-the inner folder up or symlink it:
+Anything else shows up as a Python traceback in the ComfyUI console, just above
+the IMPORT FAILED line; that traceback is the answer.
+
+Optional extras, each only for the feature named:
 
 ```bash
-cd ComfyUI/custom_nodes
-ln -s "$PWD/<cloned-repo>/comfyaudit" comfyaudit
+pip install anthropic      # the Claude Review node
+pip install cryptography   # encrypted prompts in the history
 ```
 
-Anything else shows up as a Python traceback in the ComfyUI console, printed
-just above the IMPORT FAILED line — that traceback is the answer, and the pack
-now raises rather than loading empty so you actually get one.
+## Quick start for artists
 
-The optional **Claude Review** node needs one extra package. Every other node
-works without it, and that node tells you if it's missing:
+1. **Set your name once:** *Settings → ComfyAudit → Shot history → Your name*
+   (and your role). Entries are recorded under it.
+2. **Open a workflow.** ComfyAudit starts its history the moment it opens; there
+   is no button to press. Each open tab keeps its own history.
+3. **Open the ComfyAudit tab** in the sidebar. The header shows the shot's stage,
+   whether it can be used commercially, and whether its record verifies. Click
+   **edit** under it to name the shot and give its **project / show** (the show
+   is what shares legal's answers between shots) and its studio asset ID.
+4. **Work as usual.** Edits and renders are recorded on their own, every output
+   is fingerprinted, and a render brought back in as an input, a hand-off to
+   someone else, Save As and duplicated tabs are noted too. Save the workflow to
+   keep the latest entries in the file.
+5. **Life of the shot** replays the graph over a timeline, with a plain-language
+   story and a timestamped log.
+6. **Package for delivery** when the shot is ready:
+   - **Check:** your studio profile (asked once) and the licences of every model
+     and pack, with the rules that apply to this production.
+   - **Make it safe:** what blocks a clean yes and how to fix it, including
+     licensed alternatives you already have installed. Items only legal or
+     production can confirm (a client's written approval, a credit disclosure)
+     are listed under *Left for legal*; there is nothing for the artist to tick.
+   - **Sign off:** the audit runs again on the server, and its verdict is sealed
+     into the history with your name. A no-go needs a recorded reason.
+   - **Deliver:** you get a zip for legal.
 
-```bash
-pip install anthropic
-```
+**What's in the package:**
 
-## Three ways to run it
+| File | For |
+|---|---|
+| `<shot>.json` | The workflow, with its full history and the sealed sign-off |
+| `<shot>.legal-report.html` | The provenance record for legal: who did what and when, models over time, prompt authorship, sources, the rules checklist |
+| `<shot>.licence-audit.html` | Every model and node pack, its licence, what it allows for this studio, and the risk score |
+| `<shot>.life.html` | The Life of the shot page; opens in any browser, offline |
+| `<shot>.omc.json` | The same history as MovieLabs OMC-JSON v2.8, for studio asset systems |
+| `<shot>.c2pa.json`, `signed/` | A C2PA manifest, and renders signed with it when the studio has set up c2patool |
+| `<shot>.package.json` | An index for software and legal agents: the decision, what is still open, every file and its SHA-256 |
+| `README.txt` | The package explained for people, with legal's open checklist |
 
-**From the sidebar** — the **Audit** tab, marked with a tick. This is the one to
-reach for. It walks the three questions an audit actually needs answered, in the
-order they matter, and ends with something you can hand to someone else. See
-[The sidebar](#the-sidebar) below.
+Every HTML report also carries its data as JSON in
+`<script type="application/json" id="comfyaudit-data">`, so an agent reading
+the package gets exact data instead of scraping prose.
 
-**From the menu** — *Extensions → ComfyAudit → Audit this workflow*, or the same
-commands from the command palette. Skips the wizard and audits immediately with
-whatever profile is already set. Nothing is added to the workflow.
+## For legal teams: ComfyAudit Review
 
-**As nodes** — drop **Audit This Workflow** in and hit Run. It audits the graph
-it's sitting in, because ComfyUI hands any node that asks for them the running
-prompt and the UI workflow. Nothing to configure. This is the right flow when the
-audit is part of a pipeline rather than a question someone just asked.
+A static web app (`review-web/`) that legal opens in a browser. They drop in a
+delivery zip and it:
 
-> The nodes live under the **`audit`** category — lowercase, at the top level of
-> the node menu. Double-click the canvas and type `Audit` if you can't find them.
+- opens the package **in the browser**, checks every file's SHA-256 against the
+  index and re-hashes the history's chain, so nothing is uploaded anywhere;
+- shows what was decided at sign-off, what is still open, and what was already
+  answered for the show or the studio;
+- lets them **answer an item once for the whole show** (for example, the
+  client's written approval of the AI tools) or for the whole studio; every
+  shot of that show inherits the answer;
+- lets them **clear a shot or send it back** with a reason. The decision is
+  signed into the shot's history and shows in the artist's ComfyAudit tab as
+  *Legal cleared* or *Sent back by legal*.
+
+Each studio deploys its own copy. The page can go on any static host, and writes
+go only to the studio's own review service, `python -m comfyaudit.review`, which
+signs each person's decisions. See [review-web/README.md](review-web/README.md)
+to deploy it, and set `COMFYAUDIT_REVIEW_URL` on the ComfyUI server so the
+package step links artists to it. Open the page with `?demo` to try it with a
+fictional show.
+
+## Studio setup
+
+People set their own name and role, and the studio profile, in ComfyUI's
+settings (*Settings → ComfyAudit*). Everything that is a secret or a file path
+comes **only from the server's environment**, never from ComfyUI settings,
+because those are writable from any browser that can reach the server.
+
+| Variable | What it does |
+|---|---|
+| `COMFYAUDIT_HISTORY_KEY` or `COMFYAUDIT_HISTORY_KEY_FILE` | Studio key that signs every history entry (HMAC-SHA256) |
+| `COMFYAUDIT_HISTORY_KEYRING` + `COMFYAUDIT_TRUSTED_USER_HEADER` | Per-person keys: sign each entry with the signed-in person's own key, named by your sign-in proxy's header |
+| `COMFYAUDIT_HISTORY_LEDGER` | Append-only ledger file outside the workflow; catches histories that were cut short, replaced or rewritten |
+| `COMFYAUDIT_HISTORY_ENC_KEY`, `COMFYAUDIT_HISTORY_CONFIDENTIALITY` | Keep prompts as fingerprints only, or encrypted |
+| `COMFYAUDIT_ANSWERS_FILE` | Where show and studio answers live; point every machine at one shared file |
+| `COMFYAUDIT_C2PATOOL`, `COMFYAUDIT_C2PA_KEY` + `_CERT` (or `_SIGNER`) | Sign delivered renders with C2PA Content Credentials using your studio certificate |
+| `COMFYAUDIT_REVIEW_URL` | Your ComfyAudit Review page, linked from the package step |
+| `COMFYAUDIT_SHOTGRID_URL`, `_SCRIPT`, `_KEY` | ShotGrid integration (**beta**, see below) |
+
+## Other ways to run it
+
+**From the menu:** *Extensions → ComfyAudit* has the ComfyAudit tab, Package for
+delivery, the provenance record and the commercial licensing guide, also
+available from the command palette.
+
+**As nodes:** they live under the **`audit`** category. Double-click the canvas
+and type `Audit`.
 
 | Node | What it does |
 |---|---|
 | **Studio Profile** | Optional override of the settings profile, for a show whose circumstances differ from the facility's. |
 | **Audit This Workflow** | Documents the running graph. Outputs the report as Markdown and JSON, plus the risk score, automation index and a one-line licence summary as separate sockets. |
-| **Claude Review** | Optional second pass for the judgement calls — see below. |
+| **Claude Review** | Optional second pass for the judgement calls; see below. |
 | **Audit Gate** | Stops the queue on conditions **you** choose. Nothing is enforced by default. |
-| **Shot History Gate** | Put it between VAE Decode and Save Image. Stops the run before anything is saved if the shot has no history, its history has been altered, it has not reached the stage you require (e.g. still in sandbox), or, if you switch it on, a model bars commercial use. |
+| **Shot History Gate** | Put it between VAE Decode and Save Image. Stops the run before anything is saved if the shot has no history, its history has been altered, it has not reached the stage you require (e.g. still in sandbox), or, if you switch them on, a model bars commercial use or legal has not cleared the shot. |
 | **Save Audit Report** | Writes the report into your output folder as HTML, Markdown or JSON. |
 
-## The sidebar
+**From the command line:** see [Command line](#command-line) below.
 
-Open the **Audit** tab. Three steps.
-
-### 1. Profile — *who is asking*
-
-The studio profile, inline: territory, annual revenue, what ships, whether
-outputs train other models, whether real performers are involved, and a label
-for the report.
-
-These are the facts licence terms actually turn on, which is why they come first
-rather than last. A note under the fields tells you where you stand:
-
-> Territory and revenue are the minimum for a verdict. Without them the report
-> still lists every model, licence and risk — it just will not rule on them.
-
-Fill them in and it flips to *"so this audit can reach a go / no-go"*. They save
-to ComfyUI's own settings, so this is a one-off — the same values the settings
-panel writes, and the same ones the Python side reads. Skip the step entirely if
-you want a descriptive report.
-
-### 2. Scope — *how deep*
-
-| Option | Cost |
-|---|---|
-| **Check models on disk** | Fast and local. On by default. Catches the missing weight before the render does. |
-| **Look models up online** | Slower, needs network. Queries Hugging Face and Civitai for licences the bundled knowledge base doesn't have. |
-| **Hash model files** | Slow — reads every model file. The only thing that survives a rename. |
-| **Add a Claude review** | Several model calls, about a minute. Needs credentials. |
-
-If the Anthropic SDK or a key is missing, the Claude option is replaced by the
-actual reason rather than a checkbox that does nothing.
-
-### 3. Report
-
-The verdict leads, because it's the question that was asked — colour-toned by
-determination, with the operational risk band beside it. Then the headline, the
-at-a-glance figures, any blockers named individually, and every finding as a
-collapsible row ordered worst-first.
-
-**Open full report** puts the whole document over the canvas. The sidebar is a
-narrow column and the report has wide tables in it; rendering it in place would
-mean choosing which columns to lose.
-
-### Export
-
-| Format | Use |
-|---|---|
-| **Markdown** | Goes in a ticket, a wiki, or a commit. Carries the Claude review too, when one ran. |
-| **PDF** | The thing you attach to an email. |
-| **HTML** | Self-contained, styled, opens in any browser. |
-
-PDF goes through your browser's print dialog — pick *Save as PDF* as the
-destination. There is no PDF library here on purpose. This pack declares no
-dependencies, which is what makes it safe to drop into someone else's ComfyUI,
-and pulling in a renderer to lay out a document the browser already lays out
-would trade that away for nothing. The report ships its own print stylesheet, so
-it comes out as a document rather than a screenshot of one.
-
-Files are named after the open workflow — `beauty-pass.audit.md` — and the
-heading inside matches.
+Documents open over the canvas and save as HTML or PDF (PDF goes through your
+browser's print dialog: pick *Save as PDF*). There is no PDF library here on
+purpose; the pack declares no dependencies.
 
 ## What has to happen
 
@@ -600,7 +605,11 @@ key, a key path or a ledger path.
 A signature proves an entry was written through a holder of the studio key. In
 ComfyUI that is the studio's ComfyAudit server. It does not prove *which*
 person wrote the entry. Names are recorded as each person declared them, and
-the record says so beside every badge. Per-person keys narrow this.
+the record says so beside every badge. **Per-person keys** close this gap:
+with `COMFYAUDIT_HISTORY_KEYRING` and a trusted sign-in header
+(`COMFYAUDIT_TRUSTED_USER_HEADER`) from the studio's own sign-in proxy, every
+entry is signed with the signed-in person's own key, and the record names who
+signed it.
 
 Prompts are often the client's creative. Set *Prompts in the history* to
 **fingerprints only** to store just a keyed fingerprint (HMAC-SHA256). It
@@ -686,8 +695,10 @@ A document for legal, exportable as HTML or PDF. It contains:
 
 The provenance record ends with the published rules a shot may have to meet, and
 what the record already evidences for each. The bundled knowledge base
-(`core/knowledge/data/regulations.json`) has 37 entries, each with its source,
-that source's date and a confidence level. It covers:
+(`core/knowledge/data/regulations.json`) has 85 rules, each with its sources,
+the date it was last checked, what the check rests on, and a confidence level.
+Every report says when this research was done and that it is AI-researched, not
+legal advice. It covers:
 
 - **Union and guild agreements:** SAG-AFTRA TV/Theatrical (2023 and 2026),
   Commercials (2025) and Interactive Media (2025), plus the WGA and DGA AI terms
@@ -709,15 +720,28 @@ LLM nodes, training nodes, the production stage, supplied media). It also
 depends on what the studio sets: territory, where the work is distributed, and
 whether it is a union production, advertising or a feature.
 
-Some evidence is checked automatically, and only where the check actually
-proves the item: human-made source material, declared sources, prompt
-authorship, a reviewed final, a sign-off that covers the final render, a
-verified signature, and fingerprinted outputs. Exporting a manifest is *not*
-treated as proof that marking was applied. Neither is a reviewer standing in
-for a consulted director. Evidence only a
-person can attest, such as a signed consent rider or a disclosure in the
-credits, is recorded as a note tagged with the rule. That way it is signed into
-the chain rather than left in an email.
+Some evidence is checked automatically, and only where the record fully
+proves the item: the model behind each shot, prompt and iteration logs, human
+authors, human-made source material, declared sources, a reviewed final, a
+sign-off that covers the final render, a verified signature, fingerprinted
+outputs, a delivered final, and renders signed with C2PA at delivery. Anything
+that needs a judgement stays with a person: a reviewer is not a consulted
+director, and a prompt log is not proof that no real performer was used.
+
+Evidence only a person can attest is answered at the level it belongs to:
+
+- **per shot:** consents, per-deliverable flags, similarity checks, edits made
+  outside ComfyUI;
+- **once per show:** for example a client's written approval of the AI tools
+  for the project, or a union notice; every shot whose project matches inherits
+  the answer;
+- **once per studio:** for example the AI policy, or provider-or-deployer status
+  under the EU AI Act.
+
+Show and studio answers are signed like history entries and stored outside the
+workflow (`COMFYAUDIT_ANSWERS_FILE`); a delivered package seals a copy of every
+answer it relied on. Legal records them in ComfyAudit Review; anyone can also
+record them from the package step's *Left for legal* list.
 
 One common assumption is answered directly. **No EU rule requires proof that a
 human was in the loop for a creative shot.** The AI Act's human-oversight
@@ -731,16 +755,24 @@ script, not inferred.
 
 ### Content credentials
 
-`comfyaudit history manifest` writes a C2PA manifest *definition* for the final
-render. It opens with the required `c2pa.created` action. The people and
-decisions behind the render are carried in the tool's own assertion, keyed to
-the history's head hash. It marks generated output with the IPTC `trainedAlgorithmicMedia`
-source type, or `compositeWithTrainedAlgorithmicMedia` when supplied media went
-in, and lists the people who acted and the models used. Signing needs a
-certificate the studio holds, so sign and embed it at delivery with `c2patool`
-or your own signing service.
+Every package carries a C2PA manifest for the final render. It marks generated
+output with the IPTC `trainedAlgorithmicMedia` source type, or
+`compositeWithTrainedAlgorithmicMedia` when supplied media went in, and carries
+the history (keyed to its head hash) and the sealed clearance as ComfyAudit's
+own assertions.
 
-### Command line
+When the studio has set up [c2patool](https://github.com/contentauth/c2patool)
+with its own certificate (`COMFYAUDIT_C2PATOOL`, `COMFYAUDIT_C2PA_KEY` and
+`COMFYAUDIT_C2PA_CERT`, or `COMFYAUDIT_C2PA_SIGNER` for a KMS or HSM),
+delivery signs each final render into the package's `signed/` folder, but only
+if the file still matches the fingerprint recorded when it was rendered. The
+originals are never touched. c2patool's built-in development certificate is
+refused, and a certificate that is not on the C2PA trust list is signed but
+reported as such. EXR cannot carry an embedded manifest; those renders rely on
+the provenance file and the manifest. `comfyaudit history manifest` writes the
+manifest definition on its own.
+
+### Shot history from the command line
 
 ```bash
 export COMFYAUDIT_HISTORY_KEY=...            # studio passphrase (server env only)
@@ -753,9 +785,12 @@ comfyaudit history stamp shot.json --event reviewed --by "Doug Hogan" --note "ke
 comfyaudit history stamp shot.json --event promoted --stage production
 comfyaudit history stamp shot.json --event approved --by "Lee Park" --role legal
 comfyaudit history verify shot.json --ledger /studio/ledger.jsonl    # exit 3 if altered
+comfyaudit history verify-file render.png                            # against its .provenance.json
+comfyaudit history verify-file render.png --workflow shot.json       # or against the saved workflow
 comfyaudit history log shot.json
 comfyaudit history record shot.json --distribute US,EU --likeness   # provenance record
 comfyaudit history manifest shot.json                                # C2PA definition
+comfyaudit history omc shot.json                                     # MovieLabs OMC-JSON v2.8
 ```
 
 UI-format workflows are updated in place. API-format prompts have nowhere to
@@ -767,7 +802,7 @@ carry history, so theirs lives beside them as `<name>.history.json`.
 comfyaudit guide -o licensing-guide.html
 ```
 
-It is also in the History tab and at `/comfyaudit/licensing-guide`. It is a
+It is also under *Extensions → ComfyAudit* and at `/comfyaudit/licensing-guide`. It is a
 plain-language document for production and legal, built from the same
 knowledge base the auditor uses, so it cannot drift from it. It covers:
 
