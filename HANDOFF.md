@@ -587,9 +587,45 @@ instruction. `review-web/README.md` is the deployment guide.
   tested:** the panel's "Send to legal" line in a live ComfyUI (pytest covers the
   result; `node --check` only), a real HTTPS deployment, Chrome's Private Network
   Access prompt, and the document frame in a normal browser outside the pane.
-- **Stage on clearing** is still the call from the first build (a delivered
-  shot stays delivered with the clearance on top); asked the coordinating
-  session whether Doug wants it promoted to *cleared* or packaging changed.
+
+**Legal's decision is its own status, not a stage (2026-10-16, decided with the
+coordinating session).** Stages stay one-way (sandbox -> production -> cleared ->
+delivered; the gate, the `final_deliverable` check and the tests rely on it), so
+a delivered shot stays delivered and legal's decision sits on top:
+- Recorded as an `approved` (cleared) or `rejected` (sent back) entry with
+  `data.legal = {decision: "cleared" | "sent back", reason, by, at, package,
+  verdict_at_sign_off, open_items, reviewed_with}`, signed with the reviewer's
+  key. `H.legal_decision(history)` reads the latest back, taking who and when
+  from the sealed entry; a payload on the wrong event is ignored. `current` is
+  true while the graph (`graph_sha256`, layout ignored) is the one legal
+  decided on. It is deliberately **not** the snapshot hash: snapshots record how
+  models resolved on the machine that wrote them, and the review server
+  resolves differently from ComfyUI (seen live: the review server's entry
+  showed `bbox/face_yolov8m.pt` "added and removed").
+- Shown everywhere: the panel header pill (`Legal cleared` green, `Legal
+  cleared an earlier version` amber, `Sent back by legal` red; who, when and
+  why on hover), `history_service.summary()["legal"]`, `package.json`
+  (`legal_decision`), the provenance record (a "Legal review" section and its
+  JSON block), and the Review app's views.
+- Shots still in sandbox or production are promoted to *cleared* on clearing;
+  sending back returns a shot to *production*.
+- **Shot History Gate:** optional `require_legal_clearance` (default off,
+  optional input so older saved workflows load). It stops unless the latest
+  legal decision is a signed, current clearance.
+- **Old copies:** a package whose shot the studio ledger shows carried on (the
+  artist kept working, or another review recorded decisions) used to read
+  *Altered* ("cut short"). Review now checks it as an old copy (`verify` with
+  `_as_parent`), says so ("Older copy" pill and a note), and keeps it
+  read-only, since writing to it would fork the shot.
+- Live: SH0250 was made on :8004 from a frontend-saved graph, cleared through
+  the review API, and its updated workflow opened in that ComfyUI: the panel
+  showed DELIVERED · WITNESSED · LEGAL CLEARED. A package built straight from
+  the hand-written test fixture reads "earlier version" once opened, because
+  the frontend normalises that fixture on load (it drops empty widget lists and
+  fills defaults for a missing node pack). Real ComfyUI-saved workflows don't
+  change on load. **Follow-up:** the panel's commercial pill reads "Not
+  cleared", which is easy to confuse with legal's pill next to it; consider
+  "Not commercially cleared" or similar.
 
 **Priority 2: known gaps.**
 

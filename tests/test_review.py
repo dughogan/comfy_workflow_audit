@@ -171,8 +171,9 @@ def test_clearing_needs_a_reason_and_says_so_when_items_are_still_open(studio, m
     hist = H.read(studio.workflow(pid))
     e = hist["entries"][-1]
     assert e["event"] == "approved" and e["actor"]["role"] == "legal" and e["note"] == "Cleared for Reel 3"
-    review = e["data"]["legal_review"]
-    assert review["decision"] == "clear" and SHOW_TAG in review["open_items"]
+    review = e["data"]["legal"]
+    assert review["decision"] == "cleared" and SHOW_TAG in review["open_items"]
+    assert review["by"] == "Sam Okafor" and review["reason"] == "Cleared for Reel 3"
     assert review["package"] == studio.meta(pid)["sha256"]
     # Already delivered: the clearance goes on top, the stage does not go backwards.
     assert hist["shot"]["stage"] == "delivered"
@@ -309,7 +310,7 @@ def test_the_web_app_end_to_end_with_forms(web, studio):
     assert status == 303 and h["location"].endswith("done=clear")
     status, h, raw, _ = call(web, "GET", f"/p/{pid}/workflow.json")
     assert status == 200 and "attachment" in h["content-disposition"]
-    assert H.read(json.loads(raw))["entries"][-1]["data"]["legal_review"]["decision"] == "clear"
+    assert H.read(json.loads(raw))["entries"][-1]["data"]["legal"]["decision"] == "cleared"
     # Package documents open sandboxed, away from the app.
     legal = next(d["path"] for d in data["documents"] if d["role"] == "legal-report")
     status, h, raw, _ = call(web, "GET", f"/p/{pid}/file/{legal}")
@@ -428,3 +429,57 @@ def test_a_typed_name_never_overrides_the_sign_in(web, studio, monkeypatch, tmp_
                              {"Content-Type": "application/json", "X-Studio-User": "sokafor"})
     assert status == 200, raw
     assert H.read(studio.workflow(pid))["entries"][-1]["actor"]["name"] == "Sam Okafor"
+
+
+# -- legal's decision as its own status, beside the stage ---------------------------
+
+def test_legal_decision_is_read_from_the_chain_and_knows_when_the_graph_moved_on(studio):
+    from comfyaudit.server import history_service
+    pid = studio.add(package())
+    assert H.legal_decision(H.read(studio.workflow(pid))) is None
+    studio.decide(pid, decision="clear", reason="Cleared for Reel 3", who=sam(), accept_open=True)
+    wf = studio.workflow(pid)
+    legal = H.legal_decision(H.read(wf))
+    assert legal["decision"] == "cleared" and legal["label"] == "Legal cleared"
+    assert legal["by"] == "Sam Okafor" and legal["role"] == "legal" and legal["signed"] and legal["current"]
+    # The stage is untouched: delivered stays delivered, and the panel shows legal apart.
+    assert H.read(wf)["shot"]["stage"] == "delivered"
+    assert history_service.summary(H.read(wf), workflow=wf)["legal"]["decision"] == "cleared"
+    assert studio.shot(pid)["legal"]["decision"] == "cleared"
+    # The artist changes the graph afterwards: the clearance now covers an earlier version.
+    node = next(n for n in wf["nodes"] if n["type"] == "CLIPTextEncode")
+    node["widgets_values"][0] += ", warmer"
+    wf = H.stamp(wf, actor=H.Actor(name="Ana Ruiz"), keys=H.Keys.from_environment(),
+                 ledger=os.environ["COMFYAUDIT_HISTORY_LEDGER"]).workflow
+    assert H.legal_decision(H.read(wf))["current"] is False
+    # A "cleared" payload on the wrong event is not a legal decision.
+    hist = H.read(wf)
+    hist["entries"][-1]["data"]["legal"] = {"decision": "cleared"}
+    assert H.legal_decision(hist)["seq"] != hist["entries"][-1]["seq"]
+
+
+def test_a_package_made_after_legal_decided_carries_the_decision(studio):
+    pid = studio.add(package())
+    studio.decide(pid, decision="send-back", reason="Swap the upscaler", who=sam())
+    out = delivery.deliver({"workflow": studio.workflow(pid), "name": "SH0120", "exception": "Fixed later."})
+    index = json.loads(zipfile.ZipFile(io.BytesIO(base64.b64decode(out["zip_b64"]))).read("SH0120.package.json"))
+    assert index["legal_decision"]["decision"] == "sent back"
+    assert index["legal_decision"]["reason"] == "Swap the upscaler"
+    assert "Legal review" in out["report_html"] and "Sent back by legal" in out["report_html"]
+
+
+def test_a_package_the_shot_has_moved_past_is_an_old_copy_not_an_altered_one(studio, tmp_path):
+    data = package()
+    pid = studio.add(data)
+    studio.decide(pid, decision="send-back", reason="Swap the upscaler", who=sam())
+    # The same zip opened on another review server (or after this one's store was lost):
+    # the shared ledger has legal's two later entries, which the zip does not.
+    other = R.Review(R.Config(root=str(tmp_path / "elsewhere")))
+    view = other.shot(other.add(data))
+    assert view["old_copy"] and view["integrity"]["assurance"] != "none"
+    assert not view["writable"] and "older copy" in view["why_not_writable"]
+    assert "carried on" in view["integrity"]["notes"][0]
+    with pytest.raises(R.ReviewError, match="older copy"):
+        other.decide(view["package"]["id"], decision="clear", reason="x", who=sam(), accept_open=True)
+    # The copy that recorded the decision is the head, and stays writable.
+    assert studio.shot(pid)["writable"] and not studio.shot(pid)["old_copy"]

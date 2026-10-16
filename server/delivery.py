@@ -332,6 +332,9 @@ def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
             "exception_reason": clearance.get("exception", ""),
             "blockers": clearance.get("blockers", []), "conditions": clearance.get("conditions", []),
         },
+        # Legal's own decision (ComfyAudit Review), if one was recorded before this
+        # package was made: a shot sent back and delivered again carries it.
+        "legal_decision": H.legal_decision(history),
         "outstanding_fixes": clearance.get("outstanding", []),
         "left_for_legal": clearance.get("for_legal", []),
         "answered_for_show_or_studio": clearance.get("answers_relied_on", []),

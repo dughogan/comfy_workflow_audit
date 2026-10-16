@@ -249,7 +249,7 @@ async function recordDecision(ctx, decision, reason, acceptOpen) {
   }
   const at = nowLocal(), seq = () => pkg.history.entries.length + pkg.extra.length + 1;
   pkg.extra.push({ seq: seq(), at, event: decision === "clear" ? "approved" : "rejected", note: reason, actor: demoActor(), demo: true,
-    data: { legal_review: { decision, label: decision === "clear" ? "Cleared by legal" : "Sent back by legal",
+    data: { legal: { decision: decision === "clear" ? "cleared" : "sent back", reason, by: demoActor().name, at,
       package: pkg.sha256, open_items: open } } });
   const stage = view.shot.stage;
   const target = decision === "clear" && ["sandbox", "production"].includes(stage) ? "cleared"
@@ -373,10 +373,10 @@ function decisionSection(view, ctx, can, why) {
   const out = [];
   const last = view.last_review;
   if (last) {
-    out.push(h("div", { class: `callout ${last.decision === "clear" ? "ok" : "stop"}` },
-      h("strong", { text: last.decision === "clear" ? "Cleared" : "Sent back" }),
+    out.push(h("div", { class: `callout ${last.decision === "cleared" ? "ok" : "stop"}` },
+      h("strong", { text: last.decision === "cleared" ? "Cleared" : "Sent back" }),
       ` by ${last.by} (${last.role}), ${date(last.at)}${last.demo ? " (demo)" : ""}`, h("br"), `“${last.reason}”`,
-      last.decision === "clear" && last.open_items?.length ? h("div", { class: "small", text: `Cleared with ${last.open_items.length} item(s) still open.` }) : null));
+      last.decision === "cleared" && last.open_items?.length ? h("div", { class: "small", text: `Cleared with ${last.open_items.length} item(s) still open.` }) : null));
   }
   if (!can) { out.push(h("div", { class: "callout plum", text: why })); return out; }
   const reason = h("textarea", { id: "reason", "aria-label": "Reason" });
@@ -427,6 +427,7 @@ async function shotPage(id, studioOnly) {
     pill(i.label, ASSURANCE_TONE[i.assurance] || "warn", "history"),
     pill(i.package_files ? "Package intact" : "Package altered", i.package_files ? "ok" : "stop"),
     view.open_count ? pill(`${view.open_count} open`, "warn") : null,
+    view.old_copy ? pill("Older copy", "warn", "shot carried on") : null,
     kind === "demo" ? h("span", { class: "demo-badge", text: "Demo" }) : null,
     h("a", { class: "pill", href: "#decide", onclick: (e) => { e.preventDefault(); document.getElementById("decide")?.scrollIntoView({ behavior: "smooth" }); }, text: "Go to your decision ↓" }));
   const signoff = d ? [h("dl", { class: "facts" },

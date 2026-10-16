@@ -350,6 +350,8 @@ def summary(history: dict[str, Any] | None, *, workflow: dict[str, Any] | None =
         "file": H.file_of(history),
         "shot_id": H.chain_shot_id(history),
         "clearance": H.delivery_clearance(history),
+        # Legal's decision, apart from the stage (ComfyAudit Review records it).
+        "legal": H.legal_decision(history),
     }
 
 

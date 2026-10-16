@@ -1886,7 +1886,11 @@ def legal_decision(history: dict[str, Any] | None) -> dict[str, Any] | None:
             "reason": e.get("note", ""), "by": actor.get("name", ""), "role": actor.get("role", ""),
             "at": e.get("at", ""), "seq": e.get("seq"), "signed": "sig" in e,
             "key_id": e.get("key_id", ""), "open_items": list(legal.get("open_items") or []),
-            "current": e.get("snapshot_sha256") == entries[-1].get("snapshot_sha256"),
+            # The graph itself (layout ignored), not the whole snapshot: a snapshot also
+            # records how models resolved on the machine that wrote it, which differs
+            # between ComfyUI and the review server for the same graph.
+            "current": (snapshot_of(entries, e).get("graph_sha256")
+                        == snapshot_of(entries, entries[-1]).get("graph_sha256")),
         }
     return None
 

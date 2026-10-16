@@ -295,11 +295,11 @@ def _decision_form(view: dict[str, Any], csrf: str, me: dict[str, Any],
     last = view["last_review"]
     done = ""
     if last:
-        tone = "ok" if last["decision"] == "clear" else "stop"
-        done = (f"<div class='callout {tone}'><strong>{'Cleared' if last['decision'] == 'clear' else 'Sent back'}</strong> by {e(last['by'])}"
+        tone = "ok" if last["decision"] == "cleared" else "stop"
+        done = (f"<div class='callout {tone}'><strong>{'Cleared' if last['decision'] == 'cleared' else 'Sent back'}</strong> by {e(last['by'])}"
                 f" ({e(last['role'])}), {e(_date(last['at']))}<br>“{e(last['reason'])}”"
                 + (f"<div class='small'>Cleared with {len(last.get('open_items') or [])} item(s) still open.</div>"
-                   if last["decision"] == "clear" and last.get("open_items") else "") + "</div>")
+                   if last["decision"] == "cleared" and last.get("open_items") else "") + "</div>")
     download = (f"<p class='small'><a class='button' href='/p/{pid}/workflow.json' download>Download the "
                 f"updated workflow</a> <span class='soft'>Give this to the artist: it carries every "
                 f"decision made here. Opening their old copy instead starts a new record of the shot."
@@ -329,7 +329,8 @@ def shot(view: dict[str, Any], me: dict[str, Any], csrf: str, draft: dict[str, s
             + _pill(i["label"], ASSURANCE_PILL.get(i["assurance"], "warn"), "history")
             + _pill("Package intact" if i["package_files"] else "Package altered",
                     "ok" if i["package_files"] else "stop")
-            + (_pill(f"{view['open_count']} open", "warn") if view["open_count"] else ""))
+            + (_pill(f"{view['open_count']} open", "warn") if view["open_count"] else "")
+            + (_pill("Older copy", "warn", "shot carried on") if view.get("old_copy") else ""))
     ids = " · ".join(e(f"{k}: {v}") for k, v in (s.get("external_ids") or {}).items())
     subtitle = " · ".join(x for x in (e(s.get("project", "")) or "No show given", ids,
                                       f"stage: {e(s.get('stage', ''))}") if x)

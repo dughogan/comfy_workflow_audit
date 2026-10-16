@@ -74,3 +74,33 @@ def test_a_non_commercial_model_stops_it_only_when_asked():
     assert gate(wf)[1].startswith("passed")
     with pytest.raises(RuntimeError, match="flux1-dev"):
         gate(wf, stop_if_not_commercial=True)
+
+
+def _legal(wf, decision, keys):
+    return H.stamp(wf, event="approved" if decision == "cleared" else "rejected",
+                   actor=H.Actor(name="Sam Okafor", role="legal"), keys=keys, note="reason",
+                   data_payload={"legal": {"decision": decision}}).workflow
+
+
+def test_require_legal_clearance_needs_a_signed_current_clearance(monkeypatch):
+    monkeypatch.setenv("COMFYAUDIT_HISTORY_KEY", "studio-secret")
+    keys = H.Keys.from_environment()
+    wf = H.stamp(load(), event="created", actor=ANA, keys=keys, name="SH0120").workflow
+    assert gate(wf)[1].startswith("passed")           # off by default
+    with pytest.raises(RuntimeError, match="not cleared"):
+        gate(wf, require_legal_clearance=True)
+    with pytest.raises(RuntimeError, match="sent this shot back"):
+        gate(_legal(wf, "sent back", keys), require_legal_clearance=True)
+    cleared = _legal(wf, "cleared", keys)
+    assert "cleared by legal (Sam Okafor)" in gate(cleared, require_legal_clearance=True)[1]
+    changed = copy.deepcopy(cleared)
+    next(n for n in changed["nodes"] if n["type"] == "CLIPTextEncode")["widgets_values"][0] += ", warmer"
+    changed = H.stamp(changed, actor=ANA, keys=keys).workflow
+    with pytest.raises(RuntimeError, match="earlier version"):
+        gate(changed, require_legal_clearance=True)
+
+
+def test_an_unsigned_clearance_does_not_open_the_gate():
+    wf = _legal(tracked(), "cleared", H.Keys())
+    with pytest.raises(RuntimeError, match="unsigned"):
+        gate(wf, require_legal_clearance=True)

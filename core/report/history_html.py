@@ -134,6 +134,7 @@ def render(history: dict[str, Any], *, data: dict[str, Any] | None = None,
         "shot": lin["shot"],
         "verification": v.as_dict(),
         "clearance": H.delivery_clearance(history),
+        "legal_decision": H.legal_decision(history),
         "commercial_timeline": H.commercial_timeline(history),
         "lineage": lin,
         "rules": checks["rules"],
@@ -227,6 +228,28 @@ def _body(history, lin, rows, v, checks) -> str:
               f"licence knowledge {_e(audited.get('licences', ''))}, regulations as of "
               f"{_e(audited.get('regulations', ''))}. The audit ran on the server at sign-off; "
               "this section is read from the signed history.</p>")
+
+    # -- legal's decision (ComfyAudit Review), apart from the stage -------------
+    legal = H.legal_decision(history)
+    if legal:
+        ltone = "ok" if legal["decision"] == "cleared" and legal["current"] else (
+            "stop" if legal["decision"] == "sent back" else "warn")
+        w(f"<h2 class='sec'>Legal review<small>entry {_e(legal['seq'])}</small></h2>")
+        w(f"<div class='assure {ltone}'><div class='badge'>{_e(legal['label'])}</div><div>")
+        w(f"<p>By <strong>{_e(legal['by'])}</strong>"
+          + (f" ({_e(legal['role'])})" if legal.get("role") else "")
+          + f" on {_e(str(legal['at'])[:16].replace('T', ' '))}"
+          + (f": &ldquo;{_e(legal['reason'])}&rdquo;" if legal.get("reason") else "") + "</p>")
+        if legal["decision"] == "cleared" and legal["open_items"]:
+            w(f"<p style='margin-top:6px;color:var(--ink-2)'>Cleared with {len(legal['open_items'])} "
+              "item(s) still open, recorded with the decision.</p>")
+        if not legal["current"]:
+            w("<p style='margin-top:8px;color:var(--warn)'><strong>The workflow has changed since this "
+              "decision</strong>, so it covers an earlier version of the shot.</p>")
+        w("<p style='margin-top:6px;color:var(--ink-2)'>A separate decision from the stage: the "
+          "artist's sign-off delivers the shot; this is legal's own, "
+          + ("signed" if legal["signed"] else "unsigned") + ", in the history.</p>")
+        w("</div></div>")
 
     # -- human in the loop ----------------------------------------------------
     bp = lin["breakpoints"]

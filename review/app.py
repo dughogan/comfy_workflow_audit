@@ -13,7 +13,8 @@ ComfyUI) is opened here, checked, and reviewed:
   (``core/answers.py``), signed the same way; shot items are signed ``note``
   entries in the shot's own history, tagged ``data.evidence``;
 * **decided** - clearing or sending a shot back is a signed entry in the
-  history (``approved`` / ``rejected`` with ``data.legal_review``), and the
+  history (``approved`` / ``rejected`` with ``data.legal``, read back by
+  ``history.legal_decision``), and the
   updated workflow is offered for download and noted on ShotGrid.
 
 Every write is signed. A server without a signing key is read-only: an
@@ -245,11 +246,11 @@ def _item(tag: str) -> dict[str, Any] | None:
 
 
 def legal_reviews(history: dict[str, Any]) -> list[dict[str, Any]]:
-    """Every clear / send-back decision in the chain, oldest first."""
+    """Every legal decision in the chain ("cleared" / "sent back"), oldest first."""
     out = []
     for e in history.get("entries", []):
-        review = (e.get("data") or {}).get("legal_review")
-        if isinstance(review, dict) and e.get("event") in ("approved", "rejected"):
+        review = (e.get("data") or {}).get("legal")
+        if isinstance(review, dict) and H.LEGAL_DECISIONS.get(review.get("decision")) == e.get("event"):
             out.append({**review, "seq": e["seq"], "at": e.get("at", ""), "reason": e.get("note", ""),
                         "by": (e.get("actor") or {}).get("name", ""),
                         "role": (e.get("actor") or {}).get("role", ""),
@@ -454,6 +455,14 @@ class Review:
             index_name, index = _index_of(zf)
             files = check_files(zf, index_name, index)
         v = H.verify(workflow, keys=keys, ledger=ledger)
+        # The studio ledger shows the shot carried on past this copy (the artist kept
+        # working, or another review recorded decisions): an old copy, not a damaged one.
+        # It is checked as one, and kept read-only: writing here would fork the shot.
+        old_copy = bool(ledger) and H.ledger_diverged(ledger, history)
+        if old_copy:
+            v = H.verify(workflow, keys=keys, ledger=ledger, _as_parent=True)  # noqa: SLF001
+            v.notes.insert(0, "the studio ledger shows this shot carried on past this copy: "
+                              "it has later entries elsewhere")
         lin = H.lineage(history)
         sealed = H.delivery_clearance(history)
         project = lin["shot"].get("project", "")
@@ -462,8 +471,8 @@ class Review:
         open_count = sum(1 for g in items for i in g["items"] if i["state"] != "answered")
         reviews = legal_reviews(history)
         last = reviews[-1] if reviews else None
-        state = ("cleared" if last and last["decision"] == "clear" else
-                 "sent-back" if last and last["decision"] == "send-back" else "awaiting")
+        state = ("cleared" if last and last["decision"] == "cleared" else
+                 "sent-back" if last and last["decision"] == "sent back" else "awaiting")
         relied = []
         for a in (sealed or {}).get("answers_relied_on") or []:
             relied.append({k: a.get(k) for k in ("tag", "scope", "production_name", "note", "at")}
@@ -492,7 +501,7 @@ class Review:
         docs = [f for f in files["files"] if f["role"] in (
             "legal-report", "licence-audit", "life-of-the-shot")]
         other = [f for f in files["files"] if f not in docs]
-        writable = v.assurance != "none" and files["ok"]
+        writable = v.assurance != "none" and files["ok"] and not old_copy
         return {
             "package": {"id": pid, "filename": meta["filename"], "sha256": meta["sha256"],
                         "opened_at": meta["opened_at"], "opened_by": meta.get("opened_by", ""),
@@ -502,6 +511,7 @@ class Review:
                      "production": answers_mod.production_key(project),
                      "shotgrid": shotgrid.shot_ref(history)},
             "legal_state": state, "legal_state_label": STATES[state],
+            "legal": H.legal_decision(history),
             "decision": None if not sealed else {
                 "verdict": sealed.get("verdict", ""), "verdict_label": sealed.get("verdict_label", ""),
                 "headline": sealed.get("headline", ""), "checked_as": sealed.get("profile", ""),
@@ -528,7 +538,12 @@ class Review:
             "content_credentials": index.get("content_credentials", []),
             "shotgrid": {"configured": shotgrid.configured(), "posts": meta.get("shotgrid", [])},
             "writable": writable,
+            "old_copy": old_copy,
             "why_not_writable": "" if writable else (
+                "This package is an older copy of the shot: the studio ledger shows it carried on "
+                "after this package was made (the artist kept working, or it was reviewed from "
+                "another copy). Open the latest package of the shot to record anything."
+                if old_copy and v.assurance != "none" and files["ok"] else
                 "The package or its history does not check out, so nothing can be recorded "
                 "against it: " + "; ".join((files["problems"] + v.problems)[:3])),
         }
@@ -589,7 +604,8 @@ class Review:
                 raise ReviewError(f"{len(open_items)} item(s) are still open. Answer them, or "
                                   "confirm you are clearing the shot with them open; they are "
                                   "recorded with the decision.")
-            review = {"decision": decision, "label": DECISIONS[decision],
+            review = {"decision": "cleared" if decision == "clear" else "sent back",
+                      "by": who.actor.name, "at": _now(), "reason": reason,
                       "package": view["package"]["sha256"],
                       "verdict_at_sign_off": (view["decision"] or {}).get("verdict", ""),
                       "open_items": open_items, "reviewed_with": TOOL}
@@ -598,7 +614,7 @@ class Review:
             try:
                 made = H.stamp(workflow, event="approved" if decision == "clear" else "rejected",
                                actor=who.actor, keys=who.keys, ledger=ledger, note=reason,
-                               data_payload={"legal_review": review})
+                               data_payload={"legal": review})
                 entry = made.entry
                 # Clearing moves a shot to "cleared" if it is not that far yet; a
                 # delivered shot stays delivered with the clearance on top. Sent

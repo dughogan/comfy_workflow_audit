@@ -581,6 +581,12 @@ class ComfyAuditHistoryGate:
                     "Your policy, not the tool's: stop while any model in the shot "
                     "bars commercial use."}),
             },
+            # Optional, so workflows saved before it existed load unchanged.
+            "optional": {
+                "require_legal_clearance": ("BOOLEAN", {"default": False, "tooltip":
+                    "Stop unless legal has cleared this exact version of the shot in "
+                    "ComfyAudit Review. A change to the graph since the clearance stops it too."}),
+            },
             "hidden": {"extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
@@ -599,7 +605,7 @@ class ComfyAuditHistoryGate:
         return float("nan")
 
     def run(self, images, require_history=True, stop_if_altered=True, minimum_stage="any",
-            stop_if_not_commercial=False, extra_pnginfo=None):
+            stop_if_not_commercial=False, require_legal_clearance=False, extra_pnginfo=None):
         workflow = (extra_pnginfo or {}).get("workflow") if isinstance(extra_pnginfo, dict) else None
         history = H.read(workflow) if isinstance(workflow, dict) else None
         if not history:
@@ -630,6 +636,22 @@ class ComfyAuditHistoryGate:
                 raise RuntimeError(
                     "comfyaudit history gate: stop_if_not_commercial is set and these "
                     f"models bar commercial use: {models}.")
+        if require_legal_clearance:
+            legal = H.legal_decision(history)
+            if not legal or legal["decision"] != "cleared":
+                raise RuntimeError(
+                    "comfyaudit history gate: require_legal_clearance is set and legal has "
+                    + ("sent this shot back: " + legal["reason"] if legal else "not cleared this shot")
+                    + ". Clearance is recorded in ComfyAudit Review.")
+            if not legal["current"]:
+                raise RuntimeError(
+                    "comfyaudit history gate: legal cleared an earlier version of this shot; "
+                    "the graph has changed since. Send it to legal again.")
+            if not legal["signed"]:
+                raise RuntimeError(
+                    "comfyaudit history gate: the legal clearance on this shot is unsigned, "
+                    "so it cannot be relied on.")
+            return (images, f"passed: history intact, shot in {stage}, cleared by legal ({legal['by']})")
         return (images, f"passed: history intact, shot in {stage}")
 
 

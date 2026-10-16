@@ -219,8 +219,10 @@ function sealedClearance(entries) {
 }
 
 export function legalReviews(entries) {
-  return entries.filter((e) => e.data?.legal_review && ["approved", "rejected"].includes(e.event)).map((e) => ({
-    ...e.data.legal_review, seq: e.seq, at: e.at || "", reason: e.note || "", by: e.actor?.name || "",
+  // Legal's decision: an approved / rejected entry carrying data.legal (history.legal_decision).
+  const event = { cleared: "approved", "sent back": "rejected" };
+  return entries.filter((e) => e.data?.legal && event[e.data.legal.decision] === e.event).map((e) => ({
+    ...e.data.legal, seq: e.seq, at: e.at || "", reason: e.note || "", by: e.actor?.name || "",
     role: e.actor?.role || "", demo: !!e.demo }));
 }
 
@@ -278,7 +280,7 @@ export function buildView(pkg, rules, answers = []) {
   const openCount = items.reduce((n, g) => n + g.items.filter((i) => i.state !== "answered").length, 0);
   const reviews = legalReviews(entries);
   const last = reviews[reviews.length - 1] || null;
-  const state = last ? (last.decision === "clear" ? "cleared" : "sent-back") : "awaiting";
+  const state = last ? (last.decision === "cleared" ? "cleared" : "sent-back") : "awaiting";
   const flat = Object.fromEntries(Object.entries(rules.rules).flatMap(([id, r]) => r.evidence.map((ev, i) => [`${id}:${i}`, { text: ev.text, title: r.title }])));
   const inherited = (sealed?.answers_relied_on || []).map((a) => ({ tag: a.tag, scope: a.scope,
     production_name: a.production_name || "", note: a.note, at: a.at, by: a.by?.name || "",
