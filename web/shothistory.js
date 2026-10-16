@@ -782,7 +782,7 @@ const COMMERCIAL = {
   cleared: ["Commercial OK", TONE.ok],
   conditional: ["Conditions apply", TONE.warn],
   unknown: ["Licence unclear", TONE.warn],
-  blocked: ["Not cleared", TONE.stop],
+  blocked: ["Not for commercial use", TONE.stop],
   none: ["No models yet", TONE.flat],
 };
 const VERDICT_TONE = { go: TONE.ok, conditions: TONE.warn, "no-go": TONE.stop, unknown: TONE.flat };
