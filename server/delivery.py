@@ -265,8 +265,13 @@ def _signing_lines(signed: list[dict[str, Any]]) -> list[str]:
         return []
     lines = ["Content Credentials (C2PA):"]
     for r in signed:
+        if not r.get("signed"):
+            lines.append(f"- {r['file']}: not signed - {r['reason']}")
+            continue
         lines.append(f"- signed/{r['signed_file']}: signed and embedded ({r['validation_state']})"
-                     if r.get("signed") else f"- {r['file']}: not signed - {r['reason']}")
+                     + (f", by {r['signer']}" if r.get("signer") else ""))
+        if r.get("note"):
+            lines.append(f"  Note: {r['note']}.")
     return lines + [""]
 
 

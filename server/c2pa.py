@@ -38,8 +38,10 @@ EMBEDDABLE = {".avi", ".avif", ".dng", ".flac", ".gif", ".heic", ".heif", ".jpg"
               ".jxl", ".m4a", ".mp3", ".mp4", ".mov", ".pdf", ".png", ".svg", ".tif",
               ".tiff", ".wav", ".webp"}
 
-#: What c2patool prints when it falls back to its development certificate.
+#: What c2patool prints when it falls back to its development certificate
+#: (checked against c2patool 0.28.2, 2026-10-16), and that certificate's issuer.
 DEV_CERT = "only valid for development"
+DEV_ISSUER = "C2PA Test Signing Cert"
 
 
 def tool() -> list[str]:
@@ -128,13 +130,32 @@ def sign(path: str, manifest: dict[str, Any], out_path: str, version: str) -> di
     if run.returncode != 0 or not os.path.isfile(out_path):
         return {"file": name, "signed": False,
                 "reason": f"c2patool failed: {(run.stderr or run.stdout).strip()[:300]}"}
-    state = ""
     try:
-        state = json.loads(run.stdout).get("validation_state", "")
+        report = json.loads(run.stdout)
     except ValueError:
-        pass
+        report = {}
+    state = report.get("validation_state", "")
+    active = (report.get("manifests") or {}).get(report.get("active_manifest", ""), {})
+    sig = active.get("signature_info") or {}
+    if sig.get("issuer") == DEV_ISSUER:
+        os.remove(out_path)
+        return {"file": name, "signed": False,
+                "reason": "c2patool signed with its development certificate, which no one "
+                          "should rely on; check the studio's signing credentials"}
     if state == "Invalid":
         os.remove(out_path)
         return {"file": name, "signed": False, "reason": "c2patool reported the result invalid"}
-    return {"file": name, "signed": True, "signed_file": os.path.basename(out_path),
-            "validation_state": state or "not reported"}
+    codes = [v.get("code", "") for v in report.get("validation_status") or []]
+    trusted = "signingCredential.untrusted" not in codes
+    out = {"file": name, "signed": True, "signed_file": os.path.basename(out_path),
+           "validation_state": state or "not reported",
+           "signer": ", ".join(x for x in (sig.get("common_name"), sig.get("issuer")) if x),
+           "trusted": trusted}
+    if not trusted:
+        # Valid and intact, but checked only against c2patool's built-in trust
+        # list. A studio CA is trusted inside the studio; public verifiers
+        # need a certificate from a CA on the C2PA trust list.
+        out["note"] = ("the signing certificate is not on the C2PA trust list; verifiers "
+                       "outside the studio will show it as untrusted unless they trust the "
+                       "studio's CA")
+    return out

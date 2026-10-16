@@ -1,6 +1,7 @@
 """Signing delivered renders with the studio's c2patool, tested against a stand-in.
 
-The stand-in behaves as c2patool v0.28 does (contentauth/c2patool docs, 2026-10):
+The stand-in behaves as c2patool 0.28.2 did when run for real on 2026-10-16
+(a PNG render, a test CA chain, and c2patool's own sample certificate):
 ``c2patool <in> -m <manifest> -o <out> -f --create <type>`` writes the signed
 file, prints the manifest store as JSON, and falls back to a development
 certificate - with a note, and exit 0 - when it has no credentials.
@@ -31,7 +32,15 @@ FAKE = textwrap.dedent('''
         print("Using default private key and signing certificate. This is only valid for development.", file=sys.stderr)
     shutil.copy(src, out)
     open(out, "ab").write(b"C2PA")
-    print(json.dumps({"active_manifest": "urn:x", "validation_state": "Valid"}))
+    cert = manifest.get("sign_cert", "")
+    issuer = ("C2PA Test Signing Cert" if "private_key" not in manifest and "--signer-path" not in args
+              or "sample" in cert else "Studio CA")
+    status = [] if "trusted" in cert else [{"code": "signingCredential.untrusted",
+                                             "explanation": "signing certificate untrusted"}]
+    print(json.dumps({"active_manifest": "urn:x", "validation_state": "Valid",
+                      "validation_status": status,
+                      "manifests": {"urn:x": {"signature_info": {
+                          "alg": "Es256", "issuer": issuer, "common_name": "Studio Signer"}}}}))
 ''')
 
 MANIFEST = {"claim_generator": "comfyaudit/0.3.0", "title": "SH0120", "assertions": [
@@ -51,8 +60,8 @@ def tool(tmp_path, monkeypatch):
     return tmp_path
 
 
-def credentials(tmp_path, monkeypatch):
-    key, cert = tmp_path / "k.pem", tmp_path / "c.pem"
+def credentials(tmp_path, monkeypatch, cert_name="c.pem"):
+    key, cert = tmp_path / "k.pem", tmp_path / cert_name
     key.write_text("KEY")
     cert.write_text("CERT")
     monkeypatch.setenv("COMFYAUDIT_C2PA_KEY", str(key))
@@ -97,3 +106,31 @@ def test_exr_is_left_to_the_sidecar(tool, monkeypatch):
     frame.write_bytes(b"exr")
     res = c2pa.sign(str(frame), MANIFEST, str(tool / "out.exr"), "0.3.0")
     assert not res["signed"] and "sidecar" in res["reason"]
+
+
+def test_a_certificate_off_the_c2pa_trust_list_is_signed_but_says_so(tool, monkeypatch):
+    credentials(tool, monkeypatch)
+    frame = tool / "f.png"
+    frame.write_bytes(b"png")
+    res = c2pa.sign(str(frame), MANIFEST, str(tool / "out.png"), "0.3.0")
+    assert res["signed"] and res["trusted"] is False and "trust list" in res["note"]
+    assert res["signer"] == "Studio Signer, Studio CA"
+
+
+def test_a_trusted_certificate_carries_no_note(tool, monkeypatch):
+    credentials(tool, monkeypatch, "trusted.pem")
+    frame = tool / "f.png"
+    frame.write_bytes(b"png")
+    res = c2pa.sign(str(frame), MANIFEST, str(tool / "out.png"), "0.3.0")
+    assert res["signed"] and res["trusted"] and "note" not in res
+
+
+def test_c2patools_own_sample_certificate_is_refused(tool, monkeypatch):
+    # Handed to the tool as if it were the studio's: no fallback note is
+    # printed, but the signature's issuer gives it away.
+    credentials(tool, monkeypatch, "sample_es256_certs.pem")
+    frame = tool / "f.png"
+    frame.write_bytes(b"png")
+    res = c2pa.sign(str(frame), MANIFEST, str(tool / "out.png"), "0.3.0")
+    assert not res["signed"] and "development certificate" in res["reason"]
+    assert not (tool / "out.png").exists()

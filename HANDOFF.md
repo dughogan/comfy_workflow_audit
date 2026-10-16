@@ -386,8 +386,15 @@ environment only, never ComfyUI settings.
   `signed/` in the zip. `COMFYAUDIT_C2PATOOL` (or PATH),
   `COMFYAUDIT_C2PA_SIGNER` or `COMFYAUDIT_C2PA_KEY` + `_CERT` (`_ALG`).
   c2patool's silent fallback to its development certificate is refused. EXR
-  cannot carry an embedded manifest. **Tested only against a stand-in
-  c2patool;** run once with the real binary and a studio certificate.
+  cannot carry an embedded manifest. **Tested with the real c2patool 0.28.2
+  on 2026-10-16** (official Windows build, a test CA chain, a real PNG render):
+  delivery signs and embeds, and c2patool reads the copy back as Valid with
+  `c2pa.actions.v2`, `com.comfyaudit.history` and `com.comfyaudit.clearance`.
+  c2patool's development certificate is refused both by its fallback note
+  and by issuer (`C2PA Test Signing Cert`, which its bundled sample cert also
+  uses). A certificate off the C2PA trust list signs but is reported
+  `trusted: false` with a note in the README: fine inside the studio, but
+  outside verifiers need the studio's CA, or a cert from a C2PA-listed CA.
 - *MovieLabs OMC-JSON v2.8* (`9fec5cb`, `core/report/omc.py`). In the
   delivery zip as `<shot>.omc.json` and `comfyaudit history omc`. Validated
   against the official schema (fixture in `tests/fixtures/omc/`). OMC has no
