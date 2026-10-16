@@ -138,6 +138,11 @@ def stamp(body: dict[str, Any]) -> dict[str, Any]:
             row = H._output_row(path) if path else {"file": item["filename"]}  # noqa: SLF001
             if item.get("type") and item["type"] != "output":
                 row["kind"] = item["type"]
+            # Where in the output folder it landed, so delivery can find the
+            # exact file to sign. Folder names often carry the brief, so only
+            # when prompts are readable.
+            if item.get("subfolder") and cfg.get("confidentiality", "none") == "none":
+                row["subfolder"] = str(item["subfolder"])
             outputs.append(row)
             files.append((path, row))
     k, ledger, who = signer(cfg, body), cfg.get("ledger", ""), actor(cfg, body)

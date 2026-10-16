@@ -21,6 +21,8 @@ import base64
 import io
 import json
 import re
+import tempfile
+import os
 import zipfile
 from typing import Any
 
@@ -30,6 +32,7 @@ from ..core.knowledge import licences as licences_mod
 from ..core.report import compliance, history_html, life_viewer
 from ..core.report import html as html_report
 from ..core.score import clearance as clearance_mod
+from . import c2pa as c2pa_mod
 from . import history_service
 from . import settings as settings_mod
 
@@ -202,7 +205,8 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
         zf.writestr(f"{slug}.clearance-sheet.html", sheet)
         zf.writestr(f"{slug}.life.html", life_viewer.render(
             history, verification=H.verify(workflow, keys=keys, ledger=ledger)))
-        zf.writestr("README.txt", _readme(shot, clearance))
+        signed = _sign_renders(history, manifest, zf)
+        zf.writestr("README.txt", _readme(shot, clearance, signed))
 
     return {
         "workflow": workflow,
@@ -211,11 +215,56 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
         "manifest": manifest,
         "report_html": record,
         "zip_name": f"{slug}.delivery.zip",
+        "c2pa": signed,
         "zip_b64": base64.b64encode(buf.getvalue()).decode("ascii"),
     }
 
 
-def _readme(shot: str, clearance: dict[str, Any]) -> str:
+def _sign_renders(history: dict[str, Any], manifest: dict[str, Any],
+                  zf: zipfile.ZipFile) -> list[dict[str, Any]]:
+    """Sign the final render's outputs with c2patool, into the package only.
+
+    Each file is signed only if its contents still match the fingerprint its
+    render entry recorded, so the credentials go on the file the history
+    vouches for, not on whatever now has that name.
+    """
+    final = next((e for e in reversed(history.get("entries", []))
+                  if e.get("event") == "rendered" and e.get("outputs")), None)
+    if not final:
+        return []
+    results = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for row in final["outputs"]:
+            path = history_service.output_path({"filename": row.get("file", ""), "type": "output",
+                                                "subfolder": row.get("subfolder", "")})
+            if not path or not os.path.isfile(path):
+                results.append({"file": row.get("file", ""), "signed": False,
+                                "reason": "the render is no longer in the output folder"})
+                continue
+            if row.get("sha256") and H.file_sha256(path) != row["sha256"]:
+                results.append({"file": row["file"], "signed": False,
+                                "reason": "the file has changed since it was rendered"})
+                continue
+            out = os.path.join(tmp, os.path.basename(path))
+            res = c2pa_mod.sign(path, manifest, out, H.__version__)
+            if res.get("signed"):
+                zf.write(out, f"signed/{os.path.basename(path)}")
+            results.append(res)
+    return results
+
+
+def _signing_lines(signed: list[dict[str, Any]]) -> list[str]:
+    if not signed:
+        return []
+    lines = ["Content Credentials (C2PA):"]
+    for r in signed:
+        lines.append(f"- signed/{r['signed_file']}: signed and embedded ({r['validation_state']})"
+                     if r.get("signed") else f"- {r['file']}: not signed - {r['reason']}")
+    return lines + [""]
+
+
+def _readme(shot: str, clearance: dict[str, Any],
+            signed: list[dict[str, Any]] | None = None) -> str:
     lines = [
         f"Delivery package: {shot}",
         "",
@@ -234,6 +283,7 @@ def _readme(shot: str, clearance: dict[str, Any]) -> str:
         f"- {_slug(shot)}.c2pa.json: a C2PA manifest definition for the delivered file. It is",
         "  unsigned; sign and embed it with c2patool or the studio's signing service.",
         "",
+        *_signing_lines(signed or []),
         "Check the history: comfyaudit history verify <workflow.json> (with the studio key and",
         "ledger set). This package was produced by an automated tool; it is evidence to take",
         "to counsel, not legal advice.",
