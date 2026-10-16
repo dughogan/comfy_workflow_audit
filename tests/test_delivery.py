@@ -154,4 +154,4 @@ def test_delivery_seals_the_clearance_and_returns_the_package(studio):
     assert "Delivery clearance" in out["report_html"]
     names = zipfile.ZipFile(io.BytesIO(base64.b64decode(out["zip_b64"]))).namelist()
     assert sorted(names) == sorted(["SH0120.json", "SH0120.c2pa.json", "SH0120.legal-report.html",
-                                    "SH0120.clearance-sheet.html", "SH0120.life.html", "README.txt"])
+                                    "SH0120.clearance-sheet.html", "SH0120.life.html", "SH0120.omc.json", "README.txt"])

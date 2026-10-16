@@ -60,6 +60,10 @@ def add_parsers(sub) -> None:
                     help="a rendered file, or its .provenance.json")
     vf.add_argument("--ledger", default=os.environ.get("COMFYAUDIT_HISTORY_LEDGER", ""))
 
+    om = hsub.add_parser("omc", help="write the history as MovieLabs OMC-JSON v2.8")
+    om.add_argument("workflow")
+    om.add_argument("-o", "--output", default="")
+
     lg = hsub.add_parser("log", help="print the history as a timeline")
     lg.add_argument("workflow")
     lg.add_argument("--reveal", action="store_true", help="decrypt protected prompts (needs the key)")
@@ -244,6 +248,14 @@ def run(args: argparse.Namespace) -> int:
         for p in v.problems:
             print(f"  - {p}")
         return EXIT_ALTERED if v.assurance == "none" else 0
+
+    if cmd == "omc":
+        from .report import omc
+        out = args.output or os.path.splitext(path)[0] + ".omc.json"
+        with open(out, "w", encoding="utf-8") as fh:
+            json.dump(omc.export(history), fh, indent=1, default=str)
+        print(f"wrote {out}")
+        return 0
 
     if cmd == "log":
         lin = H.lineage(history)

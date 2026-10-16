@@ -29,7 +29,7 @@ from typing import Any
 from ..core import history as H
 from ..core.knowledge import alternatives as alternatives_mod
 from ..core.knowledge import licences as licences_mod
-from ..core.report import compliance, history_html, life_viewer
+from ..core.report import compliance, history_html, life_viewer, omc
 from ..core.report import html as html_report
 from ..core.score import clearance as clearance_mod
 from . import c2pa as c2pa_mod
@@ -205,6 +205,7 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
         zf.writestr(f"{slug}.clearance-sheet.html", sheet)
         zf.writestr(f"{slug}.life.html", life_viewer.render(
             history, verification=H.verify(workflow, keys=keys, ledger=ledger)))
+        zf.writestr(f"{slug}.omc.json", json.dumps(omc.export(history), indent=1, default=str))
         signed = _sign_renders(history, manifest, zf)
         zf.writestr("README.txt", _readme(shot, clearance, signed))
 
@@ -280,6 +281,8 @@ def _readme(shot: str, clearance: dict[str, Any],
         f"- {_slug(shot)}.clearance-sheet.html: the full licence and risk audit behind the verdict.",
         f"- {_slug(shot)}.life.html: the shot's life on one timeline - the graph as it stood at",
         "  each entry, the story, and the log. Opens in any browser, offline.",
+        f"- {_slug(shot)}.omc.json: the same history as MovieLabs OMC-JSON v2.8 entities, for",
+        "  studio asset systems (people, ComfyUI as a service, renders, inputs, outputs).",
         f"- {_slug(shot)}.c2pa.json: a C2PA manifest definition for the delivered file. It is",
         "  unsigned; sign and embed it with c2patool or the studio's signing service.",
         "",

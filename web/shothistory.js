@@ -1023,6 +1023,7 @@ function doneStep() {
     [`${slug}.legal-report.html`, "For legal: clearance, provenance, rules checklist"],
     [`${slug}.clearance-sheet.html`, "The full licence and risk audit"],
     [`${slug}.life.html`, "The shot's life on one timeline: graph, story and log"],
+    [`${slug}.omc.json`, "MovieLabs OMC-JSON v2.8, for studio asset systems"],
     [`${slug}.c2pa.json`, "C2PA manifest definition, ready to sign and embed"],
   ]) {
     wrap.append(h("div", { style: { fontSize: "12px", padding: "6px 0", borderBottom: `1px solid ${UI.line}` } },

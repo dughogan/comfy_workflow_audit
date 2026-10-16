@@ -13,7 +13,7 @@ import os
 from typing import Any
 
 from ..core import history as H
-from ..core.report import history_html, licensing_guide, life_viewer
+from ..core.report import history_html, licensing_guide, life_viewer, omc
 from . import settings as settings_mod
 
 
@@ -378,6 +378,14 @@ def life(body: dict[str, Any]) -> dict[str, Any]:
         return {"error": "This workflow has no history yet."}
     v = H.verify(workflow, keys=keys(cfg), ledger=cfg.get("ledger", ""), history=history)
     return {"html": life_viewer.render(history, verification=v)}
+
+
+def omc_export(body: dict[str, Any]) -> dict[str, Any]:
+    """The history as MovieLabs OMC-JSON v2.8 entities."""
+    history = H.read(body["workflow"])
+    if not history:
+        return {"error": "This workflow has no history yet."}
+    return {"omc": omc.export(history)}
 
 
 def manifest(body: dict[str, Any]) -> dict[str, Any]:
