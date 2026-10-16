@@ -768,7 +768,7 @@ function detailsForm() {
     label("Shot name", input(f.name, (v) => { f.name = v; })),
     label("Project / show", input(f.project, (v) => { f.project = v; }, "optional")),
     label("Studio asset ID", h("div", { style: { display: "flex", gap: "6px" } },
-      choose([["shotgrid", "ShotGrid (beta)"], ["ftrack", "ftrack"], ["sparky", "Sparky"], ["other", "Other"]], f.system, (v) => { f.system = v; }),
+      choose([["shotgrid", "ShotGrid (beta)"], ["ftrack", "ftrack"], ["other", "Other"]], f.system, (v) => { f.system = v; }),
       input(f.asset, (v) => { f.asset = v; }, "e.g. Shot 4411"))),
     h("div", { style: { display: "flex", gap: "8px" } },
       btn("Save", submit, "primary"), btn("Cancel", () => { state.form = null; rerender(); })));
@@ -1254,7 +1254,7 @@ function draw(el) {
     const [cLabel, cTone] = COMMERCIAL[(s.commercial || {}).status] || COMMERCIAL.none;
     head.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", margin: "8px 0 10px" } },
       pill(s.shot?.stage || "sandbox", s.shot?.stage === "sandbox" ? TONE.flat : TONE.accent),
-      pill(cLabel, cTone), pill(aLabel, aTone)));
+      pill(cLabel, cTone), pill(aLabel, aTone), legalPill(s.legal)));
     const wide = (b) => { b.style.width = "100%"; b.style.padding = "8px 10px"; return b; };
     head.append(wide(btn("Package for delivery", openPackage, "primary")),
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginTop: "6px" } },
@@ -1275,6 +1275,18 @@ function draw(el) {
 }
 
 function rerender() { if (mount) draw(mount); }
+
+// Legal's own decision (ComfyAudit Review), shown beside the stage, never as one.
+function legalPill(legal) {
+  if (!legal) return null;
+  const when = String(legal.at || "").slice(0, 10);
+  const who = `${legal.by || "legal"}${when ? ", " + when : ""}`;
+  const p = legal.decision === "cleared"
+    ? (legal.current ? pill("Legal cleared", TONE.ok) : pill("Legal cleared an earlier version", TONE.warn))
+    : pill("Sent back by legal", TONE.stop);
+  p.title = `${who}${legal.reason ? ": " + legal.reason : ""}`;
+  return p;
+}
 
 /* ------------------------------------------------------------------ */
 /* Registration                                                        */

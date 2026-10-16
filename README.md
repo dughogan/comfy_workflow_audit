@@ -540,7 +540,7 @@ changed:
 | **Settings** | Seeds, steps, CFG, sampler, resolution, bypassed branches |
 | **Outputs** | Rendered files, fingerprinted, so a delivered frame can be traced to the entry that made it |
 | **Stage** | `sandbox → production → cleared → delivered`. Sandbox work never ships; promotion is where clearance starts |
-| **Studio IDs** | The ShotGrid, ftrack or Sparky entity the asset was born as, so provenance starts there and not in ComfyUI |
+| **Studio IDs** | The ShotGrid, ftrack or other tracking-system entity the asset was born as, so provenance starts there and not in ComfyUI |
 
 Laying out nodes, panning and resizing are not changes; a save that changed
 nothing adds nothing. Renders, reviews and approvals always record, because

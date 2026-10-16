@@ -151,6 +151,10 @@ th { font-size: 11.5px; color: var(--gray); font-weight: 600; text-transform: up
 .list-docs { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .list-docs li { display: flex; justify-content: space-between; gap: 14px; align-items: center; flex-wrap: wrap;
   padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: var(--r-sm); background: var(--ink); }
+/* The description takes what is left, so every Open button lines up on the right
+   rather than wrapping under a longer description. */
+.list-docs li > div { flex: 1 1 260px; min-width: 0; }
+.list-docs li > .go { flex: none; }
 
 /* the Comfy C, extruded, while a package is read */
 .loader { text-align: center; padding: 30px 6px; }

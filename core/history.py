@@ -732,7 +732,7 @@ def breakpoints_for(event: str, changes: dict[str, Any], note: str = "",
 def empty(name: str = "", project: str = "",
           external_ids: dict[str, str] | None = None) -> dict[str, Any]:
     """A new history. ``external_ids`` ties it to the studio's own tracking -
-    the ShotGrid or Sparky entity the asset was born as - so provenance starts
+    the ShotGrid or other tracking-system entity the asset was born as - so provenance starts
     where the studio says it starts, not where ComfyUI first saw it."""
     return {
         "schema": SCHEMA,
@@ -1661,7 +1661,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
         gaps.append(f"Tracking began on {entries[0]['at'][:10]}; anything before that "
                     "is not recorded.")
     if not (entries and entries[-1].get("shot", {}).get("external_ids")):
-        gaps.append("Not linked to a studio asset ID (ShotGrid, Sparky, ftrack). "
+        gaps.append("Not linked to a studio asset ID (ShotGrid, ftrack or similar). "
                     "Provenance should start where the asset was born, not where "
                     "ComfyUI first saw it.")
     undeclared = [s["node"] for s in sources.values()
@@ -1857,6 +1857,37 @@ def delivery_clearance(history: dict[str, Any]) -> dict[str, Any] | None:
                     "by": (e.get("actor") or {}).get("name", ""),
                     "role": (e.get("actor") or {}).get("role", ""),
                     "note": e.get("note", "")}
+    return None
+
+
+#: What legal decided about a shot, as ComfyAudit Review records it: an ``approved``
+#: or ``rejected`` entry carrying ``data.legal``. Kept apart from the stage, which
+#: only moves forward (sandbox -> production -> cleared -> delivered): an artist's
+#: sign-off delivers the shot; legal's clearance is a separate, signed decision on top.
+LEGAL_DECISIONS = {"cleared": "approved", "sent back": "rejected"}
+
+
+def legal_decision(history: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The latest legal decision in the chain, or None.
+
+    Who and when come from the entry itself (its sealed actor and time), not from
+    copies in the payload. ``current`` says whether the graph is still the one legal
+    decided on: any change to it since means the decision covers an earlier version.
+    """
+    entries = (history or {}).get("entries") or []
+    for e in reversed(entries):
+        legal = (e.get("data") or {}).get("legal")
+        if not isinstance(legal, dict) or LEGAL_DECISIONS.get(legal.get("decision")) != e.get("event"):
+            continue
+        actor = e.get("actor") or {}
+        return {
+            "decision": legal["decision"],
+            "label": "Legal cleared" if legal["decision"] == "cleared" else "Sent back by legal",
+            "reason": e.get("note", ""), "by": actor.get("name", ""), "role": actor.get("role", ""),
+            "at": e.get("at", ""), "seq": e.get("seq"), "signed": "sig" in e,
+            "key_id": e.get("key_id", ""), "open_items": list(legal.get("open_items") or []),
+            "current": e.get("snapshot_sha256") == entries[-1].get("snapshot_sha256"),
+        }
     return None
 
 

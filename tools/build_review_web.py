@@ -68,6 +68,10 @@ def demo_packages(out: str) -> list[str]:
     for var in ("COMFYAUDIT_HISTORY_KEY_FILE", "COMFYAUDIT_HISTORY_KEYRING",
                 "COMFYAUDIT_TRUSTED_USER_HEADER", "COMFYAUDIT_SHOTGRID_URL", "COMFYAUDIT_REVIEW_URL"):
         os.environ.pop(var, None)
+    # The sign-off is recorded by the real delivery code, which names the
+    # machine it runs on; these packages are published, so name a demo one.
+    import socket
+    socket.gethostname = lambda: "demo-workstation"
     supervisor = {"ComfyAudit.History.UserName": "Theo Grant", "ComfyAudit.History.Role": "VFX supervisor"}
     settings_mod.read_settings = lambda user="default": {**STUDIO_SETTINGS, **supervisor}
     keys, ledger = H.Keys.from_environment(), os.environ["COMFYAUDIT_HISTORY_LEDGER"]
