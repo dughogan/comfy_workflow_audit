@@ -866,7 +866,7 @@ function homeView(s) {
 /* Check -> make it safe -> sign off -> deliver. The audit runs on the server,
  * and runs again at sign-off, so the verdict sealed into the history is never
  * one the browser supplied. */
-const pkg = { step: "profile", result: null, error: "", note: "", exception: "", out: null, open: {} };
+const pkg = { step: "profile", result: null, error: "", note: "", exception: "", out: null, open: {}, legalOpen: false };
 
 /* Production facts the rules turn on, asked once alongside the studio profile. */
 const DELIVERY_FACTS = [
@@ -878,6 +878,9 @@ const DELIVERY_FACTS = [
 function openPackage() {
   state.view = "package";
   state.form = null;
+  // Every package starts clean: legal's list collapsed, no half-typed evidence.
+  pkg.open = {};
+  pkg.legalOpen = false;
   pkg.error = "";
   pkg.out = null;
   if (profileIsSet()) runCheck();
@@ -1030,6 +1033,8 @@ function confirmationRule(rule) {
         btn("Record", () => act(async () => {
           if (!f.note.trim()) throw new Error("Say what confirms it; a blank confirmation proves nothing.");
           await stamp("note", { note: f.note.trim(), data: { evidence: item.tag } });
+          f.open = false;
+          f.note = "";
           await runCheck();
         }), "primary"),
         btn("Cancel", () => { f.open = false; rerender(); })));
@@ -1079,7 +1084,10 @@ function fixStep() {
     const list = h("details", { style: { border: `1px solid ${UI.line}`, borderRadius: "5px", padding: "6px 10px", margin: "0 0 8px" } },
       h("summary", { style: { cursor: "pointer", fontSize: "12px" } }, `What legal will check (${r.confirmations.length} rules)`));
     for (const rule of r.confirmations) list.append(confirmationRule(rule));
-    if (Object.values(pkg.open).some((f) => f.open)) list.open = true;
+    // Collapsed unless the person opened it during this package (it is redrawn
+    // after every re-check, so it remembers their choice, not a stale form).
+    list.open = pkg.legalOpen;
+    list.addEventListener("toggle", () => { pkg.legalOpen = list.open; });
     wrap.append(list);
   }
   wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "10px" } },
