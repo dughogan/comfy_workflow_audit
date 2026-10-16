@@ -113,3 +113,19 @@ def test_a_history_survives_a_round_trip_through_the_browser():
     wf = H.stamp(_through_the_browser(wf), event="rendered", actor=ANA, keys=k).workflow
     v = H.verify(_through_the_browser(wf), keys=k)
     assert v.assurance != "none", v.problems
+
+
+def test_an_empty_canvas_is_told_apart_from_a_layout_that_was_not_recorded():
+    k = H.Keys()
+    blank = {"last_node_id": 0, "last_link_id": 0, "nodes": [], "links": [], "version": 0.4}
+    wf = H.stamp(blank, event="created", actor=ANA, keys=k).workflow
+    filled = load()
+    filled["extra"] = wf["extra"]
+    wf = H.stamp(filled, actor=ANA, keys=k).workflow
+    rows = life_viewer.data(H.read(wf))["rows"]
+    assert rows[0]["empty"] and not rows[1]["empty"]
+    # Every node that appears with the first real graph is marked as added there.
+    assert len(rows[1]["added"]) == len(filled["nodes"])
+    page = life_viewer.render(H.read(wf))
+    for control in ('id="play"', 'id="prev"', 'id="next"', 'id="speed"', 'id="cap"', "canvas was empty"):
+        assert control in page

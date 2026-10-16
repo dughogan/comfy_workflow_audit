@@ -571,13 +571,15 @@ function h(tag, props, ...kids) {
   return el;
 }
 
-function btn(label, onClick, variant = "ghost") {
+/* ``always``: stays clickable while the panel is busy (the document overlay is
+ * built inside a busy action and never redrawn, so it must not inherit that). */
+function btn(label, onClick, variant = "ghost", { always = false } = {}) {
   const s = {
     font: "500 12px/1 inherit", padding: "7px 10px", borderRadius: "5px", cursor: "pointer",
     border: `1px solid ${UI.line}`, background: "transparent", color: UI.fg, whiteSpace: "nowrap",
   };
   if (variant === "primary") Object.assign(s, { background: "var(--p-primary-color, #4a7ec4)", borderColor: "transparent", color: "#fff", fontWeight: "600" });
-  return h("button", { type: "button", style: s, onclick: onClick, disabled: state.busy ? "disabled" : null }, label);
+  return h("button", { type: "button", style: s, onclick: onClick, disabled: state.busy && !always ? "disabled" : null }, label);
 }
 
 const inputStyle = {
@@ -623,21 +625,39 @@ function stat(n, text) {
 /* ------------------------------------------------------------------ */
 
 let overlay = null;
-function closeOverlay() { overlay?.remove(); overlay = null; }
+function closeOverlay() {
+  overlay?.remove();
+  overlay = null;
+  document.removeEventListener("keydown", overlayKeys, true);
+}
+function overlayKeys(e) {
+  if (e.key === "Escape" && overlay) { e.preventDefault(); e.stopPropagation(); closeOverlay(); }
+}
 
 function openDocument(title, html, filename) {
   closeOverlay();
   const iframe = h("iframe", { style: { width: "100%", height: "100%", border: "0", flex: "1 1 auto", background: "#fff" } });
   iframe.srcdoc = html;
   const save = () => saveBlob(html, "text/html", filename);
-  const bar = h("div", { style: { display: "flex", gap: "8px", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${UI.line}` } },
-    h("strong", { style: { fontSize: "13px" } }, title), h("div", { style: { flex: "1" } }),
-    btn("PDF", () => downloadPdf(html, filename.replace(/\.html$/i, ""))), btn("HTML", save), btn("Close", closeOverlay));
+  const always = { always: true };
+  const x = h("button", { type: "button", title: "Close (Esc)", "aria-label": "Close", onclick: closeOverlay,
+    style: { font: "400 20px/1 inherit", width: "32px", height: "32px", marginLeft: "4px", borderRadius: "6px",
+      border: `1px solid ${UI.line}`, background: "transparent", color: UI.fg, cursor: "pointer" } }, "\u00d7");
+  const bar = h("div", { style: { display: "flex", gap: "8px", alignItems: "center", padding: "8px 10px 8px 14px", borderBottom: `1px solid ${UI.line}` } },
+    h("strong", { style: { fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: "0" } }, title),
+    h("div", { style: { flex: "1" } }),
+    btn("Save PDF", () => downloadPdf(html, filename.replace(/\.html$/i, "")), "ghost", always),
+    btn("Save HTML", save, "ghost", always), x);
   overlay = h("div", {
     style: { position: "fixed", inset: "0", background: "rgba(0,0,0,.6)", zIndex: "10000", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" },
     onclick: (e) => { if (e.target === overlay) closeOverlay(); },
   }, h("div", { style: { background: UI.bg, color: UI.fg, width: "min(1200px,100%)", height: "min(92vh,100%)", borderRadius: "8px", display: "flex", flexDirection: "column", overflow: "hidden" } }, bar, iframe));
   document.body.append(overlay);
+  document.addEventListener("keydown", overlayKeys, true);
+  // Esc inside the document (it has focus once clicked) closes it too.
+  iframe.addEventListener("load", () => {
+    try { iframe.contentDocument.addEventListener("keydown", overlayKeys, true); } catch (e) { /* not same-origin */ }
+  });
 }
 
 async function openRecord() {
@@ -739,13 +759,7 @@ function flagCard(change, tone, title) {
 
 function homeView(s) {
   const wrap = h("div", {});
-  const [aLabel, aTone] = ASSURANCE[s.assurance] || ["?", TONE.flat];
   const commercial = s.commercial || { status: "none", changes: [] };
-  const [cLabel, cTone] = COMMERCIAL[commercial.status] || COMMERCIAL.none;
-  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", marginBottom: "8px" } },
-    pill(s.shot?.stage || "sandbox", s.shot?.stage === "sandbox" ? TONE.flat : TONE.accent),
-    pill(cLabel, cTone),
-    pill(aLabel, aTone)));
   const ids = Object.entries(s.shot?.external_ids || {});
   wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "10px" } },
     ids.length ? ids.map(([k, v]) => `${k} ${v}`).join(" - ") : "Not linked to a studio asset ID",
@@ -776,10 +790,6 @@ function homeView(s) {
     stat(s.entries, "entries"), stat(s.people?.length || 0, "people"),
     stat(s.human_steps, "human decisions"), stat(s.renders, "model runs")));
 
-  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", margin: "4px 0 6px" } },
-    btn("Package for delivery", openPackage, "primary"), btn("Life of the shot", openLife),
-    btn("Provenance record", openRecord)));
-
   if ((commercial.changes || []).length > 1) {
     wrap.append(caption("Commercial standing over time"));
     for (const c of [...commercial.changes].reverse()) {
@@ -788,7 +798,7 @@ function homeView(s) {
     }
   }
 
-  wrap.append(caption("Life of the shot"));
+  wrap.append(caption("Recent entries"));
   for (const r of s.recent || []) {
     wrap.append(h("div", { style: { fontSize: "12px", padding: "6px 0", borderBottom: `1px solid ${UI.line}` } },
       h("div", {}, h("strong", {}, `#${r.seq} ${r.label}`)),
@@ -1119,9 +1129,25 @@ function startView() {
 function draw(el) {
   el.innerHTML = "";
   const root = h("div", { style: { display: "flex", flexDirection: "column", height: "100%", color: UI.fg, font: "13px/1.5 var(--p-font-family, system-ui, sans-serif)" } });
-  const head = h("div", { style: { padding: "12px 14px 6px" } },
+  const head = h("div", { style: { padding: "12px 14px 10px", borderBottom: `1px solid ${UI.line}`, marginBottom: "10px" } },
     h("strong", { style: { fontSize: "13px" } }, state.view === "package" ? "Package for delivery" : "ComfyAudit"),
-    h("div", { style: { fontSize: "11px", color: UI.dim } }, shotName()));
+    h("div", { style: { fontSize: "11px", color: UI.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, shotName()));
+  const s = state.summary;
+  if (state.view === "package") {
+    head.append(h("div", { style: { marginTop: "8px" } }, btn("\u2190 Back to the shot", leavePackage)));
+  } else if (tracked() && s?.present) {
+    // What the shot's standing is, and what you can do with it, stay in view
+    // however long its life gets below.
+    const [aLabel, aTone] = ASSURANCE[s.assurance] || ["?", TONE.flat];
+    const [cLabel, cTone] = COMMERCIAL[(s.commercial || {}).status] || COMMERCIAL.none;
+    head.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", margin: "8px 0 10px" } },
+      pill(s.shot?.stage || "sandbox", s.shot?.stage === "sandbox" ? TONE.flat : TONE.accent),
+      pill(cLabel, cTone), pill(aLabel, aTone)));
+    const wide = (b) => { b.style.width = "100%"; b.style.padding = "8px 10px"; return b; };
+    head.append(wide(btn("Package for delivery", openPackage, "primary")),
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginTop: "6px" } },
+        wide(btn("Life of the shot", openLife)), wide(btn("Provenance record", openRecord))));
+  }
   const body = h("div", { style: { flex: "1 1 auto", overflowY: "auto", padding: "0 14px 16px", minHeight: "0" } });
   if (state.error) body.append(h("div", { style: { color: TONE.stop, fontSize: "12px", margin: "6px 0 10px" } }, state.error));
   if (state.notice) body.append(h("div", { style: { color: TONE.warn, fontSize: "12px", margin: "6px 0 10px" } }, state.notice));

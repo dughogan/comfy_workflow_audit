@@ -176,7 +176,9 @@ def data(history: dict[str, Any]) -> dict[str, Any]:
         who = actor.get("name") or "someone"
         role = actor.get("role") or roles.get(who, "")
         flag = flags.get(e.get("seq"))
+        empty = not topo["nodes"] and not snap.get("node_count")
         rows.append({
+            "empty": empty, "outputs": len(e.get("outputs") or []),
             "seq": e.get("seq"), "at": e.get("at", ""), "when": _when(e.get("at", "")),
             "day": str(e.get("at", ""))[:10], "event": e.get("event", ""),
             "label": H.EVENTS.get(e.get("event", ""), e.get("event", "")),
@@ -227,9 +229,19 @@ h1{font-size:20px;margin:0;font-weight:600}.meta{color:var(--ink2);font-size:12.
 padding:4px 8px;border-radius:99px;border:1px solid var(--ink3);color:var(--ink2)}
 .seal.witnessed,.seal.signed{border-color:var(--add);color:var(--add)}.seal.none{border-color:var(--stop);color:var(--stop)}
 .bar{display:flex;gap:10px;align-items:center;padding:8px 20px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--panel);position:sticky;top:0;z-index:2}
-.bar input[type=range]{flex:1}.bar button{font:inherit;padding:5px 10px;border-radius:6px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer}
+.track{flex:1;position:relative;padding:6px 0 10px}.track input{width:100%;margin:0;display:block;accent-color:var(--accent)}
+#ticks{position:absolute;left:8px;right:8px;bottom:0;height:8px;pointer-events:none}
+#ticks i{position:absolute;top:0;width:2px;height:6px;margin-left:-1px;background:var(--ink3);border-radius:1px}
+#ticks i.blk{background:var(--stop);width:4px;height:8px;margin-left:-2px}#ticks i.ren{background:var(--accent)}
+.bar select{font:inherit;font-size:12px;padding:4px;border-radius:6px;border:1px solid var(--rule);background:var(--panel);color:var(--ink)}
+.bar button:disabled{opacity:.4;cursor:default}
+#cap{position:absolute;left:14px;right:14px;top:12px;z-index:1;background:var(--panel);
+border:1px solid var(--rule);border-left:4px solid var(--accent);border-radius:6px;padding:8px 12px;font-size:13.5px;line-height:1.45;
+min-height:62px;box-shadow:0 2px 10px rgba(0,0,0,.08)}#cap.blk{border-left-color:var(--stop)}#cap b{font:600 10.5px/1 ui-monospace,monospace;
+letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);display:block;margin-bottom:4px}
+#graphwrap svg{margin-top:92px;min-height:380px;height:calc(100% - 130px)}
+.bar button{font:inherit;padding:5px 10px;border-radius:6px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer}
 #now{min-width:230px;text-align:right;color:var(--ink2);font-size:12.5px}
-#ticks{position:relative;height:14px;margin:0 20px 0 74px}#ticks i{position:absolute;top:2px;width:3px;height:10px;border-radius:2px;background:var(--stop)}
 main{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:0;min-height:70vh}
 @media (max-width:900px){main{grid-template-columns:1fr}}
 #graphwrap{border-right:1px solid var(--rule);position:relative;padding:10px}
@@ -238,6 +250,7 @@ svg{width:100%;height:100%;min-height:440px;display:block}
 .n .t2{fill:var(--ink3);font-size:calc(var(--fs,11px) * .85)}.n.add rect{stroke:var(--add);stroke-width:2.6}
 .n.chg rect{stroke:var(--chg);stroke-width:2.6}.n.byp{opacity:.4}.n.blk rect{fill:color-mix(in srgb,var(--stop) 14%,var(--node))}
 .n.gone rect{fill:none;stroke-dasharray:4 3;stroke:var(--ink3)}.n.gone{opacity:.55}
+.empty{fill:var(--ink3);font-size:calc(var(--fs,11px) * 1.3)}
 .w{fill:none;stroke:var(--wire);stroke-width:1.4}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink2);padding:6px 4px}
 .legend b{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:4px;border:2px solid}
@@ -255,10 +268,12 @@ td.m{font-family:ui-monospace,monospace;white-space:nowrap;color:var(--ink2)}.fl
 footer{padding:12px 20px;color:var(--ink3);font-size:11.5px}
 </style></head><body>
 <header><h1>%TITLE%</h1><span class="stage">%STAGE%</span>%SEAL%<span class="meta">%IDS%</span></header>
-<div class="bar"><button id="play" aria-label="Play the life of the shot">Play</button>
-<input id="t" type="range" min="0" value="0" step="1" aria-label="Entry"><span id="now"></span></div>
-<div id="ticks"></div>
-<main><div id="graphwrap"><svg id="g" role="img" aria-label="The workflow graph at the selected entry"></svg>
+<div class="bar"><button id="play" aria-label="Play the life of the shot">&#9654; Play</button>
+<button id="prev" aria-label="Previous entry" title="Previous entry (left arrow)">&#8249;</button><button id="next" aria-label="Next entry" title="Next entry (right arrow)">&#8250;</button>
+<div class="track"><input id="t" type="range" min="0" value="0" step="1" aria-label="Entry"><div id="ticks"></div></div>
+<select id="speed" aria-label="Playback speed"><option value="2600">0.5&times;</option><option value="1600" selected>1&times;</option><option value="800">2&times;</option></select>
+<span id="now"></span></div>
+<main><div id="graphwrap"><div id="cap" aria-live="polite"></div><svg id="g" role="img" aria-label="The workflow graph at the selected entry"></svg>
 <div class="legend"><span><b style="border-color:var(--add)"></b>added here</span><span><b style="border-color:var(--chg)"></b>changed here</span>
 <span><b style="border-color:var(--ink3);border-style:dashed"></b>removed here</span><span><b style="border-color:var(--wire);background:color-mix(in srgb,var(--stop) 14%,var(--node))"></b>bars commercial use</span></div></div>
 <div id="side"><div class="tabs"><button data-p="story" class="on">Story</button><button data-p="log">Log</button></div>
@@ -269,37 +284,69 @@ const D=%DATA%;const R=D.rows,G=D.graphs;const $=s=>document.getElementById(s);c
 let b={x0:1e9,y0:1e9,x1:-1e9,y1:-1e9};for(const g of G)for(const n of g.nodes){b.x0=Math.min(b.x0,n.pos[0]);b.y0=Math.min(b.y0,n.pos[1]);b.x1=Math.max(b.x1,n.pos[0]+n.size[0]);b.y1=Math.max(b.y1,n.pos[1]+n.size[1])}
 if(b.x0>b.x1)b={x0:0,y0:0,x1:800,y1:400};const pad=40;
 /* Labels scale with the graph, so a wide workflow stays readable. */
-$("g").style.setProperty("--fs",Math.max(11,(b.x1-b.x0+2*pad)/85)+"px");$("g").setAttribute("viewBox",`${b.x0-pad} ${b.y0-pad-24} ${b.x1-b.x0+2*pad} ${b.y1-b.y0+2*pad+24}`);
+const FS=Math.max(11,(b.x1-b.x0+2*pad)/85);$("g").style.setProperty("--fs",FS+"px");
+$("g").setAttribute("viewBox",`${b.x0-pad} ${b.y0-pad-FS*2} ${b.x1-b.x0+2*pad} ${b.y1-b.y0+2*pad+FS*2}`);
 const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p&&p.append(e);return e};
-function draw(i){const r=R[i],g=G[r.graph],svg=$("g");svg.innerHTML="";const by={};for(const n of g.nodes)by[n.id]=n;
-if(!g.nodes.length){const t=el("text",{x:b.x0,y:b.y0+20,fill:"currentColor"},svg);t.style.fill="var(--ink3)";t.textContent="The graph's layout was not recorded for this entry (it predates graph capture, or the workflow is in API format).";return}
-const prev=i>0?G[R[i-1].graph]:null;const ws=el("g",{},svg);
-for(const [a,as,c,cs] of g.links){const A=by[a],C=by[c];if(!A||!C)continue;const x1=A.pos[0]+A.size[0],y1=A.pos[1]+14+as*18,x2=C.pos[0],y2=C.pos[1]+14+cs*18,dx=Math.max(40,(x2-x1)/2);
+/* Where each node is on screen now, so a change of layout moves rather than jumps. */
+let shown={},cur=-1,anim=0;
+function nodesAt(i){const r=R[i],g=G[r.graph];const out=g.nodes.map(n=>({...n}));
+if(i>0){const prev=G[R[i-1].graph];for(const id of r.removed){const n=prev.nodes.find(x=>x.id===id);if(n)out.push({...n,gone:1})}}return out}
+function paint(i,pos,fade){const r=R[i],g=G[r.graph],svg=$("g");svg.innerHTML="";
+if(!g.nodes.length){const t=el("text",{x:b.x0,y:b.y0+FS,class:"empty"},svg);
+t.textContent=r.empty?"The canvas was empty at this point.":"The graph's layout was not recorded for this entry (it predates graph capture, or the workflow is in API format).";return}
+const nodes=nodesAt(i),by={};for(const n of nodes){const p=pos[n.id];if(p&&!n.gone)n.pos=p;by[n.id]=n}
+const ws=el("g",{},svg);
+for(const [a,as,c,cs] of g.links){const A=by[a],C=by[c];if(!A||!C)continue;const x1=A.pos[0]+A.size[0],y1=A.pos[1]+14+as*18,x2=C.pos[0],y2=C.pos[1]+14+cs*18,dx=Math.max(40,Math.abs(x2-x1)/2);
 el("path",{d:`M${x1} ${y1} C${x1+dx} ${y1},${x2-dx} ${y2},${x2} ${y2}`,class:"w"},ws)}
-const nodes=[...g.nodes];if(prev)for(const id of r.removed){const n=prev.nodes.find(x=>x.id===id);if(n)nodes.push({...n,gone:1})}
 for(const n of nodes){const c=["n"];if(n.gone)c.push("gone");else{if(r.added.includes(n.id))c.push("add");else if(r.changed.includes(n.id))c.push("chg");if(n.mode===4||n.mode===2)c.push("byp");if(r.blocking.includes(n.id))c.push("blk")}
-const gg=el("g",{class:c.join(" ")},svg);const fs=parseFloat($("g").style.getPropertyValue("--fs"))||11;
-el("rect",{x:n.pos[0],y:n.pos[1]-fs*2,width:n.size[0],height:n.size[1]+fs*2,rx:6},gg);
-const t=el("text",{x:n.pos[0]+8,y:n.pos[1]-fs*.6},gg);t.textContent=(n.title||n.type).slice(0,40);
-if(n.title){const t2=el("text",{x:n.pos[0]+8,y:n.pos[1]+fs,class:"t2"},gg);t2.textContent=n.type.slice(0,44)}
+const gg=el("g",{class:c.join(" ")},svg);if(fade!==undefined&&(n.gone||r.added.includes(n.id)))gg.style.opacity=n.gone?Math.max(.15,.55*(1-fade)):fade;
+el("rect",{x:n.pos[0],y:n.pos[1]-FS*2,width:n.size[0],height:n.size[1]+FS*2,rx:6},gg);
+const t=el("text",{x:n.pos[0]+8,y:n.pos[1]-FS*.6},gg);t.textContent=(n.title||n.type).slice(0,40);
+if(n.title){const t2=el("text",{x:n.pos[0]+8,y:n.pos[1]+FS,class:"t2"},gg);t2.textContent=n.type.slice(0,44)}
 const tip=el("title",{},gg);tip.textContent=`${n.type} (node ${n.id})${n.gone?" - removed here":""}`}}
-function show(i){$("t").value=i;const r=R[i];$("now").textContent=`${r.when} - entry ${r.seq} of ${R.length} - ${r.who}`;draw(i);
+let done=0;function draw(i,move){cancelAnimationFrame(anim);clearTimeout(done);const target={};for(const n of G[R[i].graph].nodes)target[n.id]=n.pos;
+const from={...shown};const moving=move&&Object.keys(target).some(id=>from[id]&&(from[id][0]!==target[id][0]||from[id][1]!==target[id][1]));
+const fresh=move&&(R[i].added.length||R[i].removed.length);
+if(!moving&&!fresh){shown=target;paint(i,target);return}
+const t0=performance.now(),dur=Math.min(600,+$("speed").value*.4);
+const step=now=>{const k=Math.min(1,(now-t0)/dur),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2,pos={};
+for(const id in target){const a=from[id],z=target[id];pos[id]=a?[a[0]+(z[0]-a[0])*e,a[1]+(z[1]-a[1])*e]:z}
+paint(i,pos,e);if(k<1)anim=requestAnimationFrame(step);else finish()};
+/* Animation frames stop while the page is hidden; the end state must land regardless. */
+const finish=()=>{cancelAnimationFrame(anim);clearTimeout(done);shown=target;paint(i,target)};
+step(t0);done=setTimeout(finish,dur+80)}
+function caption(i){const r=R[i],c=$("cap");c.className=r.flag&&r.flag.status==="blocked"?"blk":"";c.textContent="";
+const h=document.createElement("b");h.textContent=`${r.label} · entry ${r.seq} of ${R.length} · ${r.when}`;c.append(h,document.createTextNode(r.story))}
+function show(i,move){i=Math.max(0,Math.min(R.length-1,i));$("t").value=i;const r=R[i];$("now").textContent=r.who;
+draw(i,move&&cur>=0&&Math.abs(i-cur)===1);caption(i);cur=i;
 document.querySelectorAll(".s").forEach(s=>{const k=+s.dataset.i;s.className="s"+(k>i?" future":"")+(k===i?" now":"")+(R[k].flag&&R[k].flag.status==="blocked"?" flag":"")});
 document.querySelectorAll("tr[data-i]").forEach(t=>{const k=+t.dataset.i;t.className=k>i?"future":k===i?"now":""});
-const cur=document.querySelector(".s.now");if(cur&&!$("story").hidden)cur.scrollIntoView({block:"nearest"});
-const row=document.querySelector("tr.now");if(row&&!$("log").hidden)row.scrollIntoView({block:"nearest"})}
+/* Keep the current line in view by scrolling its own pane only, never the page around it. */
+const pane=!$("story").hidden?$("story"):$("log"),now=pane.querySelector(".now");
+if(now){const pr=pane.getBoundingClientRect(),nr=now.getBoundingClientRect();
+if(nr.top<pr.top||nr.bottom>pr.bottom)pane.scrollTop+=nr.top-pr.top-pane.clientHeight/3}}
 let day="";const st=$("story");R.forEach((r,i)=>{if(r.day!==day){day=r.day;const d=document.createElement("div");d.className="day";d.textContent=r.when.split(",")[0];st.append(d)}
-const p=document.createElement("p");p.className="s";p.dataset.i=i;p.textContent=r.story;p.onclick=()=>show(i);st.append(p)});
-const tb=document.createElement("table");R.forEach((r,i)=>{const tr=document.createElement("tr");tr.dataset.i=i;tr.onclick=()=>show(i);
+const p=document.createElement("p");p.className="s";p.dataset.i=i;p.textContent=r.story;p.onclick=()=>{stop();show(i,true)};st.append(p)});
+const tb=document.createElement("table");R.forEach((r,i)=>{const tr=document.createElement("tr");tr.dataset.i=i;tr.onclick=()=>{stop();show(i,true)};
 const td=(text,cls)=>{const c=document.createElement("td");if(cls)c.className=cls;if(text!==undefined)c.textContent=text;tr.append(c);return c};
 td(r.when,"m");td("#"+r.seq,"m");const what=td();
 if(r.flag){const f=document.createElement("span");f.className="flagdot";f.title="commercial standing changed: "+r.flag.status;f.textContent="● ";what.append(f)}
 what.append(document.createTextNode(r.label));if(r.note){const em=document.createElement("em");em.textContent=" “"+r.note+"”";what.append(em)}
 td(r.who);td(r.signed?"signed":"","m");tb.append(tr)});$("log").append(tb);
-R.forEach((r,i)=>{if(r.flag&&r.flag.status==="blocked"){const t=document.createElement("i");t.style.left=(R.length>1?i/(R.length-1)*100:0)+"%";t.title=`${r.when}: not cleared for commercial use`;$("ticks").append(t)}});
-$("t").max=R.length-1;$("t").oninput=e=>show(+e.target.value);
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));$("story").hidden=b.dataset.p!=="story";$("log").hidden=b.dataset.p!=="log";show(+$("t").value)});
-let tm=null;$("play").onclick=()=>{if(tm){clearInterval(tm);tm=null;$("play").textContent="Play";return}let i=+$("t").value;if(i>=R.length-1)i=0;$("play").textContent="Pause";show(i);
-tm=setInterval(()=>{i++;if(i>=R.length){clearInterval(tm);tm=null;$("play").textContent="Play";return}show(i)},1100)};
-show(R.length-1);
+/* A tick per entry: red where the shot stopped being usable commercially, blue for renders. */
+R.forEach((r,i)=>{const t=document.createElement("i");t.style.left=(R.length>1?i/(R.length-1)*100:0)+"%";
+if(r.flag&&r.flag.status==="blocked"){t.className="blk";t.title=`${r.when}: not cleared for commercial use`}else if(r.event==="rendered")t.className="ren";$("ticks").append(t)});
+$("t").max=Math.max(0,R.length-1);$("t").oninput=e=>{stop();show(+e.target.value,false)};
+document.querySelectorAll(".tabs button").forEach(x=>x.onclick=()=>{document.querySelectorAll(".tabs button").forEach(y=>y.classList.toggle("on",y===x));$("story").hidden=x.dataset.p!=="story";$("log").hidden=x.dataset.p!=="log";show(+$("t").value,false)});
+let tm=null;
+function stop(){if(tm){clearTimeout(tm);tm=null}$("play").innerHTML="&#9654; Play"}
+function tick(){const i=+$("t").value+1;if(i>=R.length){stop();return}show(i,true);tm=setTimeout(tick,+$("speed").value)}
+function play(){if(tm){stop();return}if(R.length<2)return;if(+$("t").value>=R.length-1)show(0,false);$("play").innerHTML="&#10074;&#10074; Pause";tm=setTimeout(tick,+$("speed").value)}
+$("play").onclick=play;$("prev").onclick=()=>{stop();show(+$("t").value-1,true)};$("next").onclick=()=>{stop();show(+$("t").value+1,true)};
+document.addEventListener("keydown",e=>{if(e.target.tagName==="SELECT"||e.target.tagName==="BUTTON"&&e.key===" ")return;
+if(e.key===" "){e.preventDefault();play()}else if(e.key==="ArrowRight"&&e.target.id!=="t"){e.preventDefault();stop();show(+$("t").value+1,true)}
+else if(e.key==="ArrowLeft"&&e.target.id!=="t"){e.preventDefault();stop();show(+$("t").value-1,true)}
+else if(e.key==="Home"){stop();show(0,false)}else if(e.key==="End"){stop();show(R.length-1,false)}});
+if(R.length<2){$("play").disabled=true;$("prev").disabled=true;$("next").disabled=true}
+show(R.length-1,false);
 </script></body></html>"""
