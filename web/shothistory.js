@@ -164,24 +164,56 @@ function getSetting(id, fallback) {
 const state = { summary: null, busy: false, error: "", form: null, notice: "", view: "home" };
 let mount = null;
 /**
- * A Map kept in the browser's storage, so a page reload in the middle of a
- * render does not lose the render. Entries older than a week are dropped.
+ * A Map that survives a reload in the middle of a render. It is kept in
+ * ComfyUI's user data on disk (user/<user>/comfyaudit/), which the Desktop app
+ * and a browser share and which does not depend on the page's origin: Desktop
+ * moves to another port when 8000 is taken, and that would empty the
+ * browser's storage. localStorage is only the fallback when the server cannot
+ * be reached. Entries older than a week are dropped.
  */
 class StoredMap {
   constructor(name) {
     this.name = name;
+    this.file = `comfyaudit/${name}.json`;
     this.map = new Map();
-    try {
-      const raw = JSON.parse(localStorage.getItem(name) || "[]");
-      const cutoff = Date.now() - 7 * 864e5;
-      for (const [k, v] of raw) if ((v?.at || 0) > cutoff) this.map.set(k, v);
-    } catch (e) { /* storage unavailable: memory only */ }
+    this.timer = null;
+    this.early = null;  // keys changed before the disk copy arrived
+    try { this.adopt(JSON.parse(localStorage.getItem(name) || "[]")); }
+    catch (e) { /* storage unavailable: memory only */ }
+    this.early = new Set();
+    this.ready = this.load().finally(() => { this.early = null; });
   }
-  save() { try { localStorage.setItem(this.name, JSON.stringify([...this.map])); } catch (e) { /* memory only */ } }
+  adopt(raw) {
+    const cutoff = Date.now() - 7 * 864e5;
+    this.map = new Map();
+    for (const [k, v] of raw || []) if ((v?.at || 0) > cutoff) this.map.set(k, v);
+  }
+  /** The copy on disk wins: the one in this page's storage may be stale or another port's. */
+  async load() {
+    try {
+      const r = await api.getUserData(this.file);
+      if (r.status === 200) {
+        const mine = new Map([...this.early].map((k) => [k, this.map.get(k)]));
+        this.adopt(await r.json());
+        for (const [k, v] of mine) v === undefined ? this.map.delete(k) : this.map.set(k, v);
+        if (mine.size) this.save(); else this.saveLocal();
+      }
+      else if (r.status === 404 && this.map.size) this.saveDisk();
+    } catch (e) { /* server unreachable: keep the local copy */ }
+  }
+  saveLocal() { try { localStorage.setItem(this.name, JSON.stringify([...this.map])); } catch (e) { /* memory only */ } }
+  saveDisk() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => {
+      api.storeUserData(this.file, [...this.map], { overwrite: true, stringify: true })
+        .catch((e) => console.warn("[comfyaudit] could not keep pending renders on disk", e));
+    }, 200);
+  }
+  save() { this.saveLocal(); this.saveDisk(); }
   get(k) { return this.map.get(k); }
   has(k) { return this.map.has(k); }
-  set(k, v) { this.map.set(k, v); this.save(); return this; }
-  delete(k) { const r = this.map.delete(k); this.save(); return r; }
+  set(k, v) { this.early?.add(k); this.map.set(k, v); this.save(); return this; }
+  delete(k) { this.early?.add(k); const r = this.map.delete(k); this.save(); return r; }
   keys() { return [...this.map.keys()]; }
   get size() { return this.map.size; }
 }
@@ -420,6 +452,7 @@ async function beforeQueue() {
 }
 
 async function flushPending() {
+  await pending.ready;
   const key = shotKey();
   const list = pending.get(key)?.renders;
   if (!list?.length || !tracked()) return;
@@ -497,6 +530,7 @@ function listen() {
   // Jobs that were running when the page was reloaded: ask ComfyUI how they
   // ended, and record the ones that finished from its record of their outputs.
   recoverJobs = async () => {
+    await jobs.ready;
     for (const id of jobs.keys()) {
       try {
         const r = await api.fetchApi(`/history/${encodeURIComponent(id)}`);
@@ -649,6 +683,14 @@ function detailsForm() {
   if (f.asset === undefined) f.asset = ids[0]?.[1] || "";
   const submit = () => act(async () => {
     const extIds = f.asset ? { [f.system || "shotgrid"]: f.asset.trim() } : {};
+    // A ShotGrid ID is checked against the site when the server is set up for
+    // it, so a typo is caught now rather than at delivery.
+    if (f.asset && (f.system || "shotgrid") === "shotgrid") {
+      const found = await post("shotgrid", { workflow: app.graph.serialize(), value: f.asset.trim().replace(/^shot#/i, "") });
+      if (found.configured && found.error) throw new Error(found.error);
+      if (found.configured && !found.found) throw new Error(`ShotGrid has no shot ${f.asset.trim()}.`);
+      if (found.shot && !f.project) f.project = found.shot.project?.name || "";
+    }
     await stamp("note", { note: "Shot details updated", name: f.name || shotDefaultName(),
       project: f.project || "", external_ids: extIds, rename: true });
   });
@@ -1015,6 +1057,15 @@ function doneStep() {
   wrap.append(h("div", { style: { display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" } },
     pill("delivered", TONE.accent), pill(c.verdict_label || c.verdict || "", tone),
     pill((ASSURANCE[out.summary?.assurance] || ["?"])[0], (ASSURANCE[out.summary?.assurance] || [0, TONE.flat])[1])));
+  const sg = out.shotgrid || {};
+  if (sg.note_id || sg.error) {
+    wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", marginBottom: "8px",
+      color: sg.error ? TONE.warn : UI.dim } },
+      sg.error ? `ShotGrid: ${sg.error} The delivery itself is sealed.`
+        : `Posted to ShotGrid as note ${sg.note_id} on ${sg.shot?.code || "the shot"}`
+          + (sg.attached ? ", with the package attached" : "")
+          + (sg.hash_field ? `; the history head is in ${sg.hash_field}.` : ".")));
+  }
   wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", marginBottom: "10px" } },
     `Signed off by ${c.by || "you"} and sealed into the history. Save the workflow so the delivered history goes with the file.`));
   wrap.append(caption("The package"));

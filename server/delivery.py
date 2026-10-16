@@ -35,6 +35,7 @@ from ..core.score import clearance as clearance_mod
 from . import c2pa as c2pa_mod
 from . import history_service
 from . import settings as settings_mod
+from . import shotgrid
 
 
 def _audit(workflow: dict[str, Any], body: dict[str, Any]):
@@ -209,7 +210,12 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
         signed = _sign_renders(history, manifest, zf)
         zf.writestr("README.txt", _readme(shot, clearance, signed))
 
+    tracked = {}
+    if body.get("shotgrid", True):
+        tracked = shotgrid.push_delivery(history, clearance, who.name,
+                                         (f"{slug}.delivery.zip", buf.getvalue()))
     return {
+        "shotgrid": tracked,
         "workflow": workflow,
         "history": history,
         "summary": history_service.summary(history, workflow=workflow, cfg=cfg),

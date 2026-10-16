@@ -25,6 +25,7 @@ from ..core.report import markdown as md_report
 from . import delivery
 from . import history_service
 from . import live
+from . import shotgrid
 from . import settings as settings_mod
 
 PREFIX = "/comfyaudit"
@@ -142,6 +143,7 @@ def register() -> bool:
     _history_route("omc", history_service.omc_export)
     _history_route("check", delivery.check)
     _history_route("deliver", delivery.deliver)
+    _history_route("shotgrid", shotgrid.lookup)
     _history_route("summary", lambda body: history_service.summary(
         _read_history(body["workflow"]), workflow=body["workflow"]))
 

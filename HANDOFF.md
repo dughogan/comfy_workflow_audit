@@ -348,8 +348,14 @@ and is drawn with textContent.
 
 Multiple tabs and reloads: each tab's history lives in its own graph's
 `extra`; renders are matched to their shot by record id (not path), and the
-job map and held renders persist in localStorage, so a reload mid-render
-recovers the render from `/history/<prompt_id>`. Held renders are recorded
+job map and held renders persist in ComfyUI's user data on disk
+(`user/<user>/comfyaudit/comfyaudit.history.{jobs,pending}.json`, via
+`api.storeUserData`), with localStorage only as a fallback. That matters on
+ComfyUI Desktop: browser storage is per origin, and Desktop moves to another
+port when 8000 is taken. A reload mid-render recovers the render from
+`/history/<prompt_id>`. Live-tested 2026-10-16: render queued in one tab, tab
+switched, browser storage wiped, page reloaded; the render was recorded in
+its own tab on return. Held renders are recorded
 when their tab is next shown, panel open or not. Live-tested with two tabs,
 both renders finishing during a reload.
 
@@ -358,24 +364,61 @@ Found in that test: Python floats like 450.0 come back from the browser as
 whole numbers as ints, and `test_a_history_survives_a_round_trip_through_the_browser`
 guards every entry. A render that cannot be recorded now says so in the panel.
 
+**Smaller gaps closed (2026-10-16).** All configured from the server's
+environment only, never ComfyUI settings.
+- *Per-person keys* (`4dbdd71`). `COMFYAUDIT_HISTORY_KEYRING` names a JSON
+  keyring (`{"people": {"ana": {"name", "role", "secret_file"}}}`);
+  `COMFYAUDIT_TRUSTED_USER_HEADER` names the header the studio's sign-in
+  proxy sets. Entries are then signed with that person's key
+  (`person:<user>:<sha12>`), `verify` checks the name matches the key, and a
+  request with no signed-in user or no keyring entry is refused. Without a
+  keyring the studio key still applies. **Not yet adversarially reviewed.**
+- *C2PA* (`6fc6948`, `server/c2pa.py`). At delivery, each final render whose
+  bytes still match its recorded fingerprint is signed with c2patool into
+  `signed/` in the zip. `COMFYAUDIT_C2PATOOL` (or PATH),
+  `COMFYAUDIT_C2PA_SIGNER` or `COMFYAUDIT_C2PA_KEY` + `_CERT` (`_ALG`).
+  c2patool's silent fallback to its development certificate is refused. EXR
+  cannot carry an embedded manifest. **Tested only against a stand-in
+  c2patool;** run once with the real binary and a studio certificate.
+- *MovieLabs OMC-JSON v2.8* (`9fec5cb`, `core/report/omc.py`). In the
+  delivery zip as `<shot>.omc.json` and `comfyaudit history omc`. Validated
+  against the official schema (fixture in `tests/fixtures/omc/`). OMC has no
+  checksum or AI fields: SHA-256 goes in as a second identifier, AI details in
+  `customData`.
+- *Licence KB 2026-10-16* (`85aa7f2`). 6 licences and 15 rules for popular
+  community fine-tunes (33 licences, 69 rules). Note: Z-Image's VAE is named
+  `ae.safetensors`, same as FLUX's, so it can be flagged non-commercial when it
+  isn't; flagged as a known false positive.
+- *ShotGrid / Flow Production Tracking* (`server/shotgrid.py`). REST API,
+  standard library. `COMFYAUDIT_SHOTGRID_URL`, `_SCRIPT`, `_KEY` (or
+  `_KEY_FILE`), optional `_API` (default `/api/v1.1`) and `_HASH_FIELD` (a
+  custom text field on Shot, e.g. `sg_comfyaudit_head`). Shot details checks a
+  ShotGrid ID against the site; delivery posts a Note on the shot (verdict,
+  sign-off, exception, head hash), attaches the zip, and writes the head hash
+  to the field. A ShotGrid failure never undoes a delivery. **Tested only
+  against a local fake of the documented endpoints** (`tests/test_shotgrid.py`);
+  run once on a trial site or Imageworks' sandbox before Sony relies on it.
+  Things a real site may differ on: the upload flow for S3-backed sites
+  (signed URL, no auth header), and whether the script user may create Notes.
+
 **Priority 2: known gaps.**
 
 - [ ] **FLUX.1 [dev] terms.** Confirm the current BFL licence and update the
       `flux1-dev-nc` entry and its `conflicts` in `licences.json`.
-- [ ] **Per-person keys.** Today one studio key means "Signed" can't name the
+- [x] **Per-person keys.** Done 2026-10-16 (above). Today one studio key means "Signed" can't name the
       person. Options: per-user HMAC keys (`key_id`), or the ComfyUI multi-user
       header (`comfy-user`) bound to server-side identities.
 - [ ] **Recording work done outside ComfyUI.** Comp, paint and grade are the
       strongest copyright evidence, and today they are only attestable as
       notes. A Nuke-side stamp (see `nuke_to_comfyui.py`) or a structured
       "external edit" event with before/after fingerprints would close this.
-- [ ] **ShotGrid / ftrack integration.** Read the asset ID automatically
+- [x] **ShotGrid integration** done 2026-10-16 (above); ftrack not started. Read the asset ID automatically
       instead of typing it, and optionally push the head hash back as the
       ledger.
-- [ ] **C2PA signing.** Today an unsigned manifest *definition* is exported.
+- [x] **C2PA signing.** Done 2026-10-16 (above). Today an unsigned manifest *definition* is exported.
       Wire it to `c2patool` or a signing service when a studio certificate
       exists, and embed it at delivery.
-- [ ] **MovieLabs OMC export.** Sony mentioned MovieLabs, not OMC itself, but
+- [x] **MovieLabs OMC export.** Done 2026-10-16 (above). Sony mentioned MovieLabs, not OMC itself, but
       Doug wants studios to read exported history natively. Export each shot
       as OMC Assets plus Provenance (OMC v2.8 has a generic Provenance entity,
       and a creator can be a software Service). Alongside it, fill C2PA 2.4's
@@ -395,11 +438,11 @@ guards every entry. A render that cannot be recorded now says so in the panel.
       `check_result` and `sources`, and the record shows them with an "About
       this research" box. A test fails if any rule lacks them. Rerun yearly or
       when union terms, the EU guidelines or US state laws change.
-- [ ] **Clearance timeline.** Doug's request: a per-entry commercial status
+- [x] **Clearance timeline.** Doug's request: a per-entry commercial status
       (cleared / conditional / blocked / unknown) with a dated, explained flag
       whenever a change makes the workflow unusable commercially (or clears
       it), read both as recorded at the time and against today's licence KB.
-- [ ] **History viewer: story, log and graph.** Doug's vision: read the shot's
+- [x] **History viewer: story, log and graph.** Doug's vision: read the shot's
       life as a narrative, as a timestamped log, and as the actual node graph
       replayed over a timeline scrubber, all in sync. The graph needs topology
       (node ids, types, positions, links) in each snapshot, which it does not
