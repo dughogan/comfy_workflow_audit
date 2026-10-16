@@ -176,9 +176,9 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
     clearance["exception"] = exception
     clearance["audited_with"] = assessed["versions"]
 
-    keys = history_service.keys(cfg)
+    keys = history_service.signer(cfg, body)
     ledger = cfg.get("ledger", "")
-    who = history_service.actor(cfg)
+    who = history_service.actor(cfg, body)
     name = str(body.get("name", "") or "")
     signed = H.stamp(body["workflow"], event="approved", actor=who, keys=keys, ledger=ledger,
                      name=name, note=str(body.get("note", "") or "Approved for delivery"),

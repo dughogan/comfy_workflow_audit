@@ -32,8 +32,12 @@ Three properties make it worth showing to a lawyer:
 
 Identity is recorded as the person declared it (settings, environment, or the
 OS account). The signature proves the entry came from someone holding the
-studio key - not which person that was. Per-person keys (``key_id``) narrow it;
-the report states plainly which level of assurance a history actually has.
+studio key - not which person that was. With a studio keyring and a sign-in
+the studio trusts (``COMFYAUDIT_HISTORY_KEYRING``, plus a reverse proxy that
+passes the signed-in user), each entry is signed with that person's own key
+and their name comes from the keyring, not from what they typed; verify then
+checks every entry against its own signer. The report states plainly which
+level of assurance a history actually has.
 
 Nothing here contacts the network.
 """
@@ -209,6 +213,25 @@ class Keys:
     #: ``none`` | ``encrypt`` | ``redact`` - what happens to prompt text and
     #: source-media paths inside snapshots.
     confidentiality: str = "none"
+    #: Personal signing keys by key id (``person:<user>:<fingerprint>``), and
+    #: the name and role each belongs to, from the studio keyring.
+    people: dict[str, bytes] = field(default_factory=dict)
+    people_names: dict[str, dict[str, str]] = field(default_factory=dict)
+
+    def for_person(self, user: str) -> "Keys | None":
+        """These keys, signing as one person from the keyring; None if unknown."""
+        for kid, info in self.people_names.items():
+            if info.get("user") == user:
+                return Keys(sign_key=self.people[kid], key_id=kid, enc_key=self.enc_key,
+                            confidentiality=self.confidentiality, people=self.people,
+                            people_names=self.people_names)
+        return None
+
+    def key_for(self, key_id: str) -> bytes:
+        """The key an entry says it was signed with: a person's, else the studio's."""
+        if key_id.startswith("person:"):
+            return self.people.get(key_id, b"")
+        return self.sign_key
 
     @classmethod
     def from_environment(cls, confidentiality: str = "") -> "Keys":
@@ -225,11 +248,41 @@ class Keys:
         # environment asks for, never loosen it: the default "prompts readable"
         # in a UI must not quietly override a studio's encryption key.
         mode = strongest(confidentiality or "none", env_mode)
-        return cls(sign_key=_derive(sign, b"comfyaudit-sign") if sign else b"",
+        people, names = load_keyring(os.environ.get("COMFYAUDIT_HISTORY_KEYRING", ""))
+        return cls(people=people, people_names=names,
+                   sign_key=_derive(sign, b"comfyaudit-sign") if sign else b"",
                    key_id=os.environ.get("COMFYAUDIT_HISTORY_KEY_ID", "")
                    or (sha256(_derive(sign, b"comfyaudit-sign"))[:12] if sign else ""),
                    enc_key=_derive(enc, b"comfyaudit-enc") if enc else b"",
                    confidentiality=mode)
+
+
+def load_keyring(path: str) -> tuple[dict[str, bytes], dict[str, dict[str, str]]]:
+    """A studio keyring: each person's signing secret, name and role.
+
+    ``{"people": {"ana": {"name": "Ana Ruiz", "role": "compositor",
+    "secret_file": "..."}}}`` (or ``"secret"``). Kept on the server, never in
+    a workflow or a browser.
+    """
+    if not path or not os.path.isfile(path):
+        return {}, {}
+    with open(path, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    keys: dict[str, bytes] = {}
+    names: dict[str, dict[str, str]] = {}
+    for user, info in (doc.get("people") or {}).items():
+        secret = str(info.get("secret", "") or "")
+        if not secret and info.get("secret_file") and os.path.isfile(info["secret_file"]):
+            with open(info["secret_file"], encoding="utf-8") as fh:
+                secret = fh.read().strip()
+        if not secret:
+            continue
+        key = _derive(secret, b"comfyaudit-sign:" + str(user).encode("utf-8"))
+        kid = f"person:{user}:{sha256(key)[:12]}"
+        keys[kid] = key
+        names[kid] = {"user": str(user), "name": str(info.get("name") or user),
+                      "role": str(info.get("role", "") or "")}
+    return keys, names
 
 
 CONFIDENTIALITY_ORDER = ("none", "redact", "encrypt")
@@ -1063,6 +1116,11 @@ ASSURANCE_LABELS = {"witnessed": "Witnessed", "signed": "Signed",
 
 #: What a signature does and does not establish. Said next to every badge that
 #: rests on one, because "Signed" beside a name reads as identity.
+#: What a personal signature establishes instead, when every entry carries one.
+PERSONAL_SCOPE = ("Each entry was signed with the personal key of the person the "
+                  "studio's sign-in identified, so the name on it is the signed-in "
+                  "person's, as far as that sign-in can be trusted.")
+
 SIGNATURE_SCOPE = ("A signature shows an entry was written through a holder of the "
                    "studio key - in ComfyUI, this studio's ComfyAudit server - not "
                    "which person wrote it; names are as each person declared them.")
@@ -1085,6 +1143,7 @@ class Verification:
     notes: list[str] = field(default_factory=list)
     assurance: str = "absent"    # absent | none | consistency | signed | witnessed
     assurance_detail: str = ""
+    signers: dict[str, list[int]] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return dict(self.__dict__)
@@ -1130,6 +1189,8 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
     prev_hash = ""
     signed: list[int] = []
     bad_sig = False
+    personal: dict[str, list[int]] = {}
+    unknown_signers: set[str] = set()
     for i, e in enumerate(entries, 1):
         if not isinstance(e, dict):
             v.problems.append(f"entry {i}: is not a record")
@@ -1155,11 +1216,24 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
             v.problems.append(f"entry {i}: was signed, but its signature was removed")
         if "sig" in e:
             signed.append(i)
-            if keys.sign_key and not hmac.compare_digest(
-                    _sign(str(e.get("hash", "")), keys), str(e["sig"])):
+            kid = str(e.get("key_id", ""))
+            key = keys.key_for(kid)
+            if kid.startswith("person:"):
+                person = keys.people_names.get(kid)
+                if not key:
+                    unknown_signers.add(kid)
+                elif person and (e.get("actor") or {}).get("name") != person["name"]:
+                    v.problems.append(f"entry {i}: names {(e.get('actor') or {}).get('name')!r} "
+                                      f"but was signed with {person['name']}'s key")
+                else:
+                    personal.setdefault(person["name"] if person else kid, []).append(i)
+            if key and not hmac.compare_digest(
+                    hmac.new(key, str(e.get("hash", "")).encode("ascii"),
+                             hashlib.sha256).hexdigest(), str(e["sig"])):
                 bad_sig = True
-                v.problems.append(f"entry {i}: signature does not verify with this "
-                                  "studio key")
+                v.problems.append(f"entry {i}: signature does not verify with "
+                                  + ("this person's key" if kid.startswith("person:")
+                                     else "this studio key"))
         prev_hash = e.get("hash", "")
 
     v.unsigned_entries = [i for i in range(1, len(entries) + 1) if i not in signed]
@@ -1197,8 +1271,18 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
                 e.get("event") == "note" and (e.get("data") or {}).get("evidence")))]
         if decisions:
             v.notes.append("unsigned, so unproven: " + ", ".join(decisions))
-    if signed and keys.sign_key:
-        v.signatures_valid = not bad_sig
+    if signed and (keys.sign_key or keys.people):
+        v.signatures_valid = not bad_sig and not unknown_signers
+    if unknown_signers:
+        v.notes.append("some entries were signed with personal keys this check does not "
+                       "hold, so they could not be verified")
+    if personal:
+        v.signers = {name: seqs for name, seqs in personal.items()}
+        v.notes.append("signed by each person's own key, with names from the studio's "
+                       "sign-in: " + "; ".join(
+                           f"{name} (entr{'y' if len(seqs) == 1 else 'ies'} "
+                           f"{', '.join(map(str, seqs[:6]))}{' ...' if len(seqs) > 6 else ''})"
+                           for name, seqs in personal.items()))
 
     # The top-level shot block is a convenience copy; the chain is the record.
     shot_top = history.get("shot") or {}
@@ -1270,6 +1354,9 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
                               "parent record it was forked from is not signed throughout: "
                               "it has not changed since the fork, but what it records is "
                               "unproven. " + SIGNATURE_SCOPE)
+    if personal and v.assurance in ("signed", "witnessed")             and sum(len(x) for x in personal.values()) == len(signed):
+        v.assurance_detail = v.assurance_detail.replace(
+            "with the studio key", "with personal keys").replace(SIGNATURE_SCOPE, PERSONAL_SCOPE)
     return v
 
 

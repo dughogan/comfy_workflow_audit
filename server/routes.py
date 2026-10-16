@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import traceback
 from typing import Any
 
@@ -117,6 +118,12 @@ def register() -> bool:
                 return web.json_response({"error": "request body must be JSON"}, status=400)
             if not isinstance(body.get("workflow"), dict):
                 return web.json_response({"error": "expected a 'workflow' object"}, status=400)
+            # Who is signed in comes only from the studio's sign-in proxy, by the
+            # header the studio names - never from the request body.
+            body.pop("_signed_in_user", None)
+            header = os.environ.get("COMFYAUDIT_TRUSTED_USER_HEADER", "")
+            if header:
+                body["_signed_in_user"] = request.headers.get(header, "")
             try:
                 payload = await _run(fn, body)
             except ValueError as exc:

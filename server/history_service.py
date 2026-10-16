@@ -35,7 +35,38 @@ def keys(cfg: dict[str, Any] | None = None) -> H.Keys:
     return k
 
 
-def actor(cfg: dict[str, Any]) -> H.Actor:
+#: The header a studio's sign-in proxy sets to the signed-in user. Only read
+#: when the studio names it; then every entry is signed with that person's key.
+TRUSTED_USER_HEADER = "COMFYAUDIT_TRUSTED_USER_HEADER"
+
+
+def signer(cfg: dict[str, Any], body: dict[str, Any] | None) -> H.Keys:
+    """The keys an entry is signed with, and from whom.
+
+    Without a trusted sign-in header, the studio key, as before. With one, the
+    signed-in person's own key from the keyring - and nobody signs who is not
+    signed in or not in the keyring, so the studio key never quietly stands in.
+    """
+    base = keys(cfg)
+    if not os.environ.get(TRUSTED_USER_HEADER):
+        return base
+    user = str((body or {}).get("_signed_in_user", "") or "")
+    if not user:
+        raise ValueError("No signed-in user came with this request. ComfyAudit is set to "
+                         "sign entries per person, so it records nothing it cannot attribute.")
+    person = base.for_person(user)
+    if person is None:
+        raise ValueError(f"{user} is signed in but has no key in the studio keyring.")
+    return person
+
+
+def actor(cfg: dict[str, Any], body: dict[str, Any] | None = None) -> H.Actor:
+    k = signer(cfg, body) if os.environ.get(TRUSTED_USER_HEADER) else None
+    if k is not None and k.key_id in k.people_names:
+        info = k.people_names[k.key_id]
+        return H.Actor(name=info["name"], id=info["user"], role=info["role"],
+                       machine=H.Actor.current().machine, declared_by="studio sign-in",
+                       tool=f"ComfyUI + comfyaudit {H.__version__}")
     try:
         import comfy  # noqa: F401
         tool = "ComfyUI"
@@ -109,7 +140,7 @@ def stamp(body: dict[str, Any]) -> dict[str, Any]:
                 row["kind"] = item["type"]
             outputs.append(row)
             files.append((path, row))
-    k, ledger, who = keys(cfg), cfg.get("ledger", ""), actor(cfg)
+    k, ledger, who = signer(cfg, body), cfg.get("ledger", ""), actor(cfg, body)
     forked = None
     existing = H.read(workflow)
     if existing and ledger and H.ledger_diverged(ledger, existing):
@@ -218,7 +249,7 @@ def relocate(body: dict[str, Any]) -> dict[str, Any]:
         return {"error": "This workflow has no history."}
     before = H.file_of(history) or ""
     now = _path(body) or ""
-    k, ledger, who = keys(cfg), cfg.get("ledger", ""), actor(cfg)
+    k, ledger, who = signer(cfg, body), cfg.get("ledger", ""), actor(cfg, body)
     copied = False
     if body.get("duplicate_of"):
         copied, before = True, str(body["duplicate_of"])
