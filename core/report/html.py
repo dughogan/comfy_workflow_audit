@@ -18,6 +18,7 @@ from typing import Any, Iterable
 
 from .. import __version__
 from ..audit import AuditReport
+from . import machine
 from . import narrative as narrative_section
 from . import review as review_section
 from ..score import clearance, licensing
@@ -339,7 +340,7 @@ code{font-family:var(--mono);font-size:.88em;background:var(--sunk);padding:1px 
 
 
 def render(report: AuditReport, standalone: bool = True) -> str:
-    body = _body(report)
+    body = _body(report) + machine.block("licence-audit", {"audit": report.to_dict()})
     style = f"<style>{CSS}</style>"
     if not standalone:
         return f"<link rel='stylesheet' href='{FONTS}'>\n{style}\n{body}"
@@ -347,7 +348,7 @@ def render(report: AuditReport, standalone: bool = True) -> str:
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        f"<title>Clearance sheet - {src_name}</title>"
+        f"<title>Licence audit - {src_name}</title>"
         f"<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>"
         f"<link rel='stylesheet' href='{FONTS}'>"
         f"{style}</head><body>{body}</body></html>"

@@ -19,6 +19,7 @@ from typing import Any
 from .. import __version__
 from .. import history as H
 from . import compliance as compliance_mod
+from . import machine
 from .html import CSS, FONTS, _e
 
 #: Glyph tone per event. Human events are filled; the machine step is hollow.
@@ -129,7 +130,16 @@ def render(history: dict[str, Any], *, data: dict[str, Any] | None = None,
                 p["text"] = plain[p["sha256"]]
     checks = compliance_mod.assess(lin, history, {**(context or {}),
                                                    "verification": v.as_dict()})
-    body = _body(history, lin, rows, v, checks)
+    body = _body(history, lin, rows, v, checks) + machine.block("provenance-record", {
+        "shot": lin["shot"],
+        "verification": v.as_dict(),
+        "clearance": H.delivery_clearance(history),
+        "commercial_timeline": H.commercial_timeline(history),
+        "lineage": lin,
+        "rules": checks["rules"],
+        "research": checks.get("research") or {},
+        "entries": rows,
+    })
     style = f"<style>{CSS}{HISTORY_CSS}</style>"
     if not standalone:
         return f"<link rel='stylesheet' href='{FONTS}'>\n{style}\n{body}"

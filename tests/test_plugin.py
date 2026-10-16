@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import os
 import sys
 import types
@@ -474,7 +475,8 @@ def test_review_appears_in_the_html_report(comfy):
     page = html_report.render(_report_with_review(comfy))
     assert "Claude review" in page
     assert "Model-derived" in page
-    assert "<script" not in page            # still self-contained
+    # Nothing runs: the only script element is the inert JSON data block.
+    assert re.findall(r"<script[^>]*>", page) == ["<script type='application/json' id='comfyaudit-data'>"]
 
 
 def test_a_skipped_review_is_not_rendered_as_content(comfy):

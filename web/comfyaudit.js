@@ -258,7 +258,7 @@ function printable(html, name) {
   </style>`;
   let out = html;
   // Browsers name the saved PDF after the document title.
-  const title = `<title>${escapeHtml(name)} - clearance sheet</title>`;
+  const title = `<title>${escapeHtml(name)}</title>`;
   out = /<title>[\s\S]*?<\/title>/i.test(out)
     ? out.replace(/<title>[\s\S]*?<\/title>/i, title)
     : out.replace(/<head>/i, `<head>${title}`);

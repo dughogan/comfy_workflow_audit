@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import os
 
 import pytest
@@ -339,7 +340,8 @@ def test_html_report_is_self_contained(beauty):
     assert page.startswith("<!doctype html>")
     # No scripts and no remotely loaded assets: the file has to survive being
     # archived next to the show and opened years later on an offline machine.
-    assert "<script" not in page
+    # Nothing runs: the only script element is the inert JSON data block.
+    assert re.findall(r"<script[^>]*>", page) == ["<script type='application/json' id='comfyaudit-data'>"]
     assert 'src="http' not in page and "src='http" not in page
     assert "<img" not in page
 

@@ -416,6 +416,30 @@ environment only, never ComfyUI settings.
   Things a real site may differ on: the upload flow for S3-backed sites
   (signed URL, no auth header), and whether the script user may create Notes.
 
+**Packages read by people and by agents (2026-10-16).** A studio may run a
+"legal agent" over a package, so nothing an agent needs is only in prose:
+- `<shot>.package.json` is the entry point: schema `comfyaudit/delivery-package/1`,
+  the decision (verdict, who signed off and when, exception), outstanding fixes,
+  what is left for legal, integrity (assurance, head hash), content credentials,
+  knowledge-base versions, and every file with role, media type and SHA-256.
+- Each HTML report embeds the data it shows in
+  `<script type="application/json" id="comfyaudit-data">` (`core/report/machine.py`):
+  `provenance-record`, `licence-audit`, `life-of-the-shot`. Every block starts
+  with `schema`, version, time and the not-legal-advice disclaimer. `<` is
+  written as `\u003c`, so workflow text cannot break out of the block.
+- The "clearance sheet" is now the **licence audit** (`<shot>.licence-audit.html`):
+  every model and node pack, its licence, what it allows for this studio, and
+  the risk score. The legal report is the provenance record.
+
+**Left for legal (2026-10-16).** Rule items only a person can attest (a
+client's written approval, a credit disclosure) are production facts, not
+artist work. The package flow shows them read-only and collapsed; they are
+sealed into the sign-off (`clearance.for_legal`) and listed as a `[ ]`
+checklist in the README. Recording evidence stays possible behind an
+optional link. Open question for Doug: most items are per show or per studio,
+not per shot (see the conversation of 2026-10-16), so they could be answered
+once per production and inherited by every shot.
+
 **Priority 2: known gaps.**
 
 - [ ] **FLUX.1 [dev] terms.** Confirm the current BFL licence and update the

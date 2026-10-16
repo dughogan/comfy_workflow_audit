@@ -9,7 +9,7 @@ Two steps behind the one button in the sidebar:
   is never one the browser sent - records the sign-off with the clearance
   inside it, moves the shot to *delivered*, and returns the package: the
   workflow with its sealed history, a C2PA manifest definition, the legal
-  report and the audit's clearance sheet, together as a zip.
+  report and the licence audit, together as a zip, indexed by <shot>.package.json.
 
 A no-go, or a verdict that could not be reached, is only delivered when the
 person signing off records why; that exception is sealed with the sign-off.
@@ -18,18 +18,20 @@ person signing off records why; that exception is sealed with the sign-off.
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import json
 import re
 import tempfile
 import os
+import textwrap
 import zipfile
 from typing import Any
 
 from ..core import history as H
 from ..core.knowledge import alternatives as alternatives_mod
 from ..core.knowledge import licences as licences_mod
-from ..core.report import compliance, history_html, life_viewer, omc
+from ..core.report import compliance, history_html, life_viewer, machine, omc
 from ..core.report import html as html_report
 from ..core.score import clearance as clearance_mod
 from . import c2pa as c2pa_mod
@@ -202,19 +204,26 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
     manifest = H.c2pa_manifest(history, title=shot)
     record = history_html.render(history, data=workflow, keys=keys, ledger=ledger,
                                  context=history_service.context(cfg))
-    sheet = html_report.render(report)
+    verification = H.verify(workflow, keys=keys, ledger=ledger)
+    content = {
+        "workflow": json.dumps(workflow, indent=1, default=str),
+        "c2pa": json.dumps(manifest, indent=1, default=str),
+        "legal": record,
+        "audit": html_report.render(report),
+        "life": life_viewer.render(history, verification=verification),
+        "omc": json.dumps(omc.export(history), indent=1, default=str),
+    }
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(f"{slug}.json", json.dumps(workflow, indent=1, default=str))
-        zf.writestr(f"{slug}.c2pa.json", json.dumps(manifest, indent=1, default=str))
-        zf.writestr(f"{slug}.legal-report.html", record)
-        zf.writestr(f"{slug}.clearance-sheet.html", sheet)
-        zf.writestr(f"{slug}.life.html", life_viewer.render(
-            history, verification=H.verify(workflow, keys=keys, ledger=ledger)))
-        zf.writestr(f"{slug}.omc.json", json.dumps(omc.export(history), indent=1, default=str))
+        for key, suffix, *_ in PACKAGE_FILES:
+            zf.writestr(f"{slug}{suffix}", content[key])
         signed = _sign_renders(history, manifest, zf)
         zf.writestr("README.txt", _readme(shot, clearance, signed))
+    # The index goes in last, so it can fingerprint everything else.
+    with zipfile.ZipFile(buf, "a", zipfile.ZIP_DEFLATED) as zf:
+        index = _index(slug, history, clearance, verification, signed, zf)
+        zf.writestr(f"{slug}.package.json", json.dumps(index, indent=1, default=str))
 
     tracked = {}
     if body.get("shotgrid", True):
@@ -231,6 +240,79 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
         "c2pa": signed,
         "zip_b64": base64.b64encode(buf.getvalue()).decode("ascii"),
     }
+
+
+#: Every document in a package: content key, file suffix, media type, role, what it is.
+#: The README and the machine-readable index are both written from this list.
+PACKAGE_FILES = [
+    ("workflow", ".json", "application/json", "workflow",
+     "The ComfyUI workflow. Its shot history (extra.comfyaudit_history) is hash-chained and, "
+     "when the studio key is set, signed. The sign-off entry carries the clearance, sealed."),
+    ("legal", ".legal-report.html", "text/html", "legal-report",
+     "The provenance record for legal: clearance, who did what and when, models over time, "
+     "prompt authorship, sources, the rules checklist."),
+    ("audit", ".licence-audit.html", "text/html", "licence-audit",
+     "The full licence and risk audit behind the verdict: every model and node pack, its "
+     "licence, what the licence allows for this studio, and the risk score."),
+    ("life", ".life.html", "text/html", "life-of-the-shot",
+     "The shot's life on one timeline: the graph as it stood at each entry, the story and the "
+     "log. Opens in any browser, offline."),
+    ("omc", ".omc.json", "application/json", "movielabs-omc",
+     "The same history as MovieLabs OMC-JSON v2.8 entities, for studio asset systems."),
+    ("c2pa", ".c2pa.json", "application/json", "c2pa-manifest-definition",
+     "A C2PA manifest definition for the delivered file, unsigned; renders signed with it are "
+     "under signed/."),
+]
+
+
+def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
+           verification: Any, signed: list[dict[str, Any]], zf: zipfile.ZipFile) -> dict[str, Any]:
+    """``<shot>.package.json``: what this package is, what was decided, and every file in it.
+
+    The entry point for software and agents reading a package; each HTML file
+    also embeds its own data (see core/report/machine.py).
+    """
+    approved = next((e for e in reversed(history.get("entries", []))
+                     if e.get("event") == "approved"), {})
+    actor = approved.get("actor") or {}
+    roles = {f"{slug}{suffix}": (media, role, about) for _, suffix, media, role, about in PACKAGE_FILES}
+    roles["README.txt"] = ("text/plain", "readme", "The package explained for people.")
+    files = []
+    for info in zf.infolist():
+        data = zf.read(info.filename)
+        media, role, about = roles.get(info.filename, (
+            "application/octet-stream", "signed-render",
+            "A final render with the C2PA manifest signed and embedded by the studio's c2patool."))
+        files.append({"path": info.filename, "role": role, "media_type": media,
+                      "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+                      "description": about})
+    v = verification.as_dict()
+    entries = history.get("entries", [])
+    return machine.stamp("delivery-package", {
+        "about": ("Index of a ComfyAudit delivery package; start here. Each HTML file embeds the "
+                  "data it shows as JSON in <script id='comfyaudit-data'>."),
+        "shot": {k: history.get("shot", {}).get(k) for k in ("id", "name", "project", "stage",
+                                                             "external_ids")},
+        "decision": {
+            "verdict": clearance.get("verdict"), "verdict_label": clearance.get("verdict_label"),
+            "headline": clearance.get("headline"), "checked_as": clearance.get("profile"),
+            "signed_off_by": {"name": actor.get("name", ""), "role": actor.get("role", "")},
+            "signed_off_at": approved.get("at", ""), "note": approved.get("note", ""),
+            "delivered_as_exception": bool(clearance.get("exception")),
+            "exception_reason": clearance.get("exception", ""),
+            "blockers": clearance.get("blockers", []), "conditions": clearance.get("conditions", []),
+        },
+        "outstanding_fixes": clearance.get("outstanding", []),
+        "left_for_legal": clearance.get("for_legal", []),
+        "integrity": {
+            "assurance": v.get("assurance"), "problems": v.get("problems", []),
+            "entries": len(entries), "head_hash": entries[-1].get("hash", "") if entries else "",
+            "verify_with": "comfyaudit history verify <workflow.json>",
+        },
+        "content_credentials": signed,
+        "knowledge_bases": clearance.get("audited_with", {}),
+        "files": files,
+    })
 
 
 def _sign_renders(history: dict[str, Any], manifest: dict[str, Any],
@@ -303,18 +385,11 @@ def _readme(shot: str, clearance: dict[str, Any],
         clearance.get("headline", ""),
         "",
         "What is in here",
-        f"- {_slug(shot)}.json: the ComfyUI workflow. Its shot history (extra.comfyaudit_history)",
-        "  is hash-chained and, when the studio key is set, signed. The sign-off entry carries",
-        "  the clearance above, sealed.",
-        f"- {_slug(shot)}.legal-report.html: the provenance record for legal - clearance, who did",
-        "  what and when, models over time, prompt authorship, sources, the rules checklist.",
-        f"- {_slug(shot)}.clearance-sheet.html: the full licence and risk audit behind the verdict.",
-        f"- {_slug(shot)}.life.html: the shot's life on one timeline - the graph as it stood at",
-        "  each entry, the story, and the log. Opens in any browser, offline.",
-        f"- {_slug(shot)}.omc.json: the same history as MovieLabs OMC-JSON v2.8 entities, for",
-        "  studio asset systems (people, ComfyUI as a service, renders, inputs, outputs).",
-        f"- {_slug(shot)}.c2pa.json: a C2PA manifest definition for the delivered file. It is",
-        "  unsigned; sign and embed it with c2patool or the studio's signing service.",
+        *[line for _, suffix, _m, _r, about in PACKAGE_FILES
+          for line in textwrap.wrap(f"- {_slug(shot)}{suffix}: {about}", 88, subsequent_indent="  ")],
+        f"- {_slug(shot)}.package.json: the index of this package for software and agents: the",
+        "  decision, what is outstanding, and every file with its SHA-256. Each HTML file also",
+        "  carries its data as JSON in <script id='comfyaudit-data'>.",
         "",
         *_signing_lines(signed or []),
         *_legal_lines(clearance.get("for_legal") or []),

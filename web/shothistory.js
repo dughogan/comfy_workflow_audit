@@ -1093,7 +1093,7 @@ function fixStep() {
   wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "10px" } },
     btn("Continue to sign-off", () => { pkg.step = "signoff"; rerender(); }, "primary"),
     btn("Re-check", runCheck),
-    r.audit_html ? btn("Clearance sheet", () => openDocument(`${shotName()} - clearance sheet`, r.audit_html, `${shotName()}.clearance-sheet.html`)) : null,
+    r.audit_html ? btn("Licence audit", () => openDocument(`${shotName()} - licence audit`, r.audit_html, `${shotName()}.licence-audit.html`)) : null,
     btn("Back", leavePackage)));
   return wrap;
 }
@@ -1149,7 +1149,8 @@ function doneStep() {
   for (const [file, what] of [
     [`${slug}.json`, "The workflow, with its history, the verdict and the sign-off sealed in"],
     [`${slug}.legal-report.html`, "For legal: clearance, provenance, rules checklist"],
-    [`${slug}.clearance-sheet.html`, "The full licence and risk audit"],
+    [`${slug}.licence-audit.html`, "The full licence and risk audit behind the verdict"],
+    [`${slug}.package.json`, "Index for software and legal agents: the decision, what is open, every file and its fingerprint"],
     [`${slug}.life.html`, "The shot's life on one timeline: graph, story and log"],
     [`${slug}.omc.json`, "MovieLabs OMC-JSON v2.8, for studio asset systems"],
     [`${slug}.c2pa.json`, "C2PA manifest definition, ready to sign and embed"],
