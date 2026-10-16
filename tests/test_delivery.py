@@ -162,7 +162,7 @@ def test_what_is_left_for_legal_is_sealed_and_listed_not_asked_of_the_artist(stu
     open_rule = [{"rule": "tpn-ai", "title": "TPN: written client approval for AI use",
                   "jurisdiction": "TPN", "items": [{"text": "Client's written approval on file",
                                                     "tag": "tpn-ai:0"}]}]
-    monkeypatch.setattr(delivery, "_confirmations", lambda lin, history, cfg: open_rule)
+    monkeypatch.setattr(delivery, "_confirmations", lambda lin, history, cfg: (open_rule, []))
     wf = H.stamp(load(), event="created", actor=ANA, keys=H.Keys.from_environment(),
                  name="SH0120").workflow
     # Nothing was confirmed, and delivery still goes ahead: these are legal's to check.

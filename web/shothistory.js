@@ -1020,19 +1020,30 @@ function sourceRow(src) {
 
 /* One rule legal will check. Read-only for the artist; whoever holds the
  * evidence (legal, production) can record it here when they open the shot. */
-function confirmationRule(rule) {
+function confirmationRule(rule, scope, project) {
   const box = h("div", { style: { padding: "6px 0", borderTop: `1px solid ${UI.line}`, fontSize: "12px" } },
     h("div", { style: { lineHeight: "1.45" } }, `${rule.title} `,
       h("span", { style: { color: UI.dim, fontSize: "11px" } }, rule.jurisdiction)));
-  for (const item of rule.items) {
+  for (const item of rule.items.filter((i) => (i.scope || "shot") === scope)) {
     const f = pkg.open[item.tag] || (pkg.open[item.tag] = { note: "", open: false });
     const row = h("div", { style: { padding: "4px 0 2px 10px", color: UI.dim, lineHeight: "1.45" } }, item.text, " ");
     if (f.open) {
+      // A show or studio answer is recorded once, outside this shot's
+      // history, and every shot of the show (or the studio) inherits it.
+      // A show item on a shot with no project is recorded on the shot itself.
+      const mode = scope === "show" && !project ? "shot" : scope;
+      const once = mode === "studio" ? "Recorded once for the whole studio; every shot inherits it."
+        : mode === "show" ? `Recorded once for ${project}; every shot of that show inherits it.` : "";
+      if (once) row.append(h("div", { style: { fontSize: "11px", margin: "4px 0" } }, once));
       row.append(input(f.note, (v) => { f.note = v; }, "What confirms it, e.g. client email of 14 Oct", true));
       row.append(h("div", { style: { display: "flex", gap: "6px", marginTop: "6px" } },
         btn("Record", () => act(async () => {
           if (!f.note.trim()) throw new Error("Say what confirms it; a blank confirmation proves nothing.");
-          await stamp("note", { note: f.note.trim(), data: { evidence: item.tag } });
+          if (mode === "shot") {
+            await stamp("note", { note: f.note.trim(), data: { evidence: item.tag } });
+          } else {
+            await post("answer", { workflow: app.graph.serialize(), tag: item.tag, scope: mode, note: f.note.trim() });
+          }
           f.open = false;
           f.note = "";
           await runCheck();
@@ -1077,13 +1088,37 @@ function fixStep() {
     // credit disclosure), not about the workflow. The artist is not the person
     // who knows them, so nothing here waits on the artist: they travel with
     // the package as legal's open checklist.
-    const n = r.confirmations.reduce((k, rule) => k + rule.items.length, 0);
+    const count = (scope) => r.confirmations.reduce(
+      (k, rule) => k + rule.items.filter((i) => (i.scope || "shot") === scope).length, 0);
+    const n = count("shot") + count("show") + count("studio");
     wrap.append(caption(`Left for legal (${n})`));
     wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "6px", lineHeight: "1.45" } },
       "Nothing for you to do here. These are production facts legal checks, such as a client's written approval or a credit disclosure. They go in the package as an open checklist."));
+    const inherited = (r.answers_used || []).length;
+    if (inherited) wrap.append(h("div", { style: { fontSize: "11.5px", color: TONE.ok, marginBottom: "6px" } },
+      `${inherited} already answered once for the show or studio, and carried into this shot.`));
     const list = h("details", { style: { border: `1px solid ${UI.line}`, borderRadius: "5px", padding: "6px 10px", margin: "0 0 8px" } },
       h("summary", { style: { cursor: "pointer", fontSize: "12px" } }, `What legal will check (${r.confirmations.length} rules)`));
-    for (const rule of r.confirmations) list.append(confirmationRule(rule));
+    const project = r.project || "";
+    const groups = [
+      ["shot", "For this shot", ""],
+      ["show", project ? `For the whole show: ${project}` : "For the whole show",
+        project ? "Answer once; every shot of this show inherits it."
+          : "Give this shot its project or show in Shot details, then these are answered once for every shot of it."],
+      ["studio", "For the studio", "Answer once; every shot inherits it."],
+    ];
+    for (const [scope, title, hint] of groups) {
+      const k = count(scope);
+      if (!k) continue;
+      list.append(h("div", { style: { font: "600 10.5px/1 ui-monospace, monospace", letterSpacing: ".06em", textTransform: "uppercase", color: UI.dim, margin: "12px 0 4px" } }, `${title} (${k})`));
+      if (hint) list.append(h("div", { style: { fontSize: "11px", color: UI.dim, marginBottom: "4px" } }, hint));
+      for (const rule of r.confirmations) {
+        if (rule.items.some((i) => (i.scope || "shot") === scope)) {
+          // A show item without a project can still be recorded on the shot itself.
+          list.append(confirmationRule(rule, scope, project));
+        }
+      }
+    }
     // Collapsed unless the person opened it during this package (it is redrawn
     // after every re-check, so it remembers their choice, not a stale form).
     list.open = pkg.legalOpen;

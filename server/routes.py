@@ -143,6 +143,7 @@ def register() -> bool:
     _history_route("check", delivery.check)
     _history_route("deliver", delivery.deliver)
     _history_route("shotgrid", shotgrid.lookup)
+    _history_route("answer", history_service.answer)
     _history_route("summary", lambda body: history_service.summary(
         _read_history(body["workflow"]), workflow=body["workflow"]))
 

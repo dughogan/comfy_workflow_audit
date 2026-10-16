@@ -436,9 +436,30 @@ client's written approval, a credit disclosure) are production facts, not
 artist work. The package flow shows them read-only and collapsed; they are
 sealed into the sign-off (`clearance.for_legal`) and listed as a `[ ]`
 checklist in the README. Recording evidence stays possible behind an
-optional link. Open question for Doug: most items are per show or per studio,
-not per shot (see the conversation of 2026-10-16), so they could be answered
-once per production and inherited by every shot.
+optional link.
+
+**Answered once per show or studio (2026-10-16).** Of the 225 evidence items
+across 85 rules, the record now answers 41 itself (up from 23): the model per
+shot for the litigation rules, prompt and iteration logs, human authors, plus
+two new checks, `final_deliverable` (delivered, outputs fingerprinted) and
+`content_credentials` (every final render C2PA-signed at delivery; delivery
+records what c2patool signed on the `promoted` entry). The mappings are in
+`tools/build_regulations.py` `MAP`; only items the record fully proves are
+mapped, never ones needing a judgement ("showing no real performer was used").
+Of the 184 manual items, `SCOPE` in the same file marks 24 as per show (a
+client's written approval for the project, union notices, distributor
+labelling terms) and 28 as per studio (AI policy, provider-or-deployer status,
+vendor terms). Those are answered once (`core/answers.py`): signed like history
+entries, append-only, stored in ComfyUI's user folder or a shared file named by
+`COMFYAUDIT_ANSWERS_FILE`, and inherited by every shot whose project matches
+(case and punctuation ignored); a show answer beats a studio one, a shot's own
+note beats both, an altered answer is dropped. Route `history/answer`. The
+package seals the answers it relied on (`clearance.answers_relied_on`, with
+signatures) and lists them in the README and `package.json`. In the panel,
+"What legal will check" is grouped into this shot / the whole show / the studio.
+Live-tested: an answer recorded on one shot of "Pilot" was inherited by another
+shot given "pilot". Not yet: a way for legal to answer without ComfyUI (from
+the package, or a small web page on the ComfyUI server).
 
 **Priority 2: known gaps.**
 

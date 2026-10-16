@@ -12,8 +12,9 @@ import json
 import os
 from typing import Any
 
+from ..core import answers as answers_mod
 from ..core import history as H
-from ..core.report import history_html, licensing_guide, life_viewer, omc
+from ..core.report import compliance, history_html, licensing_guide, life_viewer, omc
 from . import settings as settings_mod
 
 
@@ -372,9 +373,51 @@ def record(body: dict[str, Any]) -> dict[str, Any]:
     return {"html": html, "summary": summary(history, workflow=workflow, cfg=cfg)}
 
 
-def context(cfg: dict[str, Any], body: dict[str, Any] | None = None) -> dict[str, Any]:
-    """The facts the rules checklist turns on: studio settings, plus per-request ones."""
+def answers_store() -> answers_mod.Store:
+    """Show and studio answers. A studio shares one file between machines by naming it in
+    ``COMFYAUDIT_ANSWERS_FILE``; otherwise it lives in this ComfyUI's user folder."""
+    path = os.environ.get("COMFYAUDIT_ANSWERS_FILE", "")
+    if not path:
+        try:
+            import folder_paths
+            path = os.path.join(folder_paths.get_user_directory(), "default", "comfyaudit",
+                                "answers.json")
+        except Exception:  # noqa: BLE001
+            path = os.path.join(os.path.expanduser("~"), ".comfyaudit", "answers.json")
+    return answers_mod.Store(path)
+
+
+def answer(body: dict[str, Any]) -> dict[str, Any]:
+    """Record an answer once for this shot's show, or for the studio."""
+    cfg = settings_mod.history_settings()
+    history = H.read(body["workflow"])
+    if not history:
+        return {"error": "This workflow has no shot history yet."}
+    tag, scope = str(body.get("tag", "")), str(body.get("scope", ""))
+    rule_id, _, idx = tag.partition(":")
+    rule = next((r for r in compliance.load().get("rules", []) if r["id"] == rule_id), None)
+    items = (rule or {}).get("evidence", [])
+    if not idx.isdigit() or int(idx) >= len(items) or items[int(idx)].get("check") != "manual":
+        return {"error": f"{tag} is not an item a person answers."}
+    if items[int(idx)].get("scope", "shot") != scope:
+        return {"error": f"{tag} is answered per {items[int(idx)].get('scope', 'shot')}, not per {scope}."}
+    project = str((history.get("shot") or {}).get("project", "") or "")
+    try:
+        saved = answers_store().add(tag=tag, scope=scope, project=project,
+                                    note=str(body.get("note", "")), actor=actor(cfg, body),
+                                    keys=signer(cfg, body))
+    except ValueError as exc:
+        return {"error": str(exc)}
+    return {"answer": saved}
+
+
+def context(cfg: dict[str, Any], body: dict[str, Any] | None = None,
+            history: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The facts the rules checklist turns on: studio settings, plus per-request ones,
+    plus what has been answered once for this shot's show and for the studio."""
     body = body or {}
+    if history is None and isinstance(body.get("workflow"), dict):
+        history = H.read(body["workflow"])
     ctx = {"territory": cfg.get("territory", ""),
            "distribute_in": cfg.get("distribute_in", []),
            "likeness": cfg.get("likeness", False),
@@ -384,6 +427,9 @@ def context(cfg: dict[str, Any], body: dict[str, Any] | None = None) -> dict[str
                  "tpn_vendor", "eo_insurance", "copyright_claim",
                  "third_party_characters", "ai_music", "intimate_imagery"):
         ctx[flag] = bool(body.get(flag) or cfg.get(flag))
+    if history:
+        project = str((history.get("shot") or {}).get("project", "") or "")
+        ctx["answers"] = answers_store().for_shot(project, keys(cfg))
     return ctx
 
 

@@ -85,7 +85,12 @@ CHECKS = {
     "outputs_fingerprinted": "Delivered outputs fingerprinted",
     "production_stage": "Shot marked as production work, not sandbox",
     "models_recorded": "Every model used is named in the record, with its licence",
+    "final_deliverable": "Shot delivered, with its final outputs fingerprinted",
+    "content_credentials": "Every final render signed with C2PA Content Credentials at delivery",
 }
+
+#: Who answers a manual item: someone on the shot, once for the show, or once for the studio.
+SCOPE_LABELS = {"shot": "this shot", "show": "the whole show", "studio": "the whole studio"}
 
 #: EU member states, so distribution to one of them counts as distribution in the EU.
 EU_MEMBERS = {"AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR",
@@ -196,6 +201,20 @@ def _check(name: str, lineage: dict[str, Any], history: dict[str, Any],
         return bool(lineage["models"]) if lineage["renders"] else None
     if name == "production_stage":
         return lineage["shot"].get("stage") in ("production", "cleared", "delivered")
+    if name == "final_deliverable":
+        if not lineage["renders"]:
+            return None
+        outs = lineage["final_outputs"]
+        return (lineage["shot"].get("stage") in ("cleared", "delivered")
+                and bool(outs) and all(o.get("sha256") for o in outs))
+    if name == "content_credentials":
+        if not lineage["renders"]:
+            return None
+        # Delivery records what c2patool signed on the entry that delivers.
+        signed = next(((e.get("data") or {}).get("content_credentials")
+                       for e in reversed(history.get("entries", []))
+                       if "content_credentials" in (e.get("data") or {})), None)
+        return bool(signed) and all(r.get("signed") for r in signed)
     return False
 
 
@@ -222,6 +241,9 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
            context: dict[str, Any]) -> dict[str, Any]:
     kb = load()
     verification = context.get("verification") or {}
+    # Answers given once for this shot's show or for the studio (core/answers.py).
+    inherited = context.get("answers") or {}
+    used: dict[str, dict[str, Any]] = {}
     facts = signals(lineage, history, context)
     rules = []
     clarifications = []
@@ -242,17 +264,29 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
         evidence = []
         for i, item in enumerate(rule.get("evidence", [])):
             check = item.get("check", "manual")
+            tag = f"{rule['id']}:{i}" if check == "manual" else ""
+            scope = item.get("scope", "shot") if check == "manual" else "record"
+            answer = inherited.get(tag) if tag else None
+            source = ""
             if check == "manual":
                 if i in attested:
-                    state, note = "have", f" (attested by {attested[i]})"
+                    state, note, source = "have", f" (attested by {attested[i]})", "shot"
+                elif answer:
+                    where = ("the studio" if answer["scope"] == "studio"
+                             else f"the show {answer.get('production_name') or answer['production']}")
+                    state, source = "have", answer["scope"]
+                    note = (f" (answered once for {where} by {answer['by'].get('name', '')}, "
+                            f"{str(answer.get('at', ''))[:10]}"
+                            + ("" if answer.get("state") == "signed" else ", unsigned") + ")")
+                    used[tag] = answer
                 else:
                     state, note = "need", ""
             else:
                 ok = _check(check, lineage, history, verification)
                 state = "na" if ok is None else ("have" if ok else "need")
                 note = ""
-            evidence.append({"text": item["text"] + note, "state": state,
-                             "tag": f"{rule['id']}:{i}" if check == "manual" else ""})
+            evidence.append({"text": item["text"] + note, "state": state, "tag": tag,
+                             "scope": scope, "answered_by": source})
         rules.append({**{k: rule.get(k, "") for k in (
             "id", "title", "jurisdiction", "authority", "status", "source",
             "source_title", "source_date", "confidence", "notes", "human_in_loop",
@@ -276,5 +310,6 @@ def assess(lineage: dict[str, Any], history: dict[str, Any],
                  "it in the studio settings. This is a checklist to take to counsel, "
                  "not a ruling.")
     return {"intro": intro, "rules": rules, "clarifications": clarifications,
+            "answers_used": list(used.values()),
             "corrections": kb.get("corrections", []), "signals": known,
             "as_of": kb.get("as_of", ""), "research": kb.get("research", {})}

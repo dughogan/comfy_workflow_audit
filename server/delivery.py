@@ -108,17 +108,18 @@ def _sources(lin: dict[str, Any]) -> list[dict[str, Any]]:
             for s in lin["sources"] if not s.get("origin") or s["origin"] == "unknown"]
 
 
-def _confirmations(lin, history, cfg) -> list[dict[str, Any]]:
-    """Rules that apply and still want a person to confirm something."""
-    checks = compliance.assess(lin, history, history_service.context(cfg))
+def _confirmations(lin, history, cfg) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Rules that apply and still want a person to confirm something, and the show and
+    studio answers that already confirm others."""
+    checks = compliance.assess(lin, history, history_service.context(cfg, history=history))
     out = []
     for rule in checks["rules"]:
-        items = [{"text": e["text"], "tag": e["tag"]} for e in rule["evidence"]
-                 if e["state"] == "need" and e.get("tag")]
+        items = [{"text": e["text"], "tag": e["tag"], "scope": e.get("scope", "shot")}
+                 for e in rule["evidence"] if e["state"] == "need" and e.get("tag")]
         if items:
             out.append({"rule": rule["id"], "title": rule["title"],
                         "jurisdiction": rule["jurisdiction"], "items": items})
-    return out
+    return out, checks.get("answers_used", [])
 
 
 def _versions() -> dict[str, str]:
@@ -134,6 +135,7 @@ def _assess(body: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
     result = report.clearance
     history = H.read(workflow)
     lin = H.lineage(history) if history else None
+    confirmations, answers_used = _confirmations(lin, history, cfg) if lin else ([], [])
     out = {
         "determined": result.determined,
         "verdict": result.verdict if result.determined else "unknown",
@@ -146,7 +148,9 @@ def _assess(body: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
         "conditions": list(result.conditions),
         "fixes": fixes(result, _installed()),
         "sources": _sources(lin) if lin else [],
-        "confirmations": _confirmations(lin, history, cfg) if lin else [],
+        "confirmations": confirmations,
+        "answers_used": answers_used,
+        "project": (lin or {}).get("shot", {}).get("project", "") if lin else "",
         "models": [{"filename": d.subject, "licence": d.licence, "verdict": d.verdict}
                    for d in result.determinations if d.kind == "model"],
         "risk": {"score": report.risk.score, "band": report.risk.band},
@@ -187,23 +191,36 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
                                "jurisdiction": c["jurisdiction"],
                                "items": [i["text"] for i in c["items"]]}
                               for c in assessed["confirmations"]]
+    # Show and studio answers this sign-off relied on, sealed with their
+    # signatures so the package proves them without the studio's answer store.
+    clearance["answers_relied_on"] = [{k: a.get(k) for k in (
+        "tag", "scope", "production", "production_name", "note", "by", "at", "key_id",
+        "hash", "sig") if k in a} for a in assessed["answers_used"]]
 
     keys = history_service.signer(cfg, body)
     ledger = cfg.get("ledger", "")
     who = history_service.actor(cfg, body)
     name = str(body.get("name", "") or "")
-    signed = H.stamp(body["workflow"], event="approved", actor=who, keys=keys, ledger=ledger,
-                     name=name, note=str(body.get("note", "") or "Approved for delivery"),
-                     data_payload={"clearance": clearance})
-    done = H.stamp(signed.workflow, event="promoted", actor=who, keys=keys, ledger=ledger,
-                   note="Packaged for delivery", data_payload={"stage": "delivered"})
-    workflow, history = done.workflow, done.history
-
-    shot = history["shot"].get("name") or name or "shot"
+    approved = H.stamp(body["workflow"], event="approved", actor=who, keys=keys, ledger=ledger,
+                       name=name, note=str(body.get("note", "") or "Approved for delivery"),
+                       data_payload={"clearance": clearance})
+    shot = approved.history["shot"].get("name") or name or "shot"
     slug = _slug(shot)
-    manifest = H.c2pa_manifest(history, title=shot)
+    # The renders are signed against the history as signed off, and what was
+    # signed is recorded on the entry that delivers, so the record itself says
+    # which deliverables carry Content Credentials and from whom.
+    manifest = H.c2pa_manifest(approved.history, title=shot)
+    with tempfile.TemporaryDirectory() as tmp:
+        signed, signed_files = _sign_renders(approved.history, manifest, tmp)
+    done = H.stamp(approved.workflow, event="promoted", actor=who, keys=keys, ledger=ledger,
+                   note="Packaged for delivery", data_payload={
+                       "stage": "delivered",
+                       "content_credentials": [{k: r[k] for k in (
+                           "file", "signed", "validation_state", "signer", "trusted", "reason")
+                           if k in r} for r in signed]})
+    workflow, history = done.workflow, done.history
     record = history_html.render(history, data=workflow, keys=keys, ledger=ledger,
-                                 context=history_service.context(cfg))
+                                 context=history_service.context(cfg, history=history))
     verification = H.verify(workflow, keys=keys, ledger=ledger)
     content = {
         "workflow": json.dumps(workflow, indent=1, default=str),
@@ -218,7 +235,8 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for key, suffix, *_ in PACKAGE_FILES:
             zf.writestr(f"{slug}{suffix}", content[key])
-        signed = _sign_renders(history, manifest, zf)
+        for arcname, data in signed_files:
+            zf.writestr(arcname, data)
         zf.writestr("README.txt", _readme(shot, clearance, signed))
     # The index goes in last, so it can fingerprint everything else.
     with zipfile.ZipFile(buf, "a", zipfile.ZIP_DEFLATED) as zf:
@@ -304,6 +322,7 @@ def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
         },
         "outstanding_fixes": clearance.get("outstanding", []),
         "left_for_legal": clearance.get("for_legal", []),
+        "answered_for_show_or_studio": clearance.get("answers_relied_on", []),
         "integrity": {
             "assurance": v.get("assurance"), "problems": v.get("problems", []),
             "entries": len(entries), "head_hash": entries[-1].get("hash", "") if entries else "",
@@ -316,7 +335,7 @@ def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
 
 
 def _sign_renders(history: dict[str, Any], manifest: dict[str, Any],
-                  zf: zipfile.ZipFile) -> list[dict[str, Any]]:
+                  tmp: str) -> tuple[list[dict[str, Any]], list[tuple[str, bytes]]]:
     """Sign the final render's outputs with c2patool, into the package only.
 
     Each file is signed only if its contents still match the fingerprint its
@@ -326,26 +345,26 @@ def _sign_renders(history: dict[str, Any], manifest: dict[str, Any],
     final = next((e for e in reversed(history.get("entries", []))
                   if e.get("event") == "rendered" and e.get("outputs")), None)
     if not final:
-        return []
-    results = []
-    with tempfile.TemporaryDirectory() as tmp:
-        for row in final["outputs"]:
-            path = history_service.output_path({"filename": row.get("file", ""), "type": "output",
-                                                "subfolder": row.get("subfolder", "")})
-            if not path or not os.path.isfile(path):
-                results.append({"file": row.get("file", ""), "signed": False,
-                                "reason": "the render is no longer in the output folder"})
-                continue
-            if row.get("sha256") and H.file_sha256(path) != row["sha256"]:
-                results.append({"file": row["file"], "signed": False,
-                                "reason": "the file has changed since it was rendered"})
-                continue
-            out = os.path.join(tmp, os.path.basename(path))
-            res = c2pa_mod.sign(path, manifest, out, H.__version__)
-            if res.get("signed"):
-                zf.write(out, f"signed/{os.path.basename(path)}")
-            results.append(res)
-    return results
+        return [], []
+    results, files = [], []
+    for row in final["outputs"]:
+        path = history_service.output_path({"filename": row.get("file", ""), "type": "output",
+                                            "subfolder": row.get("subfolder", "")})
+        if not path or not os.path.isfile(path):
+            results.append({"file": row.get("file", ""), "signed": False,
+                            "reason": "the render is no longer in the output folder"})
+            continue
+        if row.get("sha256") and H.file_sha256(path) != row["sha256"]:
+            results.append({"file": row["file"], "signed": False,
+                            "reason": "the file has changed since it was rendered"})
+            continue
+        out = os.path.join(tmp, os.path.basename(path))
+        res = c2pa_mod.sign(path, manifest, out, H.__version__)
+        if res.get("signed"):
+            with open(out, "rb") as fh:
+                files.append((f"signed/{os.path.basename(path)}", fh.read()))
+        results.append(res)
+    return results, files
 
 
 def _signing_lines(signed: list[dict[str, Any]]) -> list[str]:
@@ -376,6 +395,18 @@ def _legal_lines(open_items: list[dict[str, Any]]) -> list[str]:
     return lines + [""]
 
 
+def _answer_lines(answers: list[dict[str, Any]]) -> list[str]:
+    if not answers:
+        return []
+    lines = [f"Answered once for the show or studio, and relied on here ({len(answers)}). Each is",
+             "sealed in the sign-off with its signature, so it holds without the studio's records.", ""]
+    for a in answers:
+        where = "studio" if a.get("scope") == "studio" else f"show {a.get('production_name') or a.get('production')}"
+        lines.append(f"[x] {a.get('tag')} - {where}: {a.get('note')} "
+                     f"({(a.get('by') or {}).get('name', '')}, {str(a.get('at', ''))[:10]})")
+    return lines + [""]
+
+
 def _readme(shot: str, clearance: dict[str, Any],
             signed: list[dict[str, Any]] | None = None) -> str:
     lines = [
@@ -393,6 +424,7 @@ def _readme(shot: str, clearance: dict[str, Any],
         "",
         *_signing_lines(signed or []),
         *_legal_lines(clearance.get("for_legal") or []),
+        *_answer_lines(clearance.get("answers_relied_on") or []),
         "Check the history: comfyaudit history verify <workflow.json> (with the studio key and",
         "ledger set). This package was produced by an automated tool; it is evidence to take",
         "to counsel, not legal advice.",

@@ -273,19 +273,23 @@
    "evidence": [
     {
      "text": "Signed/initialed digital replica consent rider with the use description, linked to the shot/asset IDs it covers",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Notice timestamp showing 48-hour notice for scan/capture sessions",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Mapping of replica-generated shots to the consented project and use description",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Payment calculation records for replica-generated scenes",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -351,7 +355,8 @@
    "evidence": [
     {
      "text": "Classification of each AI alteration as routine post (exempt) or beyond script/performance (consent needed)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Source-material provenance for any replica built from existing footage",
@@ -359,7 +364,8 @@
     },
     {
      "text": "Consent document or estate/union authorization",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -418,11 +424,13 @@
    "evidence": [
     {
      "text": "Record of union notice for synthetic human characters",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Prompt/reference-image log showing no real performer's features were used to generate the character (or consent if they were)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -503,39 +511,48 @@
    "evidence": [
     {
      "text": "Scan-request record with the stated business reason, consent, and the performer's or background actor's identity",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Replica asset register: source footage or scan, creation date, holder, people with access, access log, and security measures",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Transfer record for any replica that changes hands, with union approval and the transferee's written undertaking",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Consent records tied to each replica use, including dubbing consents for pictures starting principal photography on or after 2027-07-01",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "The script version (and date given to the performer) used to judge whether an alteration was within what was scripted",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Flag on any replica or shot involving a minor, with confirmation that no nude or sexual depiction (including age-shifting) was generated",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Synthetic-use file: union notice, bargaining record, and the 'significant additional value' justification per role",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Record that biometric identifiers were not used outside the picture",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Union notice and license record for any sale of performance data for AI training",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     }
    ]
   },
@@ -602,23 +619,28 @@
    "evidence": [
     {
      "text": "Digital Replica Rider per performer per spot, with use description",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "MPU tracking and replica destruction/retention records",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Access log for stored replica assets (LoRAs, voice models, scans)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Statement that performer footage was not used for model training, or union consent",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Synthetic-performer usage report for P&H calculation",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -675,15 +697,18 @@
    "evidence": [
     {
      "text": "Consent rider with real-time and sensitive-content disclosures",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Generated-line counts per performer replica",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "90-day usage report",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -751,15 +776,18 @@
    "evidence": [
     {
      "text": "Record of which scripts, treatments or prompts handed to writers were AI-generated, and the disclosure given",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Company AI-use policy and any consent given to writers",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Note: prompt text used in image/video workflows is not literary material under the MBA, but keep authorship records for scripts",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -833,7 +861,8 @@
    "evidence": [
     {
      "text": "Record that the director (or other DGA-covered employee) was consulted on each generative-AI creative element, with date and outcome",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Director or approver identity attached to each AI-generated shot's workflow history, showing the director's control over that footage",
@@ -841,7 +870,8 @@
     },
     {
      "text": "Record of any licensing of production footage for AI training",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     }
    ]
   },
@@ -899,7 +929,8 @@
     },
     {
      "text": "Performer consent records for any AI-modified performance",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Per-shot list of AI tools used in camera or image work, ready for a Cinematography branch disclosure request",
@@ -984,7 +1015,8 @@
     },
     {
      "text": "Record of human modifications after generation (comp, paint, roto, grading) with before/after versions",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Selection and arrangement decisions (which takes were chosen and why, the edit)",
@@ -1053,7 +1085,8 @@
    "evidence": [
     {
      "text": "Inventory of AI-generated portions per work, enough to write the Material Excluded statement",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Description of human-authored contributions per work",
@@ -1182,23 +1215,27 @@
    "evidence": [
     {
      "text": "Whether the studio acts as a provider (own or modified generative system put into service under its name, including in-house) or only as a deployer of third-party tools, with the reasoning",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Per output: whether it is a final deliverable or a closed-loop intermediate inside the production pipeline",
-     "check": "manual"
+     "check": "final_deliverable"
     },
     {
      "text": "Per AI operation: classification as standard editing (exempt) or substantive alteration (marking required), referencing the guidelines' examples",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Marking method applied per final output (signed metadata / C2PA manifest, watermark), and verification that it survives the delivery pipeline",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Vendor contract terms guaranteeing marking by upstream system providers",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -1268,23 +1305,28 @@
    "evidence": [
     {
      "text": "Per-deliverable flag: contains a realistic AI-generated or manipulated depiction of real-seeming persons, places or events (Y/N), with the reasoning (VFX/background vs. digital replica, de-aging, synthetic performer)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Whether the evidently-artistic/fictional regime was relied on, and why (format, distribution context, audience expectations)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Disclosure method and placement used (on-screen icon, opening notice, end credits, spoken disclaimer) and the territories where the work was distributed",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Contract terms with distributors that keep the label displayed at first exposure",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Consent and rights clearances for real persons depicted",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -1352,19 +1394,23 @@
    "evidence": [
     {
      "text": "Whether the studio (and each tool vendor) is a Code signatory",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Labelling SOP and record of the label/icon applied per deliverable, with placement and repetition for long-form video",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Provenance metadata retained through delivery",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Training/awareness records for staff who approve labelling, and the channel for correcting labels",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -1427,11 +1473,13 @@
    "evidence": [
     {
      "text": "Classification memo showing the creative pipeline is not a high-risk use",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Separate review if AI is used in casting/hiring decisions (employment area)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -1491,11 +1539,13 @@
    "evidence": [
     {
      "text": "Records of human creative choices visible in the final frame: composition, framing, lighting, layout, paintovers, edit decisions",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Link between those choices and the output (e.g. control images, masks, comp scripts)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Contemporaneous documentation of the creative decision process (commentary on Mio/konektra recommends this)",
@@ -1552,11 +1602,13 @@
    "evidence": [
     {
      "text": "Full prompt and iteration history, together with evidence that specific human choices determine specific visual features",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Human-made inputs and edits beyond selection (sketches, layouts, paintovers)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -1674,11 +1726,12 @@
    "evidence": [
     {
      "text": "Model/checkpoint identity and provenance per shot (which provider is responsible)",
-     "check": "manual"
+     "check": "models_recorded"
     },
     {
      "text": "Output similarity checks against known third-party IP for final deliverables",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -1736,7 +1789,8 @@
    "evidence": [
     {
      "text": "Training-data provenance and licence/opt-out checks for any studio-trained LoRA or fine-tune",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -1889,15 +1943,18 @@
    "evidence": [
     {
      "text": "Explicit labels and implicit metadata present on deliverables released in mainland China",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Platform declaration records for published content",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Record of any vendor (e.g. Chinese GenAI service) user-agreement terms that shift labelling duties to the studio",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -2021,15 +2078,18 @@
    "evidence": [
     {
      "text": "Contract clause with a reasonably specific use description",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Proof of counsel or union representation",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Map of replica-generated shots to the contracted uses",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2086,7 +2146,8 @@
    "evidence": [
     {
      "text": "Estate consent, or a documented exemption analysis, for any deceased person's likeness or voice",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2154,15 +2215,17 @@
    "evidence": [
     {
      "text": "Licence terms from GenAI vendors, including any licensee-obligation notice received under the Act",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Confirmation that pipeline steps (transcodes, conforms, metadata scrubs) do not strip vendor latent disclosures",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Record of which provider, system name and version produced or altered each asset",
-     "check": "manual"
+     "check": "models_recorded"
     }
    ]
   },
@@ -2218,7 +2281,8 @@
    "evidence": [
     {
      "text": "Authorization for any sound-alike or look-alike, including AI voices 'in the style of' a person",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2274,11 +2338,13 @@
    "evidence": [
     {
      "text": "Per-spot flag for synthetic humans and the disclosure used",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Distribution territories (NY)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     }
    ]
   },
@@ -2336,7 +2402,8 @@
    "evidence": [
     {
      "text": "Rights-holder consent, or an exemption analysis",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2390,7 +2457,8 @@
    "evidence": [
     {
      "text": "Same as California AB 2602: use description plus proof of representation",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2460,7 +2528,8 @@
    "evidence": [
     {
      "text": "Likeness/voice licences, which already exist under state law practice",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2511,7 +2580,8 @@
    "evidence": [
     {
      "text": "Policy prohibiting sexual/intimate generation of real people without consent; content-review logs",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -2594,15 +2664,16 @@
    "evidence": [
     {
      "text": "Signed manifest per deliverable listing ingredients (plates, generated elements), actions and digitalSourceType",
-     "check": "manual"
+     "check": "content_credentials"
     },
     {
      "text": "Where used: a c2pa.ai-disclosure assertion naming the model(s) and the human oversight level",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Signing certificate/identity used by the studio",
-     "check": "manual"
+     "check": "content_credentials"
     }
    ]
   },
@@ -2649,7 +2720,8 @@
    "evidence": [
     {
      "text": "Per-upload disclosure setting and rationale",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2716,15 +2788,17 @@
    "evidence": [
     {
      "text": "Ad-level AI disclosure flag (required for political/social-issue ads)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "The creative's provenance metadata (e.g. C2PA), which may trigger automatic labelling",
-     "check": "manual"
+     "check": "content_credentials"
     },
     {
      "text": "Record of whether edits were 'significant' (generated backgrounds or images) or minor (resize, colour correction)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2777,7 +2851,8 @@
    "evidence": [
     {
      "text": "Record identifying which on-screen 'customers' or endorsers are synthetic, and substantiation that they are not presented as real testimonials",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2819,11 +2894,13 @@
     },
     {
      "text": "Separate before/after versions of human paint/comp edits, so they can be claimed apart from the generated base",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Record of upscalers or enhancers used (e.g. Gigapixel AI) and whether they add new content",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2864,11 +2941,13 @@
    "evidence": [
     {
      "text": "For fine-tunes and LoRAs the studio trains: an inventory of training images and clips with the licence or ownership basis for each",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Vendor training-data representations and indemnities for each third-party model used",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -2909,11 +2988,12 @@
    "evidence": [
     {
      "text": "Model name and exact version for each generation (e.g. SD 1.5, SD 2.1, SDXL)",
-     "check": "manual"
+     "check": "models_recorded"
     },
     {
      "text": "QC record showing outputs were checked for watermarks, logos and signatures",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -2952,15 +3032,17 @@
    "evidence": [
     {
      "text": "Model name and version per shot",
-     "check": "manual"
+     "check": "models_recorded"
     },
     {
      "text": "QC for watermarks and logos in outputs",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Vendor licence and indemnity terms for Stability models",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -2997,15 +3079,17 @@
    "evidence": [
     {
      "text": "Prompt log screened for third-party character and franchise names",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Output review sign-off for resemblance to third-party characters",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Model name per generation (Midjourney version)",
-     "check": "manual"
+     "check": "models_recorded"
     }
    ]
   },
@@ -3046,11 +3130,13 @@
     },
     {
      "text": "Output review sign-off for resemblance to third-party characters",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Vendor terms and indemnity for MiniMax use",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -3087,11 +3173,12 @@
    "evidence": [
     {
      "text": "Model and checkpoint per generation, including community fine-tunes derived from Stable Diffusion",
-     "check": "manual"
+     "check": "models_recorded"
     },
     {
      "text": "Prompt log screened for living artists' names used as style cues",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3129,11 +3216,13 @@
    "evidence": [
     {
      "text": "Provider's statements on how training data was acquired, for each model used",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "For in-house fine-tunes: proof that the training material was lawfully acquired or licensed",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3171,11 +3260,12 @@
    "evidence": [
     {
      "text": "Model name and version per use (e.g. Llama variants inside prompt-expansion nodes)",
-     "check": "manual"
+     "check": "models_recorded"
     },
     {
      "text": "Provider training-data statements",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -3212,7 +3302,8 @@
    "evidence": [
     {
      "text": "Purpose and licence basis for each in-house training dataset",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3250,11 +3341,13 @@
    "evidence": [
     {
      "text": "Output review sign-off covering third-party works and characters",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Prompt logs showing the studio did not seek third-party characters",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3291,11 +3384,12 @@
    "evidence": [
     {
      "text": "Full prompt, parameter, seed and iteration history",
-     "check": "manual"
+     "check": "verifiable_process"
     },
     {
      "text": "Record of human modifications to outputs",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3331,15 +3425,17 @@
    "evidence": [
     {
      "text": "Prompt and modification history",
-     "check": "manual"
+     "check": "verifiable_process"
     },
     {
      "text": "Human post-edits (Photoshop/Nuke), with versions",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Registration certificate, where available",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3377,11 +3473,13 @@
    "evidence": [
     {
      "text": "Prompt logs and reference inputs showing whether a pre-existing work was targeted",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Records of output similarity review",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3417,7 +3515,7 @@
    "evidence": [
     {
      "text": "Identification of the human author for each deliverable in Canadian filings",
-     "check": "manual"
+     "check": "prompt_authorship"
     }
    ]
   },
@@ -3453,7 +3551,8 @@
    "evidence": [
     {
      "text": "Provenance of any third-party AI image used as a source",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3493,19 +3592,23 @@
    "evidence": [
     {
      "text": "Per shot: AI operations performed and their classification (standard edit / substantive alteration / generation)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Per deliverable: deepfake assessment (VFX/background vs. replica, de-aging, synthetic performer), and whether the artistic/fictional regime is relied on",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Disclosure placement and timing for each distributed version",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Which party (studio, vendor, client) decided and controlled the AI use",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     }
    ]
   },
@@ -3544,23 +3647,28 @@
    "evidence": [
     {
      "text": "For each model/checkpoint used in a shot: the provider's identity",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Whether the provider publishes a training-data summary on the Commission template (link and date)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Whether the provider publishes a copyright policy (link), and whether it is a GPAI Code of Practice signatory for the Transparency and Copyright chapters",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "For open-weight or community models: whether the model is above the GPAI threshold and whether any summary/policy exists; flag unknown-provenance fine-tunes and LoRAs",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "For studio fine-tunes: training compute relative to the base model, and the studio's own dataset records",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3597,11 +3705,13 @@
    "evidence": [
     {
      "text": "Per model used: provider's signatory status on the Commission list (checked on date X), and which chapters",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Signatories listed on 2026-10-07: AI Studio Delta, Aleph Alpha, Almawave, Amazon, Anthropic, Black Forest Labs, Bria AI, Cohere, Domyn, Dweve, Fastweb, Google, IBM, LINAGORA, Microsoft, Mistral AI, Open Hippo, OpenAI, Pleias, Reflection AI, ServiceNow, WRITER, xAI (Safety and Security only)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3640,15 +3750,18 @@
    "evidence": [
     {
      "text": "Per shot with intimate content: identity of any real person depicted and their explicit written consent covering AI generation/manipulation",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Confirmation that body doubles, de-aging or digital replicas in intimate scenes are covered by consent",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Model/tool safeguards for any in-house generative system",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -3689,7 +3802,8 @@
     },
     {
      "text": "For studio-trained models/LoRAs: lawful-access and opt-out checks for training material",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3730,11 +3844,13 @@
    "evidence": [
     {
      "text": "Consent of each real person whose likeness or voice is AI-generated or altered, covering the specific use and distribution",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Disclosure/labelling decisions that bear on whether content could mislead as to genuineness",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3774,11 +3890,13 @@
    "evidence": [
     {
      "text": "Consent of each real person whose image or voice is AI-generated",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Where consent is absent, the on-screen statement that the content is AI-generated (or why it is obviously artificial)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3821,11 +3939,13 @@
    "evidence": [
     {
      "text": "Written consent from each real person or performer whose likeness, voice or performance is digitally imitated, covering Denmark",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Consent date and withdrawal handling",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3862,15 +3982,18 @@
    "evidence": [
     {
      "text": "Reference images used as inputs, with their licence/source",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Similarity review of output against reference inputs (framing, perspective, lighting retained or not)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Documented creative decisions (prompts, controls, edits) if protection of the output may be claimed",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -3907,15 +4030,17 @@
    "evidence": [
     {
      "text": "Which music-generation model/provider produced each cue",
-     "check": "manual"
+     "check": "models_recorded"
     },
     {
      "text": "Similarity check of generated music against known works before final mix",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Licence terms and indemnities from the music-generation provider",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -3951,7 +4076,8 @@
    "evidence": [
     {
      "text": "For each model used: provider identity and published training-data summary (links to the Art. 53 record)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -4013,27 +4139,32 @@
    "evidence": [
     {
      "text": "Record that the Netflix contact was notified of GenAI use, with date",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Written Netflix approval (or 'not required' rationale) for each escalated use, linked to the shot",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Tool and model list per shot, with each tool's data terms (no storage, reuse or training) and whether an enterprise environment was used",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Flag for GenAI pixels in the final deliverable versus temp or ideation only",
-     "check": "manual"
+     "check": "final_deliverable"
     },
     {
      "text": "Prompt and reference-input log showing no copyrighted works, public figures or unlicensed likenesses referenced, or the approval if they were",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Talent consent records for any replica or performance alteration",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4094,11 +4225,13 @@
    "evidence": [
     {
      "text": "Per-project written client approval of each AI tool or service used on client content",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Approved AI tool inventory/SBOM entry for every node pack, model, LoRA and API used, with version, source and approval status",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Per-run AI audit log: prompt, model, workflow stage, outputs, operator account, timestamp",
@@ -4106,19 +4239,22 @@
     },
     {
      "text": "Model scan record and checksum for each downloaded model before it entered the content network",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Data-handling terms for any third-party AI API (no training, retention period, tenant isolation)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Written client consent if client content was used to train or fine-tune (e.g. a LoRA trained on plates)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Optional: C2PA manifest for deliverables where the client requires it",
-     "check": "manual"
+     "check": "content_credentials"
     }
    ]
   },
@@ -4180,19 +4316,23 @@
    "evidence": [
     {
      "text": "Record of whether the ad contains AI-generated people, voices or product depictions, and the disclosure decision with rationale",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Substantiation that product depictions are not exaggerated by AI (e.g. untouched reference footage)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Permission records for any real person's likeness or voice",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Human review sign-off for bias and social responsibility",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4260,23 +4400,27 @@
    "evidence": [
     {
      "text": "Per-shot list of AI tools/models used, for the E&O application",
-     "check": "manual"
+     "check": "models_recorded"
     },
     {
      "text": "Human clearance review sign-off per AI-generated element (who, when, what was checked)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Chain of title for inputs: plates, reference images, LoRA training data, music",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Similarity or reverse-image check results for generated elements",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "The studio's written AI usage policy and the version in force for the shot",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -4319,15 +4463,18 @@
    "evidence": [
     {
      "text": "Per-spot flag recording whether a generated human appears and whether it is prominent",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "The exact disclosure wording and its placement on each California deliverable",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "For ads promoting a film or series: note that the synthetic performer matches its use in the work",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4369,11 +4516,13 @@
    "evidence": [
     {
      "text": "Signed consent or licence for any living person's voice or likeness used in ads or merchandise, including AI replicas",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "For employee likeness in marketing, a signed release (the presumption no longer applies after 2027-01-01)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4415,11 +4564,13 @@
    "evidence": [
     {
      "text": "Consent from the depicted individual or rights holder for every real-person replica in a released work",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "For documentary or biographical uses: note why the replica does not create a false impression of authentic participation",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4458,15 +4609,18 @@
    "evidence": [
     {
      "text": "Contract clause with a reasonably specific replica-use description",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Proof of counsel or union representation",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Map of replica-generated shots to the contracted uses",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4507,11 +4661,13 @@
    "evidence": [
     {
      "text": "Consent for any real person whose likeness or voice is synthesized",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Exemption analysis for satire, parody or commentary uses",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4552,7 +4708,7 @@
     },
     {
      "text": "Names of the human authors per work",
-     "check": "manual"
+     "check": "prompt_authorship"
     }
    ]
   },
@@ -4589,11 +4745,13 @@
    "evidence": [
     {
      "text": "Policy prohibiting sexual or intimate generation of real people without consent",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Content-review logs for intimate or nude generations",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4632,11 +4790,13 @@
    "evidence": [
     {
      "text": "Dataset manifest for any studio-trained or fine-tuned model (sources, licences, whether a single creator's work dominates)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Record of crawler compliance with robots.txt and access controls",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -4675,7 +4835,8 @@
    "evidence": [
     {
      "text": "Similarity check against known reference works for hero assets",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Prompt, iteration and edit history showing human creative contribution",
@@ -4683,7 +4844,8 @@
     },
     {
      "text": "Record of models used and their training-data disclosures",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     }
    ]
   },
@@ -4719,7 +4881,8 @@
    "evidence": [
     {
      "text": "None specific; monitor guidelines issued under the Act",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4758,7 +4921,8 @@
    "evidence": [
     {
      "text": "Consent or licence for any voice clone or sound-alike of a real Japanese performer",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4796,11 +4960,13 @@
    "evidence": [
     {
      "text": "Whether the studio acts as an AI business operator for the deliverable (offering an AI product/service) or only as a user",
-     "check": "manual"
+     "check": "manual",
+     "scope": "studio"
     },
     {
      "text": "Labels or watermarks/metadata on AI-generated deliverables released in Korea, and the notice method used for creative works",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     }
    ]
   },
@@ -4838,7 +5004,8 @@
    "evidence": [
     {
      "text": "Per-work breakdown of AI-generated versus human-created portions",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Documentation of the creation process (the guide suggests e.g. screen recordings)",
@@ -4884,23 +5051,28 @@
    "evidence": [
     {
      "text": "Copy of the producer's written AI-use policy as given to crew and to the union",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Per-shot record of which crew member used which AI system, and the producer's consent where required",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Record that the employee disclosed AI use (needed to keep indemnity)",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Signed scan-consent form for any crew likeness capture, stating consent is not a condition of employment",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Consultation requests and responses where AI use was required",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -4945,23 +5117,28 @@
    "evidence": [
     {
      "text": "Dated written GenAI notice to each employee on the show or task",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Consultation request and outcome, including alternatives considered",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Record of AI-generated text supplied to writers and the disclosure given",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Producer AI policy and the employee's disclosure of AI use",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Scan consent for any employee likeness capture",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -5002,23 +5179,28 @@
    "evidence": [
     {
      "text": "Dated replica-creation notice (48 hours) and signed consent per performer, including background and animation performers",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Use description attached to each replica asset",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Time records for replica-creation sessions",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Record of ACTRA negotiation before any synthetic character or voice is used",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     },
     {
      "text": "Upgrade record for background performers altered to speak",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     }
    ]
   },
@@ -5059,19 +5241,23 @@
    "evidence": [
     {
      "text": "48-hour notice and signed consent per performer and background performer",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Estimated-days calculation for replica-replaced performance",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Background count records showing replicas were not used to meet minimums",
-     "check": "manual"
+     "check": "manual",
+     "scope": "shot"
     },
     {
      "text": "Consent and bargaining record for any synthetic built from recognizable features",
-     "check": "manual"
+     "check": "manual",
+     "scope": "show"
     }
    ]
   }
