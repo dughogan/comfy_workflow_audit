@@ -372,7 +372,15 @@ environment only, never ComfyUI settings.
   proxy sets. Entries are then signed with that person's key
   (`person:<user>:<sha12>`), `verify` checks the name matches the key, and a
   request with no signed-in user or no keyring entry is refused. Without a
-  keyring the studio key still applies. **Not yet adversarially reviewed.**
+  keyring the studio key still applies. Adversarially reviewed 2026-10-16
+  (`tests/test_people.py`): the key binds the sign-in *account* (`actor.id`),
+  so renaming someone's display name in the keyring is a note, not damage;
+  studio-key entries are checked against the studio key even while signing
+  as a person, and go unverified (never "Signed") where it is absent; a
+  person removed from the keyring leaves their entries unverified; a
+  doubled sign-in header is refused. **Deployment rule:** the proxy must
+  replace the header, and ComfyUI must be reachable only through it -
+  anyone who can reach ComfyUI directly can name any user.
 - *C2PA* (`6fc6948`, `server/c2pa.py`). At delivery, each final render whose
   bytes still match its recorded fingerprint is signed with c2patool into
   `signed/` in the zip. `COMFYAUDIT_C2PATOOL` (or PATH),

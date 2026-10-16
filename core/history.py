@@ -217,6 +217,9 @@ class Keys:
     #: the name and role each belongs to, from the studio keyring.
     people: dict[str, bytes] = field(default_factory=dict)
     people_names: dict[str, dict[str, str]] = field(default_factory=dict)
+    #: While signing as one person, the studio key kept apart for checking
+    #: entries signed before the switch to personal keys. None otherwise.
+    studio_key: bytes | None = None
 
     def for_person(self, user: str) -> "Keys | None":
         """These keys, signing as one person from the keyring; None if unknown."""
@@ -224,14 +227,14 @@ class Keys:
             if info.get("user") == user:
                 return Keys(sign_key=self.people[kid], key_id=kid, enc_key=self.enc_key,
                             confidentiality=self.confidentiality, people=self.people,
-                            people_names=self.people_names)
+                            people_names=self.people_names, studio_key=self.key_for(""))
         return None
 
     def key_for(self, key_id: str) -> bytes:
         """The key an entry says it was signed with: a person's, else the studio's."""
         if key_id.startswith("person:"):
             return self.people.get(key_id, b"")
-        return self.sign_key
+        return self.sign_key if self.studio_key is None else self.studio_key
 
     @classmethod
     def from_environment(cls, confidentiality: str = "") -> "Keys":
@@ -1125,6 +1128,13 @@ SIGNATURE_SCOPE = ("A signature shows an entry was written through a holder of t
                    "studio key - in ComfyUI, this studio's ComfyAudit server - not "
                    "which person wrote it; names are as each person declared them.")
 
+#: When some entries carry the studio key and others a person's own.
+MIXED_SCOPE = ("Entries signed with a person's own key carry the name the studio's "
+               "sign-in identified, as far as that sign-in can be trusted; entries signed "
+               "with the studio key show only that they were written through a holder of "
+               "that key, with names as each person declared them. The notes list which "
+               "entries each person signed.")
+
 
 @dataclass
 class Verification:
@@ -1218,18 +1228,30 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
             signed.append(i)
             kid = str(e.get("key_id", ""))
             key = keys.key_for(kid)
-            if kid.startswith("person:"):
-                person = keys.people_names.get(kid)
-                if not key:
-                    unknown_signers.add(kid)
-                elif person and (e.get("actor") or {}).get("name") != person["name"]:
-                    v.problems.append(f"entry {i}: names {(e.get('actor') or {}).get('name')!r} "
+            who = e.get("actor") if isinstance(e.get("actor"), dict) else {}
+            if not key:
+                # No key to check it with - never the same as checked.
+                unknown_signers.add("person" if kid.startswith("person:") else "studio")
+            elif kid.startswith("person:"):
+                person = keys.people_names[kid]
+                if who.get("id") and who["id"] != person["user"]:
+                    # The key is bound to the sign-in account, not the display name.
+                    v.problems.append(f"entry {i}: records the account {who['id']!r} but was "
+                                      f"signed with the key of {person['user']!r}")
+                elif not who.get("id") and who.get("name") != person["name"]:
+                    v.problems.append(f"entry {i}: names {who.get('name')!r} "
                                       f"but was signed with {person['name']}'s key")
                 else:
-                    personal.setdefault(person["name"] if person else kid, []).append(i)
-            if key and not hmac.compare_digest(
-                    hmac.new(key, str(e.get("hash", "")).encode("ascii"),
-                             hashlib.sha256).hexdigest(), str(e["sig"])):
+                    if who.get("name") != person["name"]:
+                        v.notes.append(f"entry {i} names {who.get('name')!r}; the studio "
+                                       f"keyring now names that account ({person['user']}) "
+                                       f"{person['name']!r}")
+                    personal.setdefault(person["name"], []).append(i)
+            sig = e["sig"]
+            if key and not (isinstance(sig, str) and hmac.compare_digest(
+                    hmac.new(key, str(e.get("hash", "")).encode("utf-8"),
+                             hashlib.sha256).hexdigest().encode("ascii"),
+                    sig.encode("utf-8"))):
                 bad_sig = True
                 v.problems.append(f"entry {i}: signature does not verify with "
                                   + ("this person's key" if kid.startswith("person:")
@@ -1274,8 +1296,12 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
     if signed and (keys.sign_key or keys.people):
         v.signatures_valid = not bad_sig and not unknown_signers
     if unknown_signers:
-        v.notes.append("some entries were signed with personal keys this check does not "
-                       "hold, so they could not be verified")
+        held = " or ".join(sorted({"person": "a person's key that is not in this studio "
+                                             "keyring", "studio": "the studio key, which "
+                                             "this check does not hold"}[u]
+                                   for u in unknown_signers))
+        v.notes.append(f"some entries were signed with {held}, so their signatures could "
+                       "not be verified")
     if personal:
         v.signers = {name: seqs for name, seqs in personal.items()}
         v.notes.append("signed by each person's own key, with names from the studio's "
@@ -1340,7 +1366,10 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
         v.assurance = "consistency"
         v.assurance_detail = ("Chain intact, but " + (
             "not signed" if v.signed == "no" else
-            "the signatures could not be checked without the studio key") +
+            ("the signatures could not be checked without the studio key"
+             if unknown_signers <= {"studio"} else
+             "some signatures could not be checked without the keys they were made "
+             "with")) +
             ". That catches accidental damage and casual edits; it would not stop "
             "someone who deliberately rebuilt the chain.")
     if v.assurance in ("signed", "witnessed") and not parent_signed:
@@ -1354,9 +1383,16 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
                               "parent record it was forked from is not signed throughout: "
                               "it has not changed since the fork, but what it records is "
                               "unproven. " + SIGNATURE_SCOPE)
-    if personal and v.assurance in ("signed", "witnessed")             and sum(len(x) for x in personal.values()) == len(signed):
-        v.assurance_detail = v.assurance_detail.replace(
-            "with the studio key", "with personal keys").replace(SIGNATURE_SCOPE, PERSONAL_SCOPE)
+    if personal and v.assurance in ("signed", "witnessed"):
+        if sum(len(x) for x in personal.values()) == len(signed):
+            kind, scope = "with personal keys", PERSONAL_SCOPE
+        else:
+            # Studio-key entries carry names as declared; only personal ones
+            # carry the sign-in's name. Say both, and which is which.
+            kind, scope = "with the studio key or a person's own key", MIXED_SCOPE
+        v.assurance_detail = (v.assurance_detail.replace("with the studio key", kind)
+                              .replace("without that key", "without those keys")
+                              .replace(SIGNATURE_SCOPE, scope))
     return v
 
 

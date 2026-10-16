@@ -40,6 +40,24 @@ def keys(cfg: dict[str, Any] | None = None) -> H.Keys:
 TRUSTED_USER_HEADER = "COMFYAUDIT_TRUSTED_USER_HEADER"
 
 
+def signed_in_user(headers: Any) -> str:
+    """The signed-in user from the studio's sign-in header; "" when none came.
+
+    The proxy must set the header itself, replacing anything a client sent,
+    and ComfyUI must only be reachable through it. A header that arrives more
+    than once means a client's value got through alongside the proxy's, and
+    the first copy - which aiohttp would pick - may be the client's.
+    """
+    name = os.environ.get(TRUSTED_USER_HEADER, "")
+    if not name:
+        return ""
+    values = headers.getall(name, [])
+    if len(values) > 1:
+        raise ValueError(f"The sign-in header {name} came more than once, so who is signed "
+                         "in cannot be told. Check that the studio's proxy replaces it.")
+    return str(values[0]).strip() if values else ""
+
+
 def signer(cfg: dict[str, Any], body: dict[str, Any] | None) -> H.Keys:
     """The keys an entry is signed with, and from whom.
 

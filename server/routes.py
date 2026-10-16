@@ -122,10 +122,9 @@ def register() -> bool:
             # Who is signed in comes only from the studio's sign-in proxy, by the
             # header the studio names - never from the request body.
             body.pop("_signed_in_user", None)
-            header = os.environ.get("COMFYAUDIT_TRUSTED_USER_HEADER", "")
-            if header:
-                body["_signed_in_user"] = request.headers.get(header, "")
             try:
+                if os.environ.get(history_service.TRUSTED_USER_HEADER):
+                    body["_signed_in_user"] = history_service.signed_in_user(request.headers)
                 payload = await _run(fn, body)
             except ValueError as exc:
                 return web.json_response({"error": str(exc)}, status=400)
