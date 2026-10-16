@@ -22,6 +22,7 @@
  */
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { PROFILE_FIELDS, profileIsSet, setSetting, saveBlob, downloadPdf } from "./comfyaudit.js";
 
 const PREFIX = "/comfyaudit/history";
 const SIDEBAR_ID = "comfyaudit.history";
@@ -155,7 +156,7 @@ function getSetting(id, fallback) {
 /* State                                                               */
 /* ------------------------------------------------------------------ */
 
-const state = { summary: null, busy: false, error: "", form: null, notice: "" };
+const state = { summary: null, busy: false, error: "", form: null, notice: "", view: "home" };
 let mount = null;
 /** Queued prompts by the server's prompt_id, so each completion finds its own workflow. */
 const jobs = new Map();
@@ -440,14 +441,10 @@ function openDocument(title, html, filename) {
   closeOverlay();
   const iframe = h("iframe", { style: { width: "100%", height: "100%", border: "0", flex: "1 1 auto", background: "#fff" } });
   iframe.srcdoc = html;
-  const save = () => {
-    const a = h("a", { href: URL.createObjectURL(new Blob([html], { type: "text/html" })), download: filename });
-    document.body.append(a); a.click(); a.remove();
-  };
-  const print = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) { console.warn(e); } };
+  const save = () => saveBlob(html, "text/html", filename);
   const bar = h("div", { style: { display: "flex", gap: "8px", alignItems: "center", padding: "10px 14px", borderBottom: `1px solid ${UI.line}` } },
     h("strong", { style: { fontSize: "13px" } }, title), h("div", { style: { flex: "1" } }),
-    btn("PDF", print), btn("HTML", save), btn("Close", closeOverlay));
+    btn("PDF", () => downloadPdf(html, filename.replace(/\.html$/i, ""))), btn("HTML", save), btn("Close", closeOverlay));
   overlay = h("div", {
     style: { position: "fixed", inset: "0", background: "rgba(0,0,0,.6)", zIndex: "10000", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" },
     onclick: (e) => { if (e.target === overlay) closeOverlay(); },
@@ -458,7 +455,7 @@ function openDocument(title, html, filename) {
 async function openRecord() {
   await act(async () => {
     const data = await post("record", { workflow: app.graph.serialize() });
-    openDocument(`${graphName()} - provenance record`, data.html, `${graphName()}.provenance.html`);
+    openDocument(`${shotName()} - provenance record`, data.html, `${shotName()}.provenance.html`);
   });
 }
 
@@ -469,76 +466,421 @@ async function openGuide() {
   });
 }
 
-async function exportManifest() {
-  await act(async () => {
-    const data = await post("manifest", { workflow: app.graph.serialize(), title: graphName() });
-    const a = h("a", { href: URL.createObjectURL(new Blob([JSON.stringify(data.manifest, null, 2)], { type: "application/json" })), download: `${graphName()}.c2pa.json` });
-    document.body.append(a); a.click(); a.remove();
-  });
+function shotName() {
+  return state.summary?.shot?.name || shotDefaultName();
 }
 
 /* ------------------------------------------------------------------ */
-/* Forms                                                               */
+/* Shot details                                                        */
 /* ------------------------------------------------------------------ */
 
-const FORMS = {
-  reviewed: { title: "Record a review", hint: "What you looked at and what you asked for. Feedback is part of the creative record.", note: true },
-  approved: { title: "Approve the output", hint: "Your sign-off on the current render. Name what it was approved for.", note: true },
-  rejected: { title: "Reject the output", hint: "Why it was not used.", note: true },
-  note: { title: "Add a note", hint: "Intent, a decision, or evidence for a rule. To attest evidence, enter the rule id shown in the provenance record.", note: true, evidence: true },
-  handoff: { title: "Take over the shot", hint: "Record that responsibility moved to you.", note: true },
-  sourced: { title: "Declare a source", hint: "Where an input image, plate or clip came from.", source: true, note: true },
-  promoted: { title: "Change stage", hint: "Sandbox work never ships. Moving to production is where clearance starts.", stage: true, note: true },
-  details: { title: "Shot details", hint: "Tracking started under the file name. Name the shot and link it to your tracking system; the change is recorded, and earlier entries keep what they sealed.", details: true },
-};
-
-function formView() {
+/* Everything else in the record is captured on its own. The shot's name and
+ * its ID in the studio's tracking system are the two things only a person
+ * knows, so they are the one form outside the delivery flow. */
+function detailsForm() {
   const f = state.form;
-  const spec = FORMS[f.event];
   const s = state.summary || {};
-  const wrap = h("div", { style: { border: `1px solid ${UI.line}`, borderRadius: "6px", padding: "12px", margin: "12px 0" } },
-    h("div", { style: { fontWeight: "600", marginBottom: "4px" } }, spec.title),
-    h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "10px", lineHeight: "1.45" } }, spec.hint));
-  if (spec.source) {
-    const nodes = (s.sources || []).map((x) => [x.node, `node ${x.node}${x.origin ? " - " + x.origin : " - undeclared"}`]);
-    if (!f.node && nodes.length) f.node = nodes[0][0];
-    wrap.append(label("Input", nodes.length ? choose(nodes, f.node, (v) => { f.node = v; }) : h("div", { style: { color: UI.dim, fontSize: "12px" } }, "No supplied inputs in this graph.")));
-    wrap.append(label("Origin", choose(Object.entries(s.origins || {}), f.origin || "artist", (v) => { f.origin = v; })));
-    wrap.append(label("Asset ID", input(f.asset_id, (v) => { f.asset_id = v; }, "e.g. ShotGrid Version 88213")));
-    wrap.append(label("Owner / rights holder", input(f.owner, (v) => { f.owner = v; }, "optional")));
-  }
-  if (spec.details) {
-    const shot = s.shot || {};
-    const ids = Object.entries(shot.external_ids || {});
-    if (f.name === undefined) f.name = shot.name || "";
-    if (f.project === undefined) f.project = shot.project || "";
-    if (f.system === undefined) f.system = ids[0]?.[0] || "shotgrid";
-    if (f.asset === undefined) f.asset = ids[0]?.[1] || "";
-    wrap.append(label("Shot name", input(f.name, (v) => { f.name = v; })));
-    wrap.append(label("Project / show", input(f.project, (v) => { f.project = v; }, "optional")));
-    wrap.append(label("Studio asset ID", h("div", { style: { display: "flex", gap: "6px" } },
-      choose([["shotgrid", "ShotGrid"], ["ftrack", "ftrack"], ["sparky", "Sparky"], ["other", "Other"]], f.system, (v) => { f.system = v; }),
-      input(f.asset, (v) => { f.asset = v; }, "e.g. Shot 4411"))));
-  }
-  if (spec.stage) {
-    wrap.append(label("Move to", choose((s.stages || []).map((x) => [x, x]), f.stage || "production", (v) => { f.stage = v; })));
-  }
-  if (spec.evidence) wrap.append(label("Evidence for rule (optional)", input(f.evidence, (v) => { f.evidence = v; }, "rule-id:item, e.g. eu-ai-act-art50-4-deployer-deepfake:1")));
-  if (spec.note) wrap.append(label("Note", input(f.note, (v) => { f.note = v; }, "", true)));
+  const shot = s.shot || {};
+  const ids = Object.entries(shot.external_ids || {});
+  if (f.name === undefined) f.name = shot.name || "";
+  if (f.project === undefined) f.project = shot.project || "";
+  if (f.system === undefined) f.system = ids[0]?.[0] || "shotgrid";
+  if (f.asset === undefined) f.asset = ids[0]?.[1] || "";
   const submit = () => act(async () => {
-    const data = {};
-    if (spec.source) Object.assign(data, { node: f.node, origin: f.origin || "artist", asset_id: f.asset_id || "", owner: f.owner || "" });
-    if (spec.stage) data.stage = f.stage || "production";
-    if (spec.evidence && f.evidence) data.evidence = f.evidence.trim();
-    if (spec.details) {
-      const ids = f.asset ? { [f.system || "shotgrid"]: f.asset.trim() } : {};
-      await stamp("note", { note: "Shot details updated", name: f.name || shotDefaultName(),
-        project: f.project || "", external_ids: ids, rename: true });
-      return;
-    }
-    await stamp(f.event, { note: f.note || "", data });
+    const extIds = f.asset ? { [f.system || "shotgrid"]: f.asset.trim() } : {};
+    await stamp("note", { note: "Shot details updated", name: f.name || shotDefaultName(),
+      project: f.project || "", external_ids: extIds, rename: true });
   });
-  wrap.append(h("div", { style: { display: "flex", gap: "8px" } }, btn("Record", submit, "primary"), btn("Cancel", () => { state.form = null; rerender(); })));
+  return h("div", { style: { border: `1px solid ${UI.line}`, borderRadius: "6px", padding: "12px", margin: "10px 0" } },
+    h("div", { style: { fontWeight: "600", marginBottom: "4px" } }, "Shot details"),
+    h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "10px", lineHeight: "1.45" } },
+      "Tracking started under the file name. Name the shot and link it to your tracking system; earlier entries keep what they sealed."),
+    label("Shot name", input(f.name, (v) => { f.name = v; })),
+    label("Project / show", input(f.project, (v) => { f.project = v; }, "optional")),
+    label("Studio asset ID", h("div", { style: { display: "flex", gap: "6px" } },
+      choose([["shotgrid", "ShotGrid"], ["ftrack", "ftrack"], ["sparky", "Sparky"], ["other", "Other"]], f.system, (v) => { f.system = v; }),
+      input(f.asset, (v) => { f.asset = v; }, "e.g. Shot 4411"))),
+    h("div", { style: { display: "flex", gap: "8px" } },
+      btn("Save", submit, "primary"), btn("Cancel", () => { state.form = null; rerender(); })));
+}
+
+/* ------------------------------------------------------------------ */
+/* Everyday view                                                       */
+/* ------------------------------------------------------------------ */
+
+const COMMERCIAL = {
+  cleared: ["Commercial OK", TONE.ok],
+  conditional: ["Conditions apply", TONE.warn],
+  unknown: ["Licence unclear", TONE.warn],
+  blocked: ["Not cleared", TONE.stop],
+  none: ["No models yet", TONE.flat],
+};
+const VERDICT_TONE = { go: TONE.ok, conditions: TONE.warn, "no-go": TONE.stop, unknown: TONE.flat };
+
+function when(at) {
+  return String(at || "").slice(0, 16).replace("T", " ");
+}
+
+function flagCard(change, tone, title) {
+  const models = (change.models || []).map((m) => `${m.filename} (${m.licence || "licence unknown"})`);
+  const cause = [
+    ...(change.added || []).map((f) => `added ${f}`),
+    ...(change.removed || []).map((f) => `removed ${f}`),
+  ];
+  return h("div", { style: { fontSize: "12px", lineHeight: "1.5", padding: "8px 10px", borderLeft: `3px solid ${tone}`, background: "rgba(255,255,255,.03)", margin: "0 0 8px" } },
+    h("div", { style: { fontWeight: "600", color: tone } }, title),
+    h("div", { style: { color: UI.dim, fontSize: "11px" } },
+      `${when(change.at)} - entry ${change.seq}${change.by ? ` - ${change.by}` : ""}${cause.length ? ` - ${cause.join(", ")}` : ""}`),
+    models.length ? h("div", { style: { marginTop: "3px" } }, models.join("; ")) : null);
+}
+
+function homeView(s) {
+  const wrap = h("div", {});
+  const [aLabel, aTone] = ASSURANCE[s.assurance] || ["?", TONE.flat];
+  const commercial = s.commercial || { status: "none", changes: [] };
+  const [cLabel, cTone] = COMMERCIAL[commercial.status] || COMMERCIAL.none;
+  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", marginBottom: "8px" } },
+    pill(s.shot?.stage || "sandbox", s.shot?.stage === "sandbox" ? TONE.flat : TONE.accent),
+    pill(cLabel, cTone),
+    pill(aLabel, aTone)));
+  const ids = Object.entries(s.shot?.external_ids || {});
+  wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "10px" } },
+    ids.length ? ids.map(([k, v]) => `${k} ${v}`).join(" - ") : "Not linked to a studio asset ID",
+    " - ", h("a", { href: "#", style: { color: UI.dim }, onclick: (e) => { e.preventDefault(); state.form = {}; rerender(); } }, "edit")));
+  if (state.form) wrap.append(detailsForm());
+  for (const p of s.problems || []) wrap.append(h("div", { style: { fontSize: "12px", color: TONE.stop, marginBottom: "4px" } }, p));
+
+  // Where the shot stands on commercial use, and since when.
+  const since = commercial.since;
+  if (since && commercial.status === "blocked") {
+    wrap.append(flagCard(since, TONE.stop, "Not cleared for commercial use"));
+  } else if (since && commercial.status === "unknown") {
+    wrap.append(flagCard(since, TONE.warn, "A licence here is unclear"));
+  }
+  if (s.clearance) {
+    const c = s.clearance;
+    wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", padding: "8px 10px", borderLeft: `3px solid ${VERDICT_TONE[c.verdict] || TONE.flat}`, margin: "0 0 8px" } },
+      h("div", { style: { fontWeight: "600" } }, `Signed off: ${c.verdict_label || c.verdict}`),
+      h("div", { style: { color: UI.dim, fontSize: "11px" } }, `${when(c.at)} - ${c.by}${c.exception ? " - delivered as an exception" : ""}`)));
+  }
+
+  wrap.append(h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", margin: "10px 0" } },
+    stat(s.entries, "entries"), stat(s.people?.length || 0, "people"),
+    stat(s.human_steps, "human decisions"), stat(s.renders, "model runs")));
+
+  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", margin: "4px 0 6px" } },
+    btn("Package for delivery", openPackage, "primary"), btn("Provenance record", openRecord)));
+
+  if ((commercial.changes || []).length > 1) {
+    wrap.append(caption("Commercial standing over time"));
+    for (const c of [...commercial.changes].reverse()) {
+      const [l, t] = COMMERCIAL[c.status] || COMMERCIAL.none;
+      wrap.append(flagCard(c, t, l));
+    }
+  }
+
+  wrap.append(caption("Life of the shot"));
+  for (const r of s.recent || []) {
+    wrap.append(h("div", { style: { fontSize: "12px", padding: "6px 0", borderBottom: `1px solid ${UI.line}` } },
+      h("div", {}, h("strong", {}, `#${r.seq} ${r.label}`)),
+      h("div", { style: { color: UI.dim, fontSize: "11px" } }, `${r.who} - ${when(r.at)}`),
+      r.note ? h("div", { style: { fontStyle: "italic", marginTop: "2px" } }, `"${r.note}"`) : null));
+  }
+  if (!getSetting("ComfyAudit.History.UserName", "")) {
+    wrap.append(h("div", { style: { fontSize: "11.5px", color: TONE.warn, margin: "10px 0", lineHeight: "1.45" } },
+      "Set your name in Settings > ComfyAudit > Shot history, or entries are recorded under your computer account."));
+  }
+  return wrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Package for delivery                                                */
+/* ------------------------------------------------------------------ */
+
+/* Check -> make it safe -> sign off -> deliver. The audit runs on the server,
+ * and runs again at sign-off, so the verdict sealed into the history is never
+ * one the browser supplied. */
+const pkg = { step: "profile", result: null, error: "", note: "", exception: "", out: null, open: {} };
+
+/* Production facts the rules turn on, asked once alongside the studio profile. */
+const DELIVERY_FACTS = [
+  "ComfyAudit.History.DistributeIn", "ComfyAudit.History.FeatureFilm",
+  "ComfyAudit.History.UnionProduction", "ComfyAudit.History.UnionCrew",
+  "ComfyAudit.History.TPNVendor", "ComfyAudit.History.Clients",
+];
+
+function openPackage() {
+  state.view = "package";
+  state.form = null;
+  pkg.error = "";
+  pkg.out = null;
+  if (profileIsSet()) runCheck();
+  else { pkg.step = "profile"; rerender(); }
+}
+
+function leavePackage() {
+  state.view = "home";
+  rerender();
+  refresh();
+}
+
+async function runCheck() {
+  pkg.step = "checking";
+  rerender();
+  try {
+    pkg.result = await post("check", { workflow: app.graph.serialize(), name: shotName() });
+    pkg.step = "fix";
+  } catch (e) {
+    pkg.error = e.message;
+    pkg.step = "error";
+  }
+  rerender();
+}
+
+async function deliverNow() {
+  pkg.step = "delivering";
+  pkg.error = "";
+  rerender();
+  const graph = app.graph;
+  graph.extra = graph.extra || {};
+  const owner = graph.extra;
+  try {
+    const out = await post("deliver", { workflow: graph.serialize(), name: shotName(),
+      note: pkg.note, exception: pkg.exception });
+    if (app.graph === graph && graph.extra === owner) {
+      owner[EXTRA_KEY] = out.history;
+      markDirty();
+    }
+    state.summary = out.summary;
+    pkg.out = out;
+    pkg.step = "done";
+    downloadZip(out);
+  } catch (e) {
+    pkg.error = e.message;
+    pkg.step = "signoff";
+  }
+  rerender();
+}
+
+function downloadZip(out) {
+  const bytes = Uint8Array.from(atob(out.zip_b64), (c) => c.charCodeAt(0));
+  const a = h("a", { href: URL.createObjectURL(new Blob([bytes], { type: "application/zip" })), download: out.zip_name });
+  document.body.append(a); a.click(); a.remove();
+}
+
+function stepsBar() {
+  const order = [["check", "Check"], ["fix", "Make it safe"], ["signoff", "Sign off"], ["done", "Deliver"]];
+  const at = { profile: "check", checking: "check", error: "check", fix: "fix", signoff: "signoff", delivering: "done", done: "done" }[pkg.step];
+  const idx = order.findIndex(([k]) => k === at);
+  return h("div", { style: { display: "flex", gap: "4px", flexWrap: "wrap", margin: "0 0 12px" } },
+    order.map(([k, l], i) => h("span", { style: {
+      font: "600 10px/1 ui-monospace, monospace", letterSpacing: ".06em", textTransform: "uppercase",
+      padding: "4px 7px", borderRadius: "4px", border: `1px solid ${i === idx ? "transparent" : UI.line}`,
+      background: i === idx ? "var(--p-primary-color, #4a7ec4)" : "transparent",
+      color: i === idx ? "#fff" : i < idx ? UI.fg : UI.dim } }, l)));
+}
+
+function settingControl(id) {
+  const spec = PROFILE_FIELDS.find((f) => f.id === id) || SETTINGS.find((f) => f.id === id);
+  const value = getSetting(id, spec.defaultValue);
+  const save = async (v) => { await setSetting(id, v); rerender(); };
+  if (spec.type === "combo") {
+    const opts = (spec.options || []).map((o) => (typeof o === "string" ? [o, o] : [o.value, o.text]));
+    return label(spec.name, choose(opts, value, save));
+  }
+  if (spec.type === "boolean") {
+    const box = h("input", { type: "checkbox" });
+    box.checked = !!value;
+    box.onchange = (e) => save(e.target.checked);
+    return h("label", { style: { display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px", fontSize: "12px", cursor: "pointer" } }, box, spec.name);
+  }
+  const el = input(value, () => {}, spec.tooltip ? "" : "");
+  el.onchange = (e) => save(e.target.value);
+  return label(spec.name, el);
+}
+
+function profileStep() {
+  const wrap = h("div", {});
+  wrap.append(h("div", { style: { fontSize: "12px", color: UI.dim, lineHeight: "1.5", marginBottom: "10px" } },
+    "Who is delivering this, and where it goes. Licences grant rights to particular people in particular places, and these facts decide which rules apply. Asked once; saved in ComfyUI's settings."));
+  for (const f of PROFILE_FIELDS) wrap.append(settingControl(f.id));
+  wrap.append(caption("This production"));
+  for (const id of DELIVERY_FACTS) wrap.append(settingControl(id));
+  wrap.append(h("div", { style: { display: "flex", gap: "8px", marginTop: "8px" } },
+    btn("Run check", runCheck, "primary"), btn("Cancel", leavePackage)));
+  return wrap;
+}
+
+function fixCard(f) {
+  const tone = VERDICT_TONE[f.verdict] || TONE.flat;
+  return h("div", { style: { border: `1px solid ${UI.line}`, borderLeft: `3px solid ${tone}`, borderRadius: "5px", padding: "8px 10px", margin: "0 0 8px", fontSize: "12px", lineHeight: "1.5" } },
+    h("div", { style: { display: "flex", gap: "6px", alignItems: "center", marginBottom: "3px", flexWrap: "wrap" } },
+      pill(f.verdict === "no-go" ? "blocks delivery" : f.verdict === "conditions" ? "condition" : "unclear", tone),
+      f.action_label ? h("span", { style: { fontSize: "11px", color: UI.dim } }, f.action_label) : null),
+    h("div", {}, f.problem),
+    f.remedy ? h("div", { style: { marginTop: "4px" } }, h("strong", {}, "Fix: "), f.remedy) : null,
+    (f.alternatives || []).length ? h("div", { style: { marginTop: "6px" } },
+      h("strong", {}, "Or swap for a model licensed for commercial use:"),
+      f.alternatives.map((a) => h("div", { style: { marginTop: "3px", paddingLeft: "8px", borderLeft: `2px solid ${a.installed ? TONE.ok : UI.line}` }, title: a.note || "" },
+        h("div", {}, a.name, a.installed ? h("span", { style: { color: TONE.ok } }, ` - installed as ${a.filename}`) : h("span", { style: { color: UI.dim } }, " - not installed")),
+        h("div", { style: { color: UI.dim, fontSize: "11px" } }, `${a.licence}${a.commercial_use === "conditional" ? " (with conditions)" : ""}. ${a.note || ""}`)))) : null,
+    h("div", { style: { marginTop: "4px", font: "11px/1.4 ui-monospace, monospace", color: UI.dim, wordBreak: "break-all" } }, f.subjects.join(", ")),
+    f.url ? h("a", { href: f.url, target: "_blank", rel: "noopener", style: { fontSize: "11px", color: UI.dim } }, "Licence terms") : null);
+}
+
+function nodeLabel(id) {
+  const node = app.graph?._nodes?.find((n) => String(n.id) === String(id));
+  const file = node?.widgets?.find((w) => typeof w.value === "string" && /\.\w{2,5}$/.test(w.value))?.value;
+  return `${node?.title || node?.type || "node"} ${id}${file ? ` - ${file}` : ""}`;
+}
+
+function sourceRow(src) {
+  const key = `src:${src.node}`;
+  const f = pkg.open[key] || (pkg.open[key] = { origin: "photographed", asset_id: src.asset_id || "" });
+  const origins = Object.entries(state.summary?.origins || {}).filter(([k]) => k !== "unknown");
+  return h("div", { style: { border: `1px solid ${UI.line}`, borderRadius: "5px", padding: "8px 10px", margin: "0 0 8px", fontSize: "12px" } },
+    h("div", { style: { marginBottom: "6px" } }, nodeLabel(src.node)),
+    h("div", { style: { display: "flex", gap: "6px", marginBottom: "6px" } },
+      choose(origins.map(([k, v]) => [k, typeof v === "string" ? v : k]), f.origin, (v) => { f.origin = v; }),
+      input(f.asset_id, (v) => { f.asset_id = v; }, "Asset ID (optional)")),
+    btn("Record origin", () => act(async () => {
+      await stamp("sourced", { data: { node: src.node, origin: f.origin, asset_id: f.asset_id || "" } });
+      await runCheck();
+    })));
+}
+
+function confirmationRule(rule) {
+  const box = h("details", { style: { border: `1px solid ${UI.line}`, borderRadius: "5px", padding: "6px 10px", margin: "0 0 6px", fontSize: "12px" } },
+    h("summary", { style: { cursor: "pointer", lineHeight: "1.45" } }, `${rule.title} `,
+      h("span", { style: { color: UI.dim, fontSize: "11px" } }, `${rule.jurisdiction} - ${rule.items.length}`)));
+  for (const item of rule.items) {
+    const f = pkg.open[item.tag] || (pkg.open[item.tag] = { note: "", open: false });
+    const row = h("div", { style: { padding: "6px 0", borderTop: `1px solid ${UI.line}`, lineHeight: "1.45" } }, item.text);
+    if (f.open) {
+      row.append(input(f.note, (v) => { f.note = v; }, "What confirms it, e.g. client email of 14 Oct", true));
+      row.append(h("div", { style: { display: "flex", gap: "6px", marginTop: "6px" } },
+        btn("Record", () => act(async () => {
+          if (!f.note.trim()) throw new Error("Say what confirms it; a blank confirmation proves nothing.");
+          await stamp("note", { note: f.note.trim(), data: { evidence: item.tag } });
+          await runCheck();
+        }), "primary"),
+        btn("Cancel", () => { f.open = false; rerender(); })));
+    } else {
+      row.append(h("div", { style: { marginTop: "4px" } }, btn("Confirm", () => { f.open = true; rerender(); })));
+    }
+    box.append(row);
+  }
+  return box;
+}
+
+function verdictBox(r) {
+  const tone = VERDICT_TONE[r.verdict] || TONE.flat;
+  return h("div", { style: { border: `1px solid ${tone}`, borderRadius: "6px", padding: "10px 12px", margin: "0 0 12px" } },
+    h("div", { style: { marginBottom: "6px" } }, pill(r.verdict_label || r.verdict, tone)),
+    h("div", { style: { fontSize: "12px", lineHeight: "1.55" } }, r.headline || "No determination was made."),
+    r.profile ? h("div", { style: { fontSize: "11px", color: UI.dim, marginTop: "6px" } }, `Checked as: ${r.profile} - `,
+      h("a", { href: "#", style: { color: UI.dim }, onclick: (e) => { e.preventDefault(); pkg.step = "profile"; rerender(); } }, "change")) : null,
+    (r.missing_facts || []).length ? h("div", { style: { fontSize: "11px", color: UI.dim, marginTop: "6px" } },
+      `Missing: ${r.missing_facts.join(" ")} `,
+      h("a", { href: "#", style: { color: UI.dim }, onclick: (e) => { e.preventDefault(); pkg.step = "profile"; rerender(); } }, "set the studio profile")) : null);
+}
+
+function fixStep() {
+  const r = pkg.result || {};
+  const wrap = h("div", {});
+  wrap.append(verdictBox(r));
+  const fixes = r.fixes || [];
+  wrap.append(caption(fixes.length ? `To make it commercially safe (${fixes.length})` : "Nothing to fix in the licences"));
+  for (const f of fixes) wrap.append(fixCard(f));
+  if ((r.sources || []).length) {
+    wrap.append(caption("Where did these inputs come from?"));
+    wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "8px", lineHeight: "1.45" } },
+      "Human-made material that stays in the frame is the strongest evidence of authorship. Only you know where a plate came from."));
+    for (const src of r.sources) wrap.append(sourceRow(src));
+  }
+  if ((r.confirmations || []).length) {
+    wrap.append(caption(`For legal to confirm (${r.confirmations.length} rules)`));
+    wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "8px", lineHeight: "1.45" } },
+      "Things only a person can attest: an approval received, a disclosure placed. Each one is recorded in the history."));
+    for (const rule of r.confirmations) wrap.append(confirmationRule(rule));
+  }
+  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "10px" } },
+    btn("Continue to sign-off", () => { pkg.step = "signoff"; rerender(); }, "primary"),
+    btn("Re-check", runCheck),
+    r.audit_html ? btn("Clearance sheet", () => openDocument(`${shotName()} - clearance sheet`, r.audit_html, `${shotName()}.clearance-sheet.html`)) : null,
+    btn("Back", leavePackage)));
+  return wrap;
+}
+
+function signoffStep() {
+  const r = pkg.result || {};
+  const needsException = r.verdict === "no-go" || r.verdict === "unknown";
+  const wrap = h("div", {});
+  wrap.append(verdictBox(r));
+  const who = getSetting("ComfyAudit.History.UserName", "");
+  const role = getSetting("ComfyAudit.History.Role", "");
+  wrap.append(h("div", { style: { fontSize: "12px", marginBottom: "10px", lineHeight: "1.5" } },
+    "Signing off as ", h("strong", {}, who || "your computer account"), role ? ` (${role})` : "",
+    ". The audit runs again on the server and its verdict is sealed into the history with your sign-off."));
+  if (!who) wrap.append(h("div", { style: { fontSize: "11.5px", color: TONE.warn, marginBottom: "8px" } },
+    "Set your name in Settings > ComfyAudit > Shot history so legal can see who signed off."));
+  wrap.append(label("Approved for", input(pkg.note, (v) => { pkg.note = v; }, "e.g. Final delivery, reel 3", true)));
+  if (needsException) {
+    wrap.append(h("div", { style: { fontSize: "12px", color: TONE.stop, margin: "4px 0 6px", lineHeight: "1.45" } },
+      r.verdict === "no-go"
+        ? "The audit says this cannot be used commercially as it stands. To deliver anyway, record why. The reason is sealed with your sign-off and shown to legal."
+        : "The audit could not reach a verdict. To deliver anyway, record why. The reason is sealed with your sign-off and shown to legal."));
+    wrap.append(label("Reason for delivering anyway", input(pkg.exception, (v) => { pkg.exception = v; }, "", true)));
+  }
+  if (pkg.error) wrap.append(h("div", { style: { color: TONE.stop, fontSize: "12px", margin: "6px 0" } }, pkg.error));
+  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" } },
+    btn("Sign off and package", deliverNow, "primary"),
+    btn("Back", () => { pkg.step = "fix"; rerender(); })));
+  return wrap;
+}
+
+function doneStep() {
+  const out = pkg.out || {};
+  const c = out.summary?.clearance || {};
+  const tone = VERDICT_TONE[c.verdict] || TONE.flat;
+  const slug = (out.zip_name || "shot.delivery.zip").replace(/\.delivery\.zip$/, "");
+  const wrap = h("div", {});
+  wrap.append(h("div", { style: { display: "flex", gap: "6px", marginBottom: "8px", flexWrap: "wrap" } },
+    pill("delivered", TONE.accent), pill(c.verdict_label || c.verdict || "", tone),
+    pill((ASSURANCE[out.summary?.assurance] || ["?"])[0], (ASSURANCE[out.summary?.assurance] || [0, TONE.flat])[1])));
+  wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", marginBottom: "10px" } },
+    `Signed off by ${c.by || "you"} and sealed into the history. Save the workflow so the delivered history goes with the file.`));
+  wrap.append(caption("The package"));
+  for (const [file, what] of [
+    [`${slug}.json`, "The workflow, with its history, the verdict and the sign-off sealed in"],
+    [`${slug}.legal-report.html`, "For legal: clearance, provenance, rules checklist"],
+    [`${slug}.clearance-sheet.html`, "The full licence and risk audit"],
+    [`${slug}.c2pa.json`, "C2PA manifest definition, ready to sign and embed"],
+  ]) {
+    wrap.append(h("div", { style: { fontSize: "12px", padding: "6px 0", borderBottom: `1px solid ${UI.line}` } },
+      h("div", { style: { fontWeight: "600" } }, file), h("div", { style: { color: UI.dim, fontSize: "11px" } }, what)));
+  }
+  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "10px" } },
+    btn("Download package", () => downloadZip(out), "primary"),
+    btn("Legal report", () => openDocument(`${shotName()} - legal report`, out.report_html, `${slug}.legal-report.html`)),
+    btn("Back to the shot", leavePackage)));
+  return wrap;
+}
+
+function packageView() {
+  const wrap = h("div", {});
+  wrap.append(stepsBar());
+  if (pkg.step === "profile") wrap.append(profileStep());
+  else if (pkg.step === "checking") wrap.append(h("div", { style: { fontSize: "12px", color: UI.dim, lineHeight: "1.6" } },
+    "Reading the graph, resolving every model and node pack against the licence knowledge base, and checking the rules that apply to this production."));
+  else if (pkg.step === "error") wrap.append(h("div", {},
+    h("div", { style: { color: TONE.stop, fontSize: "12px", whiteSpace: "pre-wrap", marginBottom: "10px" } }, pkg.error),
+    h("div", { style: { display: "flex", gap: "6px" } }, btn("Try again", runCheck, "primary"), btn("Back", leavePackage))));
+  else if (pkg.step === "fix") wrap.append(fixStep());
+  else if (pkg.step === "signoff") wrap.append(signoffStep());
+  else if (pkg.step === "delivering") wrap.append(h("div", { style: { fontSize: "12px", color: UI.dim } },
+    "Re-checking, sealing the sign-off into the history and building the package..."));
+  else if (pkg.step === "done") wrap.append(doneStep());
   return wrap;
 }
 
@@ -547,77 +889,10 @@ function formView() {
 /* ------------------------------------------------------------------ */
 
 function startView() {
-  const f = state.form || (state.form = { event: "start", name: graphName() });
   const wrap = h("div", {});
   wrap.append(h("p", { style: { color: UI.dim, fontSize: "12px", lineHeight: "1.55", margin: "0 0 12px" } },
-    "Shot history records who made this workflow, every substantive change, the models "
-    + "and prompts behind each render, and every point where a person made the call. "
-    + "It is stored inside the workflow and signed, so it travels with the file and "
-    + "into every image it renders."));
-  wrap.append(label("Shot name", input(f.name, (v) => { f.name = v; })));
-  wrap.append(label("Project / show", input(f.project, (v) => { f.project = v; }, "optional")));
-  wrap.append(label("Studio asset ID", h("div", { style: { display: "flex", gap: "6px" } },
-    choose([["shotgrid", "ShotGrid"], ["ftrack", "ftrack"], ["sparky", "Sparky"], ["other", "Other"]], f.system || "shotgrid", (v) => { f.system = v; }),
-    input(f.asset, (v) => { f.asset = v; }, "e.g. Shot 4411"))));
-  wrap.append(h("div", { style: { fontSize: "11px", color: UI.dim, margin: "-4px 0 12px", lineHeight: "1.45" } },
-    "Provenance should start where the asset was born. Linking the ID ties this record to your tracking system."));
-  wrap.append(h("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap" } },
-    btn("Start tracking (new work)", () => act(() => stamp("created", startPayload(f))), "primary"),
-    btn("Track existing workflow", () => act(() => stamp("imported", startPayload(f))))));
-  return wrap;
-}
-
-function startPayload(f) {
-  const ids = f.asset ? { [f.system || "shotgrid"]: f.asset } : {};
-  return { name: f.name || graphName(), project: f.project || "", external_ids: ids };
-}
-
-function trackedView(s) {
-  const wrap = h("div", {});
-  const [aLabel, aTone] = ASSURANCE[s.assurance] || ["?", TONE.flat];
-  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center", marginBottom: "8px" } },
-    pill(s.shot?.stage || "sandbox", s.shot?.stage === "sandbox" ? TONE.flat : TONE.accent),
-    pill(aLabel, aTone),
-    ...Object.entries(s.shot?.external_ids || {}).map(([k, v]) => h("span", { style: { fontSize: "11px", color: UI.dim } }, `${k} ${v}`))));
-  wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, lineHeight: "1.45", marginBottom: "10px" } }, s.assurance_detail));
-  for (const p of s.problems || []) wrap.append(h("div", { style: { fontSize: "12px", color: TONE.stop, marginBottom: "4px" } }, p));
-  for (const n of s.notes || []) wrap.append(h("div", { style: { fontSize: "12px", color: TONE.warn, marginBottom: "4px" } }, n));
-
-  wrap.append(h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", margin: "10px 0" } },
-    stat(s.entries, "entries"), stat(s.people?.length || 0, "people"),
-    stat(s.human_steps, "human decisions"), stat(s.renders, "model runs")));
-
-  if (!getSetting("ComfyAudit.History.UserName", "")) {
-    wrap.append(h("div", { style: { fontSize: "12px", color: TONE.warn, margin: "6px 0", lineHeight: "1.45" } },
-      "Set your name in Settings > ComfyAudit > Shot history, or entries are recorded under your computer account."));
-  }
-
-  if (state.form) wrap.append(formView());
-  else {
-    wrap.append(caption("Record a human step"));
-    const row = h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap" } });
-    for (const [event, text] of [["details", "Shot details"], ["reviewed", "Review"], ["approved", "Approve"], ["rejected", "Reject"], ["sourced", "Declare source"], ["promoted", "Change stage"], ["note", "Note / evidence"], ["handoff", "Take over"]]) {
-      row.append(btn(text, () => { state.form = { event }; rerender(); }, event === "approved" ? "primary" : "ghost"));
-    }
-    wrap.append(row);
-  }
-
-  if (s.gaps?.length) {
-    wrap.append(caption("Gaps legal will ask about"));
-    for (const g of s.gaps) wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.45", padding: "7px 9px", borderLeft: `3px solid ${TONE.warn}`, margin: "0 0 6px", background: "rgba(192,138,46,.08)" } }, g));
-  }
-
-  wrap.append(caption("Recent"));
-  for (const r of s.recent || []) {
-    wrap.append(h("div", { style: { fontSize: "12px", padding: "6px 0", borderBottom: `1px solid ${UI.line}` } },
-      h("div", {}, h("strong", {}, `#${r.seq} ${r.label}`)),
-      h("div", { style: { color: UI.dim, fontSize: "11px" } }, `${r.who} - ${r.at.slice(0, 16).replace("T", " ")}`),
-      r.note ? h("div", { style: { fontStyle: "italic", marginTop: "2px" } }, `"${r.note}"`) : null));
-  }
-
-  wrap.append(caption("Documents"));
-  wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap" } },
-    btn("Provenance record", openRecord, "primary"), btn("C2PA manifest", exportManifest), btn("Licensing guide", openGuide)));
+    "Automatic recording is off, so this workflow is not being tracked. Turn on Settings > ComfyAudit > Shot history > Record history automatically, or start this one now."));
+  wrap.append(btn("Start tracking this workflow", () => act(() => stamp(app.graph?._nodes?.length ? "imported" : "created")), "primary"));
   return wrap;
 }
 
@@ -625,16 +900,17 @@ function draw(el) {
   el.innerHTML = "";
   const root = h("div", { style: { display: "flex", flexDirection: "column", height: "100%", color: UI.fg, font: "13px/1.5 var(--p-font-family, system-ui, sans-serif)" } });
   const head = h("div", { style: { padding: "12px 14px 6px" } },
-    h("strong", { style: { fontSize: "13px" } }, "Shot history"),
-    h("div", { style: { fontSize: "11px", color: UI.dim } }, state.summary?.shot?.name || graphName()));
+    h("strong", { style: { fontSize: "13px" } }, state.view === "package" ? "Package for delivery" : "ComfyAudit"),
+    h("div", { style: { fontSize: "11px", color: UI.dim } }, shotName()));
   const body = h("div", { style: { flex: "1 1 auto", overflowY: "auto", padding: "0 14px 16px", minHeight: "0" } });
   if (state.error) body.append(h("div", { style: { color: TONE.stop, fontSize: "12px", margin: "6px 0 10px" } }, state.error));
   if (state.notice) body.append(h("div", { style: { color: TONE.warn, fontSize: "12px", margin: "6px 0 10px" } }, state.notice));
   if (state.busy) body.append(h("div", { style: { color: UI.dim, fontSize: "12px", margin: "6px 0" } }, "Working..."));
-  if (!tracked() && getSetting("ComfyAudit.History.Auto", true)) {
+  if (state.view === "package") body.append(packageView());
+  else if (!tracked() && getSetting("ComfyAudit.History.Auto", true)) {
     body.append(h("div", { style: { color: UI.dim, fontSize: "12px" } }, "Starting this workflow's history..."));
   } else if (!tracked()) body.append(startView());
-  else if (state.summary?.present) body.append(trackedView(state.summary));
+  else if (state.summary?.present) body.append(homeView(state.summary));
   else body.append(h("div", { style: { color: UI.dim, fontSize: "12px" } }, "Reading history..."));
   root.append(head, body);
   el.append(root);
@@ -646,9 +922,17 @@ function rerender() { if (mount) draw(mount); }
 /* Registration                                                        */
 /* ------------------------------------------------------------------ */
 
+function openTab() {
+  try {
+    const tabs = app.extensionManager?.sidebarTab;
+    if (tabs?.activeSidebarTabId !== SIDEBAR_ID) tabs?.toggleSidebarTab?.(SIDEBAR_ID);
+  } catch (e) { /* noop */ }
+}
+
 const COMMANDS = [
-  { id: "comfyaudit.history.open", label: "Shot history", icon: "pi pi-history",
-    function: () => { try { app.extensionManager?.sidebarTab?.toggleSidebarTab?.(SIDEBAR_ID); } catch (e) { /* noop */ } } },
+  { id: "comfyaudit.history.open", label: "ComfyAudit", icon: "pi pi-history", function: openTab },
+  { id: "comfyaudit.history.package", label: "Package for delivery", icon: "pi pi-box",
+    function: () => { openTab(); if (tracked()) openPackage(); } },
   { id: "comfyaudit.history.record", label: "Open provenance record", icon: "pi pi-file", function: () => tracked() && openRecord() },
   { id: "comfyaudit.history.guide", label: "Commercial licensing guide", icon: "pi pi-book", function: openGuide },
 ];
@@ -665,21 +949,22 @@ app.registerExtension({
     const manager = app.extensionManager;
     if (typeof manager?.registerSidebarTab === "function") {
       manager.registerSidebarTab({
-        id: SIDEBAR_ID, icon: ICON_CLASS, title: "History",
-        tooltip: "Shot history - who made this, what changed, and where people made the decisions",
+        id: SIDEBAR_ID, icon: ICON_CLASS, title: "ComfyAudit",
+        tooltip: "ComfyAudit - the shot's life, recorded as it happens, and packaging it for delivery",
         type: "custom",
-        render: (el) => { mount = el; state.form = tracked() ? null : state.form; draw(el); refresh(); flushPending().then(refresh); },
+        render: (el) => { mount = el; draw(el); refresh(); flushPending().then(refresh); },
         destroy: () => { mount = null; },
       });
     }
-    // Switching workflow tabs swaps app.graph; the panel follows it.
-    // A half-filled form belongs to the workflow it was opened on.
+    // Switching workflow tabs swaps app.graph; the panel follows it, and a
+    // half-finished package flow belongs to the workflow it was opened on.
     api.addEventListener("graphChanged", () => { state.form = null; onWorkflowShown(); });
     onWorkflowShown();
   },
   // Every workflow load (startup, opening a file, switching tabs) lands here.
   afterConfigureGraph() {
     state.form = null;
+    state.view = "home";
     onWorkflowShown();
   },
 });

@@ -337,9 +337,25 @@ def graph_fingerprint(data: dict[str, Any]) -> str:
     return sha256(canonical(body))
 
 
+def file_sha256(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def snapshot(data: dict[str, Any], keys: Keys | None = None,
-             matcher: licences_mod.LicenceMatcher | None = None) -> dict[str, Any]:
-    """Everything a legal review needs to know about the workflow right now."""
+             matcher: licences_mod.LicenceMatcher | None = None,
+             resolve: Any = None) -> dict[str, Any]:
+    """Everything a legal review needs to know about the workflow right now.
+
+    ``resolve`` maps an input widget's value (``"plate.exr"``, ``"x.png
+    [output]"``) to a file on disk, or ``""``. Given one, each supplied input
+    carries a fingerprint of its contents, which is what lets the history see
+    a render being brought back in as an input - a selection - however its
+    name is protected.
+    """
     keys = keys or Keys()
     wf = graph.from_dict(copy.deepcopy(data))
     matcher = matcher or licences_mod.LicenceMatcher()
@@ -385,6 +401,9 @@ def snapshot(data: dict[str, Any], keys: Keys | None = None,
     for a in inputs:
         row = {"node": str(a.node_id), "kind": a.kind, "upload": a.upload_widget}
         row.update(_seal(str(a.value), keys))
+        path = resolve(str(a.value)) if resolve else ""
+        if path and os.path.isfile(path):
+            row["content_sha256"] = file_sha256(path)
         input_rows.append(row)
 
     params: dict[str, dict[str, Any]] = {}
@@ -533,7 +552,8 @@ def diff(before: dict[str, Any] | None, after: dict[str, Any]) -> dict[str, Any]
     return out
 
 
-def breakpoints_for(event: str, changes: dict[str, Any], note: str = "") -> list[str]:
+def breakpoints_for(event: str, changes: dict[str, Any], note: str = "",
+                    handoff: bool = False) -> list[str]:
     """Which kinds of human decision this entry records.
 
     Deliberately conservative, because these rows are what a reader takes as
@@ -570,6 +590,12 @@ def breakpoints_for(event: str, changes: dict[str, Any], note: str = "") -> list
             kinds.append("parameters")
         if changes.get("seeds_changed"):
             kinds.append("seed")
+        # A render brought back in as an input is a person choosing it.
+        if changes.get("selected"):
+            kinds.append("selection")
+        # The next person to change the shot has taken it over.
+        if handoff:
+            kinds.append("handoff")
     if event == "reviewed":
         kinds.append("review")
     if event in ("approved", "rejected"):
@@ -699,7 +725,8 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
            actor: Actor | None = None, note: str = "", outputs: Iterable[str] = (),
            keys: Keys | None = None, force: bool = False,
            data_payload: dict[str, Any] | None = None,
-           matcher: licences_mod.LicenceMatcher | None = None) -> dict[str, Any] | None:
+           matcher: licences_mod.LicenceMatcher | None = None,
+           resolve: Any = None) -> dict[str, Any] | None:
     """Add one entry. Returns it, or None when nothing substantive changed.
 
     An ``edited`` stamp on an unchanged graph is skipped: a save that changed
@@ -712,7 +739,7 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
     keys = keys or Keys()
     actor = actor or Actor.current()
     entries = history.setdefault("entries", [])
-    snap = snapshot(data, keys, matcher)
+    snap = snapshot(data, keys, matcher, resolve=resolve)
     prev = entries[-1] if entries else None
     prev_snap = snapshot_of(entries, prev) if prev else None
 
@@ -728,6 +755,13 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
 
     snap_hash = sha256(canonical(snap))
     changes = diff(prev_snap, snap)
+    selected = _selections(entries, snap, changes)
+    if selected:
+        changes["selected"] = selected
+    last_person = next((e.get("actor", {}).get("name", "") for e in reversed(entries)
+                        if e.get("event") != "rendered"), "")
+    handoff = (event in HUMAN_EVENTS and event not in ("imported", "handoff")
+               and bool(last_person) and bool(actor.name) and last_person != actor.name)
     entry: dict[str, Any] = {
         "seq": len(entries) + 1,
         "at": now(),
@@ -745,7 +779,7 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         "snapshot": snap,
         "snapshot_sha256": snap_hash,
         "changes": changes,
-        "breakpoints": breakpoints_for(event, changes, note),
+        "breakpoints": breakpoints_for(event, changes, note, handoff=handoff),
         "confidentiality": keys.confidentiality,
         "prev": prev["hash"] if prev else "",
     }
@@ -759,6 +793,21 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         entry["sig"] = _sign(entry["hash"], keys)
     entries.append(entry)
     return entry
+
+
+def _selections(entries: list[dict[str, Any]], snap: dict[str, Any],
+                changes: dict[str, Any]) -> list[dict[str, Any]]:
+    """Inputs that just became a render this history produced, by content."""
+    made: dict[str, int] = {}
+    for e in entries:
+        for o in e.get("outputs", []):
+            if o.get("sha256"):
+                made.setdefault(o["sha256"], e["seq"])
+    out = []
+    for row in snap.get("inputs", []):
+        if row["node"] in changes.get("inputs_changed", []) and row.get("content_sha256") in made:
+            out.append({"node": row["node"], "from_entry": made[row["content_sha256"]]})
+    return out
 
 
 @dataclass
@@ -778,7 +827,7 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
           external_ids: dict[str, str] | None = None,
           data_payload: dict[str, Any] | None = None,
           history: dict[str, Any] | None = None,
-          force: bool = False, rename: bool = False) -> StampResult:
+          force: bool = False, rename: bool = False, resolve: Any = None) -> StampResult:
     """One call for callers: read, append, write back, witness. Pure on ``data``.
 
     ``history`` is for API-format workflows, whose history lives in a sidecar
@@ -820,7 +869,8 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
         if not payload.get("node"):
             raise ValueError("a source declaration names the input node it is about")
     entry = append(history, data, event=event, actor=actor, note=note,
-                   outputs=outputs, keys=keys, force=force, data_payload=payload)
+                   outputs=outputs, keys=keys, force=force, data_payload=payload,
+                   resolve=resolve)
     if entry and event == "promoted":
         shot["stage"] = payload["stage"]
     if entry and ledger:
@@ -1203,6 +1253,14 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
                 rec.update({"sha256": inp["sha256"], "value": inp.get("text"),
                             "origin": "", "asset_id": "", "owner": "",
                             "declared_by": "", "note": ""})
+            picked = next((x for x in (e.get("changes") or {}).get("selected", [])
+                           if x.get("node") == inp["node"]), None)
+            if picked and not rec.get("origin"):
+                # Its contents match a render this history recorded, so where
+                # it came from is known without anyone having to say so.
+                rec.update({"origin": "generated", "declared_by": "recorded automatically",
+                            "note": f"output of entry {picked['from_entry']}",
+                            "from_entry": picked["from_entry"]})
         if e["event"] == "sourced":
             d = e.get("data", {})
             rec = sources.setdefault(str(d.get("node")), {
@@ -1381,6 +1439,84 @@ IPTC_COMPOSITE = ("http://cv.iptc.org/newscodes/digitalsourcetype/"
                   "compositeWithTrainedAlgorithmicMedia")
 
 
+#: How each licence reading of commercial use rolls up, worst first.
+COMMERCIAL_STATUS = (("no", "blocked"), ("unknown", "unknown"),
+                     ("conditional", "conditional"), ("yes", "cleared"))
+
+
+def commercial_status(snap: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+    """The commercial standing of one snapshot, from the licences it recorded.
+
+    Profile-free: this is what the licences say about commercial use at all,
+    read as they were recorded at the time, not a delivery verdict. Bypassed
+    models are not in the render, so they do not count.
+    """
+    models = [m for m in snap.get("models", []) if m.get("enabled", True)]
+    if not models:
+        return "none", []
+    for reading, status in COMMERCIAL_STATUS:
+        hits = [m for m in models if m.get("commercial_use") == reading]
+        if hits:
+            return status, hits
+    return "unknown", models
+
+
+def commercial_timeline(history: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every entry where the workflow's commercial standing changed, and why.
+
+    A change is the overall status moving, or the set of models barring
+    commercial use growing or shrinking while it stays blocked: a second
+    non-commercial model is one more thing legal has to resolve. Each change
+    names who made it, when, the models that decide the standing, and the
+    model changes in that entry that caused it.
+    """
+    entries = history.get("entries", [])
+    out: list[dict[str, Any]] = []
+    prev = None
+    prev_key = None
+    for e in entries:
+        snap = snapshot_of(entries, e)
+        if not snap:
+            continue
+        status, deciding = commercial_status(snap)
+        key = (status, tuple(sorted(m["filename"] for m in deciding))
+               if status in ("blocked", "unknown") else ())
+        if key == prev_key:
+            continue
+        prev_key = key
+        changes = e.get("changes") or {}
+        out.append({
+            "seq": e.get("seq"), "at": e.get("at", ""), "event": e.get("event", ""),
+            "by": (e.get("actor") or {}).get("name", ""),
+            "status": status, "from": prev,
+            "models": [{"filename": m["filename"], "licence": m.get("licence", ""),
+                        "commercial_use": m.get("commercial_use", ""),
+                        **({"conflict": m["conflict"]} if m.get("conflict") else {})}
+                       for m in deciding],
+            "added": list(changes.get("models_added", []) or []),
+            "removed": list(changes.get("models_removed", []) or []),
+        })
+        prev = status
+    return out
+
+
+def delivery_clearance(history: dict[str, Any]) -> dict[str, Any] | None:
+    """The latest clearance sealed into the chain, with who recorded it and when.
+
+    Package for delivery re-runs the audit on the server and seals its verdict
+    into the sign-off entry, so the record and the manifest read the clearance
+    from the signed chain rather than from anything the client sent.
+    """
+    for e in reversed(history.get("entries", [])):
+        clearance = (e.get("data") or {}).get("clearance")
+        if isinstance(clearance, dict):
+            return {**clearance, "entry": e.get("seq"), "at": e.get("at", ""),
+                    "by": (e.get("actor") or {}).get("name", ""),
+                    "role": (e.get("actor") or {}).get("role", ""),
+                    "note": e.get("note", "")}
+    return None
+
+
 def c2pa_manifest(history: dict[str, Any], title: str = "") -> dict[str, Any]:
     """A C2PA manifest definition for the final render, ready for signing.
 
@@ -1423,5 +1559,10 @@ def c2pa_manifest(history: dict[str, Any], title: str = "") -> dict[str, Any]:
                 "models": [{"filename": m["filename"], "licence": m["licence"]}
                            for m in snap.get("models", []) if m.get("enabled", True)],
             }},
-        ],
+        ] + ([{"label": "com.comfyaudit.clearance", "data": {
+            k: clearance.get(k) for k in ("verdict", "verdict_label", "headline", "profile",
+                                          "blockers", "conditions", "outstanding",
+                                          "exception", "audited_with", "entry", "at",
+                                          "by", "role")}}]
+             if (clearance := delivery_clearance(history)) else []),
     }

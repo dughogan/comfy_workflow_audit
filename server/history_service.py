@@ -65,6 +65,30 @@ def output_path(item: dict[str, Any]) -> str:
     return path
 
 
+def input_path(value: str) -> str:
+    """Resolve an input widget's value to a file in ComfyUI's own folders, or "".
+
+    ``"x.png [output]"`` points at a render, which is how the history sees a
+    result being picked and brought back in. Nothing outside ComfyUI's input,
+    output and temp folders is ever read, whatever the value says.
+    """
+    try:
+        import folder_paths
+        path = folder_paths.get_annotated_filepath(str(value))
+    except Exception:  # noqa: BLE001
+        return ""
+    if not path:
+        return ""
+    real = os.path.realpath(path)
+    roots = []
+    for getter in ("get_input_directory", "get_output_directory", "get_temp_directory"):
+        try:
+            roots.append(os.path.realpath(getattr(folder_paths, getter)()))
+        except Exception:  # noqa: BLE001
+            pass
+    return real if any(real.startswith(r + os.sep) for r in roots) else ""
+
+
 def stamp(body: dict[str, Any]) -> dict[str, Any]:
     cfg = settings_mod.history_settings()
     workflow = body["workflow"]
@@ -83,7 +107,8 @@ def stamp(body: dict[str, Any]) -> dict[str, Any]:
         ledger=cfg.get("ledger", ""),
         external_ids={k: str(v) for k, v in (body.get("external_ids") or {}).items() if v},
         data_payload=body.get("data") or None,
-        force=bool(body.get("force")), rename=bool(body.get("rename")))
+        force=bool(body.get("force")), rename=bool(body.get("rename")),
+        resolve=input_path)
     return {
         "workflow": result.workflow if not result.sidecar else None,
         "history": result.history,
@@ -132,7 +157,17 @@ def summary(history: dict[str, Any] | None, *, workflow: dict[str, Any] | None =
                     "note": r["note"]} for r in rows[-6:]][::-1],
         "stages": list(H.STAGES),
         "origins": H.ORIGINS,
+        "commercial": _commercial(history),
+        "clearance": H.delivery_clearance(history),
     }
+
+
+def _commercial(history: dict[str, Any]) -> dict[str, Any]:
+    """Where the shot stands on commercial use now, and when that last changed."""
+    timeline = H.commercial_timeline(history)
+    if not timeline:
+        return {"status": "none", "since": None, "changes": []}
+    return {"status": timeline[-1]["status"], "since": timeline[-1], "changes": timeline}
 
 
 def record(body: dict[str, Any]) -> dict[str, Any]:
@@ -141,21 +176,25 @@ def record(body: dict[str, Any]) -> dict[str, Any]:
     history = H.read(workflow)
     if not history:
         return {"error": "This workflow has no shot history yet. Start tracking it first."}
-    context = {"territory": cfg.get("territory", ""),
-               "distribute_in": cfg.get("distribute_in", []),
-               "likeness": cfg.get("likeness", False),
-               "union_performers": bool(body.get("union_performers") or cfg.get("union_performers")),
-               "advertising": bool(body.get("advertising") or cfg.get("advertising")),
-               "feature": bool(body.get("feature") or cfg.get("feature")),
-               "youtube": bool(body.get("youtube")),
-               "clients": list(cfg.get("clients", [])) + list(body.get("clients", []) or [])}
-    for flag in ("union_crew", "animation", "tpn_vendor", "eo_insurance", "copyright_claim",
-                 "third_party_characters", "ai_music", "intimate_imagery"):
-        context[flag] = bool(body.get(flag) or cfg.get(flag))
     html = history_html.render(history, data=workflow, keys=keys(cfg),
                                ledger=cfg.get("ledger", ""),
-                               reveal=bool(body.get("reveal")), context=context)
+                               reveal=bool(body.get("reveal")), context=context(cfg, body))
     return {"html": html, "summary": summary(history, workflow=workflow, cfg=cfg)}
+
+
+def context(cfg: dict[str, Any], body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The facts the rules checklist turns on: studio settings, plus per-request ones."""
+    body = body or {}
+    ctx = {"territory": cfg.get("territory", ""),
+           "distribute_in": cfg.get("distribute_in", []),
+           "likeness": cfg.get("likeness", False),
+           "youtube": bool(body.get("youtube")),
+           "clients": list(cfg.get("clients", [])) + list(body.get("clients", []) or [])}
+    for flag in ("union_performers", "advertising", "feature", "union_crew", "animation",
+                 "tpn_vendor", "eo_insurance", "copyright_claim",
+                 "third_party_characters", "ai_music", "intimate_imagery"):
+        ctx[flag] = bool(body.get(flag) or cfg.get(flag))
+    return ctx
 
 
 def manifest(body: dict[str, Any]) -> dict[str, Any]:

@@ -21,6 +21,7 @@ from ..core import catalog
 from ..core.knowledge import licences as licences_mod
 from ..core.report import html as html_report
 from ..core.report import markdown as md_report
+from . import delivery
 from . import history_service
 from . import live
 from . import settings as settings_mod
@@ -129,6 +130,8 @@ def register() -> bool:
     _history_route("stamp", history_service.stamp)
     _history_route("record", history_service.record)
     _history_route("manifest", history_service.manifest)
+    _history_route("check", delivery.check)
+    _history_route("deliver", delivery.deliver)
     _history_route("summary", lambda body: history_service.summary(
         _read_history(body["workflow"]), workflow=body["workflow"]))
 

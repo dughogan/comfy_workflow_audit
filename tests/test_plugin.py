@@ -9,6 +9,7 @@ gate are all covered rather than assumed.
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
@@ -584,27 +585,47 @@ def test_the_audit_node_stays_offline_by_default(comfy):
 # --------------------------------------------------------------------------
 
 
-def test_the_overlay_only_reads_summary_keys_the_route_sends(comfy):
-    """Guard the seam between the Python payload and the browser.
+def test_the_panel_only_reads_keys_the_routes_send(comfy, monkeypatch):
+    """Guard the seam between the Python payloads and the browser.
 
     Nothing type-checks across that boundary, so a renamed field shows up as
-    ``undefined`` in the UI and nowhere else. This asserts every ``summary.x``
-    the script reads is a key the route actually emits.
+    ``undefined`` in the UI and nowhere else. This asserts every field the
+    package flow reads - from the check result, each fix, each alternative and
+    the history summary - is a key the server actually emits.
     """
     import re
     from pathlib import Path
 
-    from comfyaudit.nodes.audit_nodes import run_audit
-    from comfyaudit.server import routes
+    from comfyaudit.core import history as H
+    from comfyaudit.server import delivery, history_service, settings
 
-    report = run_audit(WORKFLOW, online=False)
-    sent = set(routes._payload(report)["summary"])
+    monkeypatch.setattr(settings, "history_settings", lambda user="default": {
+        "user": "", "role": "", "ledger": "", "key_file": "", "confidentiality": "none"})
+    from comfyaudit.core.score.clearance import StudioProfile
+    monkeypatch.setattr(settings, "studio_profile", lambda user="default": StudioProfile(
+        territory="US", revenue_band="over-100m", ships="deliverable-only"))
+    wf = copy.deepcopy(WORKFLOW)
+    for node in wf["nodes"]:
+        if node["type"] == "CheckpointLoaderSimple":
+            node["widgets_values"][0] = "flux1-dev.safetensors"
+    wf = H.stamp(wf, event="created", actor=H.Actor(name="QA"), keys=H.Keys()).workflow
+    checked = delivery.check({"workflow": wf})
+    fix = {k for f in checked["fixes"] for k in f}
+    alt = {k for f in checked["fixes"] for a in f["alternatives"] for k in a}
+    summary = set(history_service.summary(H.read(wf), workflow=wf))
 
-    script = Path(routes.__file__).resolve().parents[1] / "web" / "comfyaudit.js"
-    read = set(re.findall(r"summary\.([A-Za-z_]\w*)", script.read_text()))
+    script = (Path(delivery.__file__).resolve().parents[1] / "web" / "shothistory.js").read_text()
 
-    assert read, "the overlay reads nothing from the summary - has it moved?"
-    assert read <= sent, f"overlay reads keys the route never sends: {sorted(read - sent)}"
+    def reads(fn: str, var: str) -> set[str]:
+        body = script.split(f"function {fn}(", 1)[1].split("\nfunction ", 1)[0]
+        return set(re.findall(rf"\b{var}\.([A-Za-z_]\w*)", body))
+
+    for fn, var, sent in (("verdictBox", "r", set(checked)), ("fixStep", "r", set(checked)),
+                          ("signoffStep", "r", set(checked)), ("fixCard", "f", fix),
+                          ("fixCard", "a", alt), ("homeView", "s", summary)):
+        read = reads(fn, var)
+        assert read, f"{fn} reads nothing from {var} - has it moved?"
+        assert read <= sent, f"{fn} reads keys the server never sends: {sorted(read - sent)}"
 
 
 # --------------------------------------------------------------------------

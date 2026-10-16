@@ -1,0 +1,194 @@
+{
+ "_comment": [
+  "Functional alternatives for models whose licences bar commercial use.",
+  "This file says only which models do the same job. It makes no licence claim:",
+  "each option's licence is read from licences.json at the moment it is offered,",
+  "and an option is offered only when that licence permits commercial use",
+  "(outright or with conditions). Quality notes are practical, not legal.",
+  "Match patterns are lowercase substrings of the weight filename, as in licences.json.",
+  "An option's 'exclude' patterns keep LoRAs and variants with the same stem from being taken for the model itself."
+ ],
+ "checked": "2026-10-15",
+ "alternatives": [
+  {
+   "for": [
+    "flux1-dev",
+    "flux1_dev",
+    "flux-1-dev",
+    "flux.1-dev",
+    "flux1dev",
+    "flux1-krea-dev",
+    "flux1_krea_dev",
+    "flux-krea"
+   ],
+   "task": "text-to-image",
+   "options": [
+    {
+     "name": "FLUX.1 [schnell]",
+     "match": [
+      "flux1-schnell",
+      "flux1_schnell",
+      "flux-1-schnell",
+      "flux.1-schnell"
+     ],
+     "note": "Same architecture, distilled for 1-4 steps. Drop-in for most FLUX graphs; expect less fine detail than [dev].",
+     "exclude": [
+      "lora"
+     ]
+    },
+    {
+     "name": "Qwen-Image",
+     "match": [
+      "qwen_image",
+      "qwen-image"
+     ],
+     "note": "A different model family; needs its own loader, text encoder and VAE, so the graph changes.",
+     "exclude": [
+      "edit",
+      "lightning",
+      "lora"
+     ]
+    }
+   ]
+  },
+  {
+   "for": [
+    "flux1-kontext-dev",
+    "flux1_kontext",
+    "flux-kontext-dev",
+    "kontext-dev",
+    "flux1-fill-dev",
+    "flux1_fill",
+    "flux-fill-dev"
+   ],
+   "task": "image editing and inpainting",
+   "options": [
+    {
+     "name": "Qwen-Image-Edit",
+     "match": [
+      "qwen_image_edit",
+      "qwen-image-edit"
+     ],
+     "note": "Instruction-based editing; a different model family, so the graph changes.",
+     "exclude": [
+      "lightning",
+      "lora"
+     ]
+    }
+   ]
+  },
+  {
+   "for": [
+    "sd_xl_turbo",
+    "sdxl_turbo",
+    "sdxl-turbo"
+   ],
+   "task": "text-to-image (SDXL)",
+   "options": [
+    {
+     "name": "SDXL 1.0 base",
+     "match": [
+      "sd_xl_base",
+      "sdxl_base",
+      "sdxl-base",
+      "sd_xl_1.0"
+     ],
+     "note": "The full SDXL base: same architecture, needs normal step counts (20-40) instead of 1-4."
+    }
+   ]
+  },
+  {
+   "for": [
+    "codeformer"
+   ],
+   "task": "face restoration",
+   "options": [
+    {
+     "name": "GFPGAN",
+     "match": [
+      "gfpgan",
+      "gfpganv1"
+     ],
+     "note": "Same job in the same face-restore nodes; tends to smooth skin more than CodeFormer."
+    }
+   ]
+  },
+  {
+   "for": [
+    "4x-ultrasharp",
+    "4x_ultrasharp",
+    "4x-ultramix",
+    "4x_nmkd",
+    "4x-animesharp"
+   ],
+   "task": "image upscaling",
+   "options": [
+    {
+     "name": "Real-ESRGAN",
+     "match": [
+      "realesrgan",
+      "real-esrgan",
+      "realesrnet"
+     ],
+     "note": "Loads in the same Upscale Model nodes; a softer result than UltraSharp on fine texture."
+    }
+   ]
+  },
+  {
+   "for": [
+    "rmbg-1.4",
+    "rmbg_1.4",
+    "rmbg-2.0",
+    "rmbg2",
+    "briaai"
+   ],
+   "task": "background removal and matting",
+   "options": [
+    {
+     "name": "BiRefNet",
+     "match": [
+      "birefnet"
+     ],
+     "note": "High-resolution dichotomous segmentation; usually needs its own loader node."
+    }
+   ]
+  },
+  {
+   "for": [
+    "depth_anything_v2_vitl",
+    "depth_anything_v2_vitb",
+    "depth-anything-v2-large",
+    "depth-anything-v2-base"
+   ],
+   "task": "monocular depth",
+   "options": [
+    {
+     "name": "Depth Anything V2 Small",
+     "match": [
+      "depth_anything_v2_vits",
+      "depth-anything-v2-small"
+     ],
+     "note": "Same model family and nodes at a smaller size; less detail at edges."
+    },
+    {
+     "name": "MiDaS / DPT",
+     "match": [
+      "midas",
+      "dpt_hybrid",
+      "dpt_beit",
+      "dpt_large"
+     ],
+     "note": "Older depth models with wide node support."
+    },
+    {
+     "name": "ZoeDepth",
+     "match": [
+      "zoedepth",
+      "zoe_depth"
+     ],
+     "note": "Metric depth; a different preprocessor node."
+    }
+   ]
+  }
+ ]
+}

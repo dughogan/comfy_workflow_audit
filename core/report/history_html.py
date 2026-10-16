@@ -179,6 +179,45 @@ def _body(history, lin, rows, v, checks) -> str:
         w("<ul>" + "".join(f"<li>{_e(p)}</li>" for p in v.problems) + "</ul>")
     w("</div></div>")
 
+    # -- delivery clearance, as sealed into the chain -------------------------
+    clearance = H.delivery_clearance(history)
+    if clearance:
+        ctone = {"go": "ok", "conditions": "warn", "no-go": "stop"}.get(clearance.get("verdict"), "flat")
+        w("<h2 class='sec'>Delivery clearance<small>entry "
+          f"{_e(clearance.get('entry'))}</small></h2>")
+        w(f"<div class='assure {ctone}'><div class='badge'>"
+          f"{_e(clearance.get('verdict_label') or clearance.get('verdict', ''))}</div><div>")
+        w(f"<p>{_e(clearance.get('headline', ''))}</p>")
+        w(f"<p style='margin-top:8px'>Signed off by <strong>{_e(clearance.get('by', ''))}</strong>"
+          + (f" ({_e(clearance['role'])})" if clearance.get("role") else "")
+          + f" on {_e(str(clearance.get('at', ''))[:16].replace('T', ' '))}"
+          + (f": &ldquo;{_e(clearance['note'])}&rdquo;" if clearance.get("note") else "") + "</p>")
+        if clearance.get("profile"):
+            w(f"<p style='margin-top:6px;color:var(--ink-2)'>Assessed for: {_e(clearance['profile'])}</p>")
+        if clearance.get("exception"):
+            despite = ("a no-go" if clearance.get("verdict") == "no-go"
+                       else "no verdict being reached")
+            w("<p style='margin-top:8px;color:var(--stop)'><strong>Delivered as an exception "
+              f"despite {despite}:</strong> {_e(clearance['exception'])}</p>")
+        w("</div></div>")
+        for title, items in (("Blocking", clearance.get("blockers")),
+                             ("Conditions to meet", clearance.get("conditions"))):
+            if items:
+                w(f"<p class='intro' style='margin-top:12px'><strong>{title}</strong></p>"
+                  "<ul class='gaps'>" + "".join(f"<li>{_e(i)}</li>" for i in items) + "</ul>")
+        outstanding = clearance.get("outstanding") or []
+        if outstanding:
+            w("<p class='intro' style='margin-top:12px'><strong>Open at sign-off</strong></p>"
+              "<ul class='gaps'>" + "".join(
+                  f"<li>{_e(o.get('problem', ''))}" + (f" <em>{_e(o['remedy'])}</em>" if o.get("remedy") else "")
+                  + "</li>" for o in outstanding) + "</ul>")
+        audited = clearance.get("audited_with") or {}
+        if audited:
+            w(f"<p class='intro' style='font-size:12.5px'>Audited with comfyaudit {_e(audited.get('comfyaudit', ''))}, "
+              f"licence knowledge {_e(audited.get('licences', ''))}, regulations as of "
+              f"{_e(audited.get('regulations', ''))}. The audit ran on the server at sign-off; "
+              "this section is read from the signed history.</p>")
+
     # -- human in the loop ----------------------------------------------------
     bp = lin["breakpoints"]
     w("<h2 class='sec'>Human in the loop</h2>")

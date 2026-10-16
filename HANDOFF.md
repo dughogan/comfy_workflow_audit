@@ -282,6 +282,43 @@ if blank), without marking the tab modified; there is no Start button unless
 startup, so no phantom shot is witnessed. New sidebar icon (CSS mask, timeline
 ending in a check).
 
+**One tool, and Package for delivery (2026-10-15, Doug's design).** The Audit
+and History tabs are now one **ComfyAudit** tab (`web/shothistory.js`;
+`web/comfyaudit.js` keeps only the studio-profile settings, status and
+export helpers). The everyday view is read-only: stage, commercial standing,
+assurance, a dated flag whenever a change makes the shot non-commercial
+(`H.commercial_timeline`, which also flags a *second* blocker), the life of
+the shot. No "record a human step" buttons. **Package for delivery**
+(`server/delivery.py`, routes `history/check` and `history/deliver`):
+1. *Check* - asks the studio profile and production facts once, then runs the
+   audit on the server.
+2. *Make it safe* - fixes flattened from the clearance remedies, with licensed
+   alternatives (`core/knowledge/data/alternatives.json`: functional
+   equivalents only; each option's licence is read from licences.json and it
+   is offered only if commercially usable; installed ones first); inputs with
+   no declared origin; rules wanting a person's confirmation (recorded as
+   tagged notes). Re-check after changes.
+3. *Sign off* - the one deliberate human act. A no-go or no verdict needs a
+   recorded exception reason.
+4. *Deliver* - the server re-runs the audit, seals the clearance into a
+   signed *approved* entry, promotes to *delivered*, and returns a zip:
+   workflow, legal report (provenance record with a new Delivery clearance
+   section read from the chain), clearance sheet, C2PA manifest (new
+   `com.comfyaudit.clearance` assertion), README.
+
+Automatic human steps: a render brought back in as an input is matched by
+**content** fingerprint (`snapshot(resolve=...)`, `content_sha256`) and
+recorded as a *selection*, with the input's origin set to *generated* (entry N);
+the next person to change the shot gets a *handoff* breakpoint. Review stays
+deliberate (sign-off). Server resolves inputs only inside ComfyUI's
+input/output/temp folders.
+
+Next, agreed with Doug: provenance **sidecars** next to every output (EXR,
+video and 3D outputs don't embed the workflow; a PNG's history stops before its
+own render entry), and **fork tracking** for Save As, duplicated tabs and
+workflows reloaded from an older PNG (today two files can claim one shot id).
+Also: `dreamshaper_8` and many community fine-tunes aren't in the licence KB.
+
 **Priority 2: known gaps.**
 
 - [ ] **FLUX.1 [dev] terms.** Confirm the current BFL licence and update the
