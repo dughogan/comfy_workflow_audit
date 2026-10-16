@@ -461,6 +461,19 @@ Live-tested: an answer recorded on one shot of "Pilot" was inherited by another
 shot given "pilot". Not yet: a way for legal to answer without ComfyUI (from
 the package, or a small web page on the ComfyUI server).
 
+**Desktop, the gate and API exports (2026-10-16).** Tested live in Doug's
+ComfyUI Desktop (ComfyUI 0.41.2, newer than the 0.40.0 test instance): auto
+tracking, an SD1.5 render (edited, rendered, fingerprinted, sidecar written
+beside the PNG in the output folder), Life of the shot playback, Esc to close,
+the Comfy C during the check, and the package check against the studio
+profile. The **Shot History Gate** node (`ComfyAuditHistoryGate`) sits between
+VAE Decode and Save Image and stops the run before anything is saved when the
+history is missing or altered, the shot is below a minimum stage, or
+(optionally) a model bars commercial use. `web/exportguard.js` asks before
+**Export (API Format)** on a tracked shot, since that format has no room for
+the history. **ShotGrid is labelled beta**: built from Autodesk's REST docs and
+tested only against a local stand-in; it needs a run on a real site.
+
 **Priority 2: known gaps.**
 
 - [ ] **FLUX.1 [dev] terms.** Confirm the current BFL licence and update the
@@ -486,7 +499,7 @@ the package, or a small web page on the ComfyUI server).
       only MovieLabs ComfyUI repo (`MovieLabs/comfyui-movielabs-util`) publishes
       to ShotGrid but records no prompts or models; see `interop` in the
       research file.
-- [ ] **A delivery gate node.** Fail the queue if a tracked shot lacks a
+- [x] **A delivery gate node.** Done 2026-10-16: Shot History Gate (above). Fail the queue if a tracked shot lacks a
       history, is Altered, is still in sandbox, or has unconfirmed licence
       conflicts. The existing **Audit Gate** node is the place.
 - [ ] **Signing oracle.** Anyone who can reach ComfyUI can POST to

@@ -103,6 +103,7 @@ audit is part of a pipeline rather than a question someone just asked.
 | **Audit This Workflow** | Documents the running graph. Outputs the report as Markdown and JSON, plus the risk score, automation index and a one-line licence summary as separate sockets. |
 | **Claude Review** | Optional second pass for the judgement calls — see below. |
 | **Audit Gate** | Stops the queue on conditions **you** choose. Nothing is enforced by default. |
+| **Shot History Gate** | Put it between VAE Decode and Save Image. Stops the run before anything is saved if the shot has no history, its history has been altered, it has not reached the stage you require (e.g. still in sandbox), or, if you switch it on, a model bars commercial use. |
 | **Save Audit Report** | Writes the report into your output folder as HTML, Markdown or JSON. |
 
 ## The sidebar
@@ -613,20 +614,52 @@ stay readable, since they are what the review is about.
 
 ### In ComfyUI
 
-The **History** tab in the sidebar:
+The **ComfyAudit** tab in the sidebar. Tracking is automatic: every workflow
+starts its history the moment it is opened, and each open tab keeps its own.
 
-- **Start tracking** with a shot name, project and studio asset ID.
-- Entries are then made automatically. An *edited* entry is added just before a
-  queue, if the graph changed, which is what embeds the history in that render's
-  metadata. A *rendered* entry is added when the render finishes, with its
-  output files fingerprinted.
-- The human steps are buttons: **Review**, **Approve**, **Reject**, **Declare
-  source**, **Change stage**, **Note / evidence**, **Take over**.
-- **Provenance record** opens the legal document. **C2PA manifest** downloads
-  a manifest definition. **Licensing guide** opens the guide below.
+- An *edited* entry is added just before a queue, if the graph changed, which
+  is what embeds the history in that render's metadata. A *rendered* entry is
+  added when the render finishes, with its output files fingerprinted. Bringing
+  a render back in as an input, handing the shot to someone else, Save As and
+  duplicating a tab are recorded too, without any clicks.
+- The header shows the shot's stage, commercial standing and whether its record
+  verifies, with **Package for delivery**, **Life of the shot** (the graph
+  replayed over a timeline, with a story and a log) and **Provenance record**.
+- **Shot details** names the shot and links it to its project and studio asset
+  ID. The project is what shares show-level answers between shots.
+- **Package for delivery** checks the shot, shows what would make it safe,
+  takes the sign-off and returns a zip for legal.
 
 Entries are made server-side with the studio key, then adopted into the open
 graph. Save the workflow to keep them.
+
+### Where the history lives
+
+In the workflow file itself, under `extra.comfyaudit_history`, so it goes
+wherever the `.json` goes. Each render also carries it in the PNG's workflow
+metadata (up to the moment it was queued) and gets a
+`<render>.provenance.json` beside it: the history up to the entry that made
+that render, plus the render's fingerprint, checkable on its own with
+`comfyaudit history verify-file`. An optional ledger file
+(`COMFYAUDIT_HISTORY_LEDGER`) keeps an independent copy of every entry, so a
+history that was removed or rewritten shows up.
+
+It does not travel with **Export (API Format)**: that format has no room for
+it, and the panel asks before exporting a tracked shot that way. Copying nodes
+into another workflow does not carry it either.
+
+### ShotGrid (beta)
+
+With `COMFYAUDIT_SHOTGRID_URL`, `COMFYAUDIT_SHOTGRID_SCRIPT` and
+`COMFYAUDIT_SHOTGRID_KEY` set, Shot details checks a ShotGrid shot ID against
+your site, and delivery posts a Note on the shot with the verdict, the sign-off
+and the history's latest hash, with the package attached
+(`COMFYAUDIT_SHOTGRID_HASH_FIELD` also writes that hash to a custom field).
+
+**Beta: not yet tested against a live ShotGrid site.** It is built from
+Autodesk's REST API documentation and tested against a local stand-in of those
+endpoints only. Run it on a trial or sandbox site before relying on it, and
+please report what differs.
 
 ### The provenance record
 

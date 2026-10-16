@@ -20,6 +20,7 @@ from typing import Any
 from ..agent import reviewer as reviewer_mod
 from ..core import audit as audit_mod
 from ..core import graph as graph_mod
+from ..core import history as H
 from ..core.report import html as html_report
 from ..core.report import markdown as md_report
 from ..core.report import review as review_section
@@ -550,6 +551,88 @@ class ComfyAuditGate:
         return (audit, f"passed: nothing at or above '{fail_on}'")
 
 
+#: Stages in the order a shot moves through them.
+HISTORY_STAGES = ["any", "production", "cleared", "delivered"]
+
+
+class ComfyAuditHistoryGate:
+    """Refuse to save anything from a shot whose history cannot be trusted.
+
+    Reads the shot history ComfyUI sends with every run (the UI workflow in
+    ``extra_pnginfo``, which carries ``extra.comfyaudit_history``). Placed
+    between VAE Decode and Save Image, it runs before anything is written, so
+    a run that fails the gate leaves no render behind.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "images": ("IMAGE", {"tooltip": "Passed through unchanged when the gate passes."}),
+                "require_history": ("BOOLEAN", {"default": True, "tooltip":
+                    "Stop if this workflow carries no shot history at all."}),
+                "stop_if_altered": ("BOOLEAN", {"default": True, "tooltip":
+                    "Stop if the history fails verification: an entry was changed, "
+                    "removed or reordered, or a signature does not match."}),
+                "minimum_stage": (HISTORY_STAGES, {"default": "any", "tooltip":
+                    "Stop unless the shot has reached this stage. 'production' keeps "
+                    "sandbox experiments out of real renders."}),
+                "stop_if_not_commercial": ("BOOLEAN", {"default": False, "tooltip":
+                    "Your policy, not the tool's: stop while any model in the shot "
+                    "bars commercial use."}),
+            },
+            "hidden": {"extra_pnginfo": "EXTRA_PNGINFO"},
+        }
+
+    RETURN_TYPES = ("IMAGE", "STRING")
+    RETURN_NAMES = ("images", "verdict")
+    FUNCTION = "run"
+    CATEGORY = "audit"
+    DESCRIPTION = ("Stop the run before anything is saved if this shot's history is "
+                   "missing or altered, the shot has not reached the stage you require, "
+                   "or (optionally) a model bars commercial use. Put it between VAE "
+                   "Decode and Save Image.")
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        # The history changes with every edit, so the gate is judged every run.
+        return float("nan")
+
+    def run(self, images, require_history=True, stop_if_altered=True, minimum_stage="any",
+            stop_if_not_commercial=False, extra_pnginfo=None):
+        workflow = (extra_pnginfo or {}).get("workflow") if isinstance(extra_pnginfo, dict) else None
+        history = H.read(workflow) if isinstance(workflow, dict) else None
+        if not history:
+            if require_history:
+                raise RuntimeError(
+                    "comfyaudit history gate: this workflow carries no shot history, so "
+                    "nothing it renders can be traced. Open it with ComfyAudit's automatic "
+                    "tracking on, or turn require_history off.")
+            return (images, "passed: no history, and none required")
+        if stop_if_altered:
+            v = H.verify(workflow, keys=H.Keys.from_environment(),
+                         ledger=os.environ.get("COMFYAUDIT_HISTORY_LEDGER", ""))
+            if v.assurance == "none":
+                raise RuntimeError(
+                    "comfyaudit history gate: this shot's history has been altered: "
+                    + "; ".join(v.problems[:3]))
+        stage = (history.get("shot") or {}).get("stage", "sandbox")
+        order = ["sandbox"] + HISTORY_STAGES[1:]
+        if minimum_stage != "any" and order.index(stage) < order.index(minimum_stage):
+            raise RuntimeError(
+                f"comfyaudit history gate: the shot is in {stage}, and this gate needs "
+                f"{minimum_stage} or later. Move the shot on in the ComfyAudit panel.")
+        if stop_if_not_commercial:
+            timeline = H.commercial_timeline(history)
+            now = timeline[-1] if timeline else {}
+            if now.get("status") == "blocked":
+                models = ", ".join(m["filename"] for m in now.get("models", []))
+                raise RuntimeError(
+                    "comfyaudit history gate: stop_if_not_commercial is set and these "
+                    f"models bar commercial use: {models}.")
+        return (images, f"passed: history intact, shot in {stage}")
+
+
 class ComfyAuditSaveReport:
     """Write the report next to the renders."""
 
@@ -630,6 +713,7 @@ NODE_CLASS_MAPPINGS = {
     "ComfyAuditWorkflow": ComfyAuditWorkflow,
     "ComfyAuditClaudeReview": ComfyAuditClaudeReview,
     "ComfyAuditGate": ComfyAuditGate,
+    "ComfyAuditHistoryGate": ComfyAuditHistoryGate,
     "ComfyAuditSaveReport": ComfyAuditSaveReport,
 }
 
@@ -638,5 +722,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ComfyAuditWorkflow": "Audit This Workflow",
     "ComfyAuditClaudeReview": "Claude Review",
     "ComfyAuditGate": "Audit Gate",
+    "ComfyAuditHistoryGate": "Shot History Gate",
     "ComfyAuditSaveReport": "Save Audit Report",
 }
