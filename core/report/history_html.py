@@ -177,7 +177,7 @@ def _body(history, lin, rows, v, checks) -> str:
     w(f"<dt>Stage</dt><dd><span class='pill {STAGE_TONE.get(shot.get('stage'), 'flat')}'>"
       f"{_e(shot.get('stage', 'sandbox'))}</span></dd>")
     w(f"<dt>Prepared</dt><dd>{_dt.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M %Z')}"
-      f" &middot; comfyaudit {__version__}</dd>")
+      f" &middot; Comfy Workflow Tracker {__version__}</dd>")
     w("</dl></div></header>")
 
     # -- can this record be relied on? --------------------------------------
@@ -229,7 +229,7 @@ def _body(history, lin, rows, v, checks) -> str:
               f"{_e(audited.get('regulations', ''))}. The audit ran on the server at sign-off; "
               "this section is read from the signed history.</p>")
 
-    # -- legal's decision (ComfyAudit Review), apart from the stage -------------
+    # -- legal's decision (Comfy Audit), apart from the stage -------------
     legal = H.legal_decision(history)
     if legal:
         ltone = "ok" if legal["decision"] == "cleared" and legal["current"] else (

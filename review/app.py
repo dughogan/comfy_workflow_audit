@@ -1,4 +1,4 @@
-"""What ComfyAudit Review does, kept free of HTTP so it tests.
+"""What Comfy Audit does, kept free of HTTP so it tests.
 
 A delivery package (``<shot>.delivery.zip``, made by Package for delivery in
 ComfyUI) is opened here, checked, and reviewed:
@@ -41,7 +41,7 @@ from ..core.report import compliance
 from ..server import history_service, shotgrid
 from ..server import settings as settings_mod
 
-TOOL = f"ComfyAudit Review {__version__}"
+TOOL = f"Comfy Audit {__version__}"
 PACKAGE_SCHEMA = "comfyaudit/delivery-package/"
 #: The role a decision is recorded under when the keyring gives none.
 REVIEW_ROLE = "legal"
@@ -144,7 +144,7 @@ def person(signed_in: str = "", declared: str = "") -> Person:
     if not name:
         raise ReviewError("Give your name first. It is recorded with what you decide.")
     actor = H.Actor(name=name, role=REVIEW_ROLE, machine=machine, tool=TOOL,
-                    declared_by="declared in ComfyAudit Review",
+                    declared_by="declared in Comfy Audit",
                     id=os.environ.get("COMFYAUDIT_USER_ID", ""))
     return Person(actor, keys, "declared")
 
@@ -186,7 +186,7 @@ def _member(zf: zipfile.ZipFile, name: str) -> bytes:
 def _index_of(zf: zipfile.ZipFile) -> tuple[str, dict[str, Any]]:
     names = [n for n in zf.namelist() if n.endswith(".package.json") and "/" not in n]
     if len(names) != 1:
-        raise ReviewError("This is not a ComfyAudit delivery package: it needs exactly one "
+        raise ReviewError("This is not a Comfy Workflow Tracker delivery package: it needs exactly one "
                           "<shot>.package.json index (packages are made by Package for "
                           "delivery in ComfyUI).")
     try:
@@ -194,7 +194,7 @@ def _index_of(zf: zipfile.ZipFile) -> tuple[str, dict[str, Any]]:
     except ValueError as exc:
         raise ReviewError(f"{names[0]} is not readable JSON.") from exc
     if not str(index.get("schema", "")).startswith(PACKAGE_SCHEMA):
-        raise ReviewError(f"{names[0]} is not a ComfyAudit delivery package index "
+        raise ReviewError(f"{names[0]} is not a Comfy Workflow Tracker delivery package index "
                           f"(schema {index.get('schema')!r}).")
     return names[0], index
 

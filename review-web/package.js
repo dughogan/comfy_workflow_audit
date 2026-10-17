@@ -1,9 +1,9 @@
-// Reading and checking a ComfyAudit delivery package, entirely in the browser.
+// Reading and checking a Comfy Workflow Tracker delivery package, entirely in the browser.
 //
 // The zip is read here (no library: the central directory, and DecompressionStream for
 // deflate), every file is checked against the SHA-256 that <shot>.package.json gives it,
 // and the shot history's hash chain is recomputed. Signatures need the studio's key, so
-// they are checked by the studio's own ComfyAudit server when one is connected.
+// they are checked by the studio's own Comfy Audit server when one is connected.
 //
 // buildView() returns the same shape as the Python API's shot view (review/app.py), so
 // one page draws a shot whether it was read here or by the studio server.
@@ -171,13 +171,13 @@ export async function openPackage(bytes, filename) {
   const zip = readZip(bytes);
   const indexNames = [...zip.entries.keys()].filter((n) => n.endsWith(".package.json") && !n.includes("/"));
   if (indexNames.length !== 1) {
-    throw new Error("This is not a ComfyAudit delivery package: it needs exactly one <shot>.package.json " +
+    throw new Error("This is not a Comfy Workflow Tracker delivery package: it needs exactly one <shot>.package.json " +
       "index. Packages are made by Package for delivery in ComfyUI.");
   }
   const indexName = indexNames[0];
   const index = JSON.parse(new TextDecoder().decode(await member(zip, indexName)));
   if (!String(index.schema || "").startsWith("comfyaudit/delivery-package/")) {
-    throw new Error(`${indexName} is not a ComfyAudit delivery package index.`);
+    throw new Error(`${indexName} is not a Comfy Workflow Tracker delivery package index.`);
   }
   const files = [];
   for (const f of index.files || []) {
@@ -314,7 +314,7 @@ export function buildView(pkg, rules, answers = []) {
       label: chainOk ? "Chain intact" : "Altered",
       detail: chainOk
         ? `Every one of the ${pkg.chain.checked} entries was re-hashed in this browser and links to the one before. ` +
-          `${pkg.chain.signed} are signed; signatures need the studio's key, so your studio's ComfyAudit server checks them.`
+          `${pkg.chain.signed} are signed; signatures need the studio's key, so your studio's Comfy Audit server checks them.`
         : "The shot history does not match what was recorded. Do not rely on it; ask for the package again.",
       problems: pkg.chain.problems, notes: pkg.chain.hasParent ? ["This shot is a copy of an earlier record; the earlier record it carries was not re-checked here."] : [],
       package_files: pkg.problems.length === 0, package_problems: pkg.problems,

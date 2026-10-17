@@ -107,7 +107,7 @@ CONCEPTS = [
 
 STEPS = [
     ("Audit the workflow",
-     "Run ComfyAudit on the graph that will make final pixels. It lists every weight - "
+     "Run Comfy Workflow Tracker on the graph that will make final pixels. It lists every weight - "
      "including the ones nobody remembers adding - with its licence, a source link "
      "and how confident the match is.",
      []),
@@ -197,7 +197,7 @@ def render(kb_path: str | None = None, standalone: bool = True) -> str:
     w(f"<dt>Knowledge</dt><dd>{len(kb.get('licences', {}))} licences, "
       f"{len(kb.get('models', []))} model families, checked {_e(kb.get('checked', '?'))}</dd>")
     w(f"<dt>Prepared</dt><dd>{_dt.datetime.now().astimezone().strftime('%Y-%m-%d')} "
-      f"&middot; comfyaudit {__version__}</dd></dl></div></header>")
+      f"&middot; Comfy Workflow Tracker {__version__}</dd></dl></div></header>")
     if fresh.state in ("old", "unknown"):
         w(f"<p class='verdict-note warn'><span><strong>Check at source.</strong> "
           f"{_e(fresh.message)}</span></p>")
@@ -268,7 +268,7 @@ def render(kb_path: str | None = None, standalone: bool = True) -> str:
         w("</tbody></table>")
 
     w("<footer style='margin-top:40px;padding-top:16px;border-top:1px solid var(--rule);"
-      "font-size:13px;color:var(--ink-3);max-width:80ch'><p>Generated from the ComfyAudit "
+      "font-size:13px;color:var(--ink-3);max-width:80ch'><p>Generated from the Comfy Workflow Tracker "
       "licence knowledge base. Every entry links the licence it summarises; summaries "
       "are a reading of published terms, not legal advice, and licences change. Studios "
       "can extend or override the knowledge base with their own entries and negotiated "

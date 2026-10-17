@@ -1,8 +1,8 @@
-// ComfyAudit Review: the legal team's view of a ComfyAudit delivery package.
+// Comfy Audit: the legal team's view of a Comfy Workflow Tracker delivery package.
 //
 // Three ways to run, shown in the top bar:
 //   * on its own: packages are opened and checked in this browser, read-only;
-//   * connected to the studio's own ComfyAudit server (python -m comfyaudit.review):
+//   * connected to the studio's own Comfy Audit server (python -m comfyaudit.review):
 //     the package goes to that server only, which verifies signatures and signs every
 //     answer and decision into the shot's history;
 //   * demo: two packages of a fictional show, with answers and decisions kept in this
@@ -99,7 +99,7 @@ async function api(path, opts = {}) {
     r = await fetch(base() + path, { credentials: "include", ...opts,
       headers: { Accept: "application/json", ...(opts.headers || {}) } });
   } catch {
-    throw new Error(`Could not reach your studio's ComfyAudit server at ${base()}. Check the address, that it ` +
+    throw new Error(`Could not reach your studio's Comfy Audit server at ${base()}. Check the address, that it ` +
       "lists this page in COMFYAUDIT_REVIEW_CORS_ORIGINS, and that it is served over HTTPS.");
   }
   const data = await r.json().catch(() => ({}));
@@ -112,7 +112,7 @@ async function connect() {
   if (!state.api) return;
   try {
     const s = await api("/status");
-    if (s.app !== "ComfyAudit Review API") throw new Error("That address is not a ComfyAudit Review server.");
+    if (s.app !== "ComfyAudit Review API") throw new Error("That address is not a Comfy Audit server.");
     state.status = s;
   } catch (e) { state.statusError = e.message; }
 }
@@ -270,8 +270,8 @@ function home() {
       go("Choose a package", () => input.click()), ghost("Try the demo show", startDemo)),
     h("div", { class: "privacy" }, h("b", { text: "Private by design." }),
       h("span", { text: mode() === "studio"
-        ? "The package is read and checked in this browser, then sent to your studio's own ComfyAudit server, and nowhere else, so your answers and decisions can be signed into the shot."
-        : "The package is read and checked in this browser. Nothing is uploaded or stored. To record answers and decisions, connect your studio's own ComfyAudit server." })));
+        ? "The package is read and checked in this browser, then sent to your studio's own Comfy Audit server, and nowhere else, so your answers and decisions can be signed into the shot."
+        : "The package is read and checked in this browser. Nothing is uploaded or stored. To record answers and decisions, connect your studio's own Comfy Audit server." })));
   for (const ev of ["dragenter", "dragover"]) drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); });
   for (const ev of ["dragleave", "drop"]) drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); });
   drop.addEventListener("drop", (e) => openFiles([...e.dataTransfer.files]));
@@ -283,7 +283,7 @@ function home() {
   const hero = h("section", { class: "card hero" },
     h("p", { class: "eyebrow", text: "For studio legal and production" }),
     h("h1", { text: "Review a shot before it ships" }),
-    h("p", { class: "lede", text: "Open a ComfyAudit delivery package to see what the artist's sign-off decided, what it left for legal, and whether the record holds. Answer what is yours to answer, then clear the shot or send it back." }),
+    h("p", { class: "lede", text: "Open a Comfy Workflow Tracker delivery package to see what the artist's sign-off decided, what it left for legal, and whether the record holds. Answer what is yours to answer, then clear the shot or send it back." }),
     h("div", { style: { marginTop: "18px" } }, drop));
   const kids = [hero];
   if (state.demo) {
@@ -308,7 +308,7 @@ function home() {
       h("li", { text: "Clear the shot, or send it back with a reason. The decision is signed into the shot's history by your studio's server." }))),
     card("Your studio's server", h("p", { class: "small", text: mode() === "studio"
       ? `Connected. Decisions are signed ${state.status.signing === "per-person" ? "with each person's own key, from the studio sign-in" : "with the studio key"}.`
-      : "Recording answers and decisions needs your studio's ComfyAudit server (python -m comfyaudit.review), run on your own network. Without it, this page is read-only." }),
+      : "Recording answers and decisions needs your studio's Comfy Audit server (python -m comfyaudit.review), run on your own network. Without it, this page is read-only." }),
       h("div", { class: "row" }, h("a", { class: "ghost", href: "#/settings" }, h("span", { text: "Studio server settings" }))))));
   return kids;
 }
@@ -415,7 +415,7 @@ async function shotPage(id, studioOnly) {
   const signing = state.status?.signing;
   const can = kind === "demo" || (kind === "studio" && view.writable &&
     (signing === "per-person" ? you.can_sign : signing === "studio-key" && !!state.reviewer));
-  const why = kind === "local" ? "Connect your studio's ComfyAudit server (Studio server, top right) to record answers and decisions. On its own, this page reads packages but writes nothing."
+  const why = kind === "local" ? "Connect your studio's Comfy Audit server (Studio server, top right) to record answers and decisions. On its own, this page reads packages but writes nothing."
     : !view.writable ? view.why_not_writable
       : state.status?.signing === "studio-key" && !state.reviewer ? "Give your name in Studio server settings first. It is recorded with what you decide."
         : you.problem || "This server cannot record decisions.";
@@ -480,7 +480,7 @@ async function shotPage(id, studioOnly) {
       (i.notes || []).length ? h("details", {}, h("summary", { text: `Notes (${i.notes.length})` }), h("ul", { class: "small" }, i.notes.map((n) => h("li", { text: n })))) : null,
       h("details", {}, h("summary", { text: "Every file in the package, checked against its fingerprint" }), files,
         h("p", { class: "small dim" }, "Package ", h("span", { class: "mono", text: view.package.filename }), ", SHA-256 ",
-          h("span", { class: "mono", text: view.package.sha256 }), `, made with ComfyAudit ${view.package.made_with} on ${date(view.package.made_at)}.`))),
+          h("span", { class: "mono", text: view.package.sha256 }), `, made with Comfy Workflow Tracker ${view.package.made_with} on ${date(view.package.made_at)}.`))),
     card("Recorded since the package was made", view.since_packaging.length
       ? h("ul", {}, view.since_packaging.map((r) => h("li", {}, h("strong", { text: r.label }),
         ` - ${r.who}${r.role ? ` (${r.role})` : ""}, ${date(r.at)}${r.note ? `: “${r.note}”` : ""}${r.demo ? " (demo)" : ""}`)))
@@ -549,8 +549,8 @@ function settingsPage() {
       : state.statusError ? h("div", { class: "callout stop", text: state.statusError })
         : h("div", { class: "callout plum", text: "Not connected. This page reads packages on its own; it records nothing." });
   return [h("div", { class: "crumbs" }, h("a", { href: "#/", text: "Start" }), " › Studio server"),
-    h("h1", { text: "Your studio's ComfyAudit server" }),
-    h("p", { class: "lede", text: "Answers and decisions are signed into each shot's history by your studio's own ComfyAudit server, on your network. This page only talks to the address you give here." }),
+    h("h1", { text: "Your studio's Comfy Audit server" }),
+    h("p", { class: "lede", text: "Answers and decisions are signed into each shot's history by your studio's own Comfy Audit server, on your network. This page only talks to the address you give here." }),
     card("Connection", status,
       h("label", { class: "small", for: "api", text: "Server address" }), url,
       h("label", { class: "small", for: "reviewer", text: "Your full name (used when your studio signs with one studio key; ignored when it uses your sign-in)" }), name,

@@ -170,8 +170,8 @@ def _slug(name: str) -> str:
 
 
 def review_url() -> str:
-    """Where the studio's legal team reviews packages: its own deployed copy of ComfyAudit
-    Review (``review-web/``). ``COMFYAUDIT_REVIEW_URL``; no default, so nothing points
+    """Where the studio's legal team reviews packages: its own deployed copy of Comfy Audit
+    (``review-web/``). ``COMFYAUDIT_REVIEW_URL``; no default, so nothing points
     anywhere a studio did not choose."""
     url = os.environ.get("COMFYAUDIT_REVIEW_URL", "").strip()
     return url if re.match(r"^https?://", url, re.I) else ""
@@ -198,7 +198,7 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
     clearance["for_legal"] = [{"rule": c["rule"], "title": c["title"],
                                "jurisdiction": c["jurisdiction"],
                                "items": [i["text"] for i in c["items"]],
-                               # Parallel to items, so a reviewer (ComfyAudit Review, an
+                               # Parallel to items, so a reviewer (Comfy Audit, an
                                # agent) can answer each one by its tag.
                                "tags": [i.get("tag", "") for i in c["items"]]}
                               for c in assessed["confirmations"]]
@@ -319,7 +319,7 @@ def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
     v = verification.as_dict()
     entries = history.get("entries", [])
     return machine.stamp("delivery-package", {
-        "about": ("Index of a ComfyAudit delivery package; start here. Each HTML file embeds the "
+        "about": ("Index of a Comfy Workflow Tracker delivery package; start here. Each HTML file embeds the "
                   "data it shows as JSON in <script id='comfyaudit-data'>."),
         "shot": {k: history.get("shot", {}).get(k) for k in ("id", "name", "project", "stage",
                                                              "external_ids")},
@@ -332,7 +332,7 @@ def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
             "exception_reason": clearance.get("exception", ""),
             "blockers": clearance.get("blockers", []), "conditions": clearance.get("conditions", []),
         },
-        # Legal's own decision (ComfyAudit Review), if one was recorded before this
+        # Legal's own decision (Comfy Audit), if one was recorded before this
         # package was made: a shot sent back and delivered again carries it.
         "legal_decision": H.legal_decision(history),
         "outstanding_fixes": clearance.get("outstanding", []),

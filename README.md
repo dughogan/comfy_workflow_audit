@@ -1,4 +1,4 @@
-# ComfyAudit
+# Comfy Workflow Tracker
 
 **Every ComfyUI workflow's life, recorded as it happens, and packaged for legal.**
 Built for studios putting ComfyUI in final pixels.
@@ -6,9 +6,9 @@ Built for studios putting ComfyUI in final pixels.
 https://github.com/user-attachments/assets/586dfb6f-a57e-4b72-9a48-64d60e54f40f
 
 *The demo (1 min 32 s): tracking, Life of the shot, Package for delivery, and
-ComfyAudit Review for legal. No player? [Download it](docs/comfyaudit-demo.mp4).*
+Comfy Audit for legal. No player? [Download it](docs/comfyaudit-demo.mp4).*
 
-ComfyAudit does three things:
+Comfy Workflow Tracker does three things:
 
 - **Audits a workflow:** every model it loads and what each licence actually
   says for *your* studio, the custom node packs and their versions, prompts,
@@ -21,12 +21,19 @@ ComfyAudit does three things:
   signed per person, and travels with the `.json` and its renders.
 - **Packages a shot for legal:** a check against your licences and the rules for
   your production, a sign-off sealed into the history, and a zip legal can open
-  in **ComfyAudit Review**, a browser app for legal teams that checks every file
+  in **Comfy Audit**, a browser app for legal teams that checks every file
   locally and records their decision back into the shot.
 
 Nothing contacts the network unless you turn on online lookups, so it works on
 an air-gapped content network. It is pure Python standard library, so installing
 it cannot disturb your environment.
+
+**About the names.** The artist-side tool in ComfyUI is **Comfy Workflow
+Tracker**; legal's browser app is **Comfy Audit**. Both were called ComfyAudit
+before 2026-10-17. Only the display names changed: the pack still installs and
+imports as `comfyaudit`, and node ids, setting ids, the `/comfyaudit/...` routes,
+the `COMFYAUDIT_*` environment variables and the keys saved in workflows and
+packages are the same, so existing workflows, settings and packages keep loading.
 
 ---
 
@@ -40,7 +47,7 @@ cd ComfyUI/custom_nodes
 git clone https://github.com/dughogan/comfy_workflow_audit comfyaudit
 ```
 
-Restart ComfyUI. The console prints `comfyaudit … loaded`, and a **ComfyAudit**
+Restart ComfyUI. The console prints `comfyaudit … loaded`, and a **Comfy Workflow Tracker**
 tab appears in the sidebar.
 
 **If ComfyUI says IMPORT FAILED**, it is almost always the folder level. ComfyUI
@@ -66,11 +73,11 @@ pip install cryptography   # encrypted prompts in the history
 
 ## Quick start for artists
 
-1. **Set your name once:** *Settings → ComfyAudit → Shot history → Your name*
+1. **Set your name once:** *Settings → Comfy Workflow Tracker → Shot history → Your name*
    (and your role). Entries are recorded under it.
-2. **Open a workflow.** ComfyAudit starts its history the moment it opens; there
+2. **Open a workflow.** Comfy Workflow Tracker starts its history the moment it opens; there
    is no button to press. Each open tab keeps its own history.
-3. **Open the ComfyAudit tab** in the sidebar. The header shows the shot's stage,
+3. **Open the Comfy Workflow Tracker tab** in the sidebar. The header shows the shot's stage,
    whether it can be used commercially, and whether its record verifies. Click
    **edit** under it to name the shot and give its **project / show** (the show
    is what shares legal's answers between shots) and its studio asset ID.
@@ -108,7 +115,7 @@ Every HTML report also carries its data as JSON in
 `<script type="application/json" id="comfyaudit-data">`, so an agent reading
 the package gets exact data instead of scraping prose.
 
-## For legal teams: ComfyAudit Review
+## For legal teams: Comfy Audit
 
 A static web app (`review-web/`) that legal opens in a browser. They drop in a
 delivery zip and it:
@@ -121,7 +128,7 @@ delivery zip and it:
   client's written approval of the AI tools) or for the whole studio; every
   shot of that show inherits the answer;
 - lets them **clear a shot or send it back** with a reason. The decision is
-  signed into the shot's history and shows in the artist's ComfyAudit tab as
+  signed into the shot's history and shows in the artist's Comfy Workflow Tracker tab as
   *Legal cleared* or *Sent back by legal*.
 
 Each studio deploys its own copy. The page can go on any static host, and writes
@@ -134,7 +141,7 @@ fictional show.
 ## Studio setup
 
 People set their own name and role, and the studio profile, in ComfyUI's
-settings (*Settings → ComfyAudit*). Everything that is a secret or a file path
+settings (*Settings → Comfy Workflow Tracker*). Everything that is a secret or a file path
 comes **only from the server's environment**, never from ComfyUI settings,
 because those are writable from any browser that can reach the server.
 
@@ -146,12 +153,12 @@ because those are writable from any browser that can reach the server.
 | `COMFYAUDIT_HISTORY_ENC_KEY`, `COMFYAUDIT_HISTORY_CONFIDENTIALITY` | Keep prompts as fingerprints only, or encrypted |
 | `COMFYAUDIT_ANSWERS_FILE` | Where show and studio answers live; point every machine at one shared file |
 | `COMFYAUDIT_C2PATOOL`, `COMFYAUDIT_C2PA_KEY` + `_CERT` (or `_SIGNER`) | Sign delivered renders with C2PA Content Credentials using your studio certificate |
-| `COMFYAUDIT_REVIEW_URL` | Your ComfyAudit Review page, linked from the package step |
+| `COMFYAUDIT_REVIEW_URL` | Your Comfy Audit page, linked from the package step |
 | `COMFYAUDIT_SHOTGRID_URL`, `_SCRIPT`, `_KEY` | ShotGrid integration (**beta**, see below) |
 
 ## Other ways to run it
 
-**From the menu:** *Extensions → ComfyAudit* has the ComfyAudit tab, Package for
+**From the menu:** *Extensions → Comfy Workflow Tracker* has the Comfy Workflow Tracker tab, Package for
 delivery, the provenance record and the commercial licensing guide, also
 available from the command palette.
 
@@ -184,7 +191,7 @@ network, no cost.
 Fill in the profile and those same reports also work out what the terms
 mean for you.
 
-**Settings → ComfyAudit → Studio profile.** It lives there rather than on a node
+**Settings → Comfy Workflow Tracker → Studio profile.** It lives there rather than on a node
 because it describes the facility, not the graph — territory and revenue are the
 same for every workflow on the machine, and restating a constant in each one is
 how it ends up wrong in half of them. Set it once. (There's still a **Studio
@@ -261,7 +268,7 @@ comfyaudit registry set studio-cleared.json 4x-UltraSharp.pth \
     --status rejected --note "non-commercial, use RealESRGAN instead"
 ```
 
-Point at that file — **Settings → ComfyAudit → Registry**, or `--registry` — and
+Point at that file — **Settings → Comfy Workflow Tracker → Registry**, or `--registry` — and
 every later report leads with what's new:
 
 ```
@@ -537,7 +544,7 @@ changed:
 
 | Captured | Detail |
 |---|---|
-| **Who** | Name and role as set in *Settings → ComfyAudit → Shot history*, the machine, and the tool |
+| **Who** | Name and role as set in *Settings → Comfy Workflow Tracker → Shot history*, the machine, and the tool |
 | **Models** | Every weight, with its licence reading at that moment. Additions, removals and LoRA strength changes are diffed per entry |
 | **Prompts** | Each prompt's text (or only its SHA-256, or encrypted) and **who first wrote it** |
 | **Nodes** | Core, custom (with pack and pinned version) and hosted-API nodes |
@@ -603,7 +610,7 @@ are writable from any browser that can reach the server, so they never hold a
 key, a key path or a ledger path.
 
 A signature proves an entry was written through a holder of the studio key. In
-ComfyUI that is the studio's ComfyAudit server. It does not prove *which*
+ComfyUI that is the studio's Comfy Workflow Tracker server. It does not prove *which*
 person wrote the entry. Names are recorded as each person declared them, and
 the record says so beside every badge. **Per-person keys** close this gap:
 with `COMFYAUDIT_HISTORY_KEYRING` and a trusted sign-in header
@@ -623,7 +630,7 @@ stay readable, since they are what the review is about.
 
 ### In ComfyUI
 
-The **ComfyAudit** tab in the sidebar. Tracking is automatic: every workflow
+The **Comfy Workflow Tracker** tab in the sidebar. Tracking is automatic: every workflow
 starts its history the moment it is opened, and each open tab keeps its own.
 
 - An *edited* entry is added just before a queue, if the graph changed, which
@@ -740,7 +747,7 @@ Evidence only a person can attest is answered at the level it belongs to:
 
 Show and studio answers are signed like history entries and stored outside the
 workflow (`COMFYAUDIT_ANSWERS_FILE`); a delivered package seals a copy of every
-answer it relied on. Legal records them in ComfyAudit Review; anyone can also
+answer it relied on. Legal records them in Comfy Audit; anyone can also
 record them from the package step's *Left for legal* list.
 
 One common assumption is answered directly. **No EU rule requires proof that a
@@ -758,7 +765,7 @@ script, not inferred.
 Every package carries a C2PA manifest for the final render. It marks generated
 output with the IPTC `trainedAlgorithmicMedia` source type, or
 `compositeWithTrainedAlgorithmicMedia` when supplied media went in, and carries
-the history (keyed to its head hash) and the sealed clearance as ComfyAudit's
+the history (keyed to its head hash) and the sealed clearance as Comfy Workflow Tracker's
 own assertions.
 
 When the studio has set up [c2patool](https://github.com/contentauth/c2patool)
@@ -802,7 +809,7 @@ carry history, so theirs lives beside them as `<name>.history.json`.
 comfyaudit guide -o licensing-guide.html
 ```
 
-It is also under *Extensions → ComfyAudit* and at `/comfyaudit/licensing-guide`. It is a
+It is also under *Extensions → Comfy Workflow Tracker* and at `/comfyaudit/licensing-guide`. It is a
 plain-language document for production and legal, built from the same
 knowledge base the auditor uses, so it cannot drift from it. It covers:
 

@@ -1,6 +1,6 @@
 """Sign and embed C2PA Content Credentials with the studio's own c2patool.
 
-ComfyAudit ships no signer and no certificate: signing needs credentials a
+Comfy Workflow Tracker ships no signer and no certificate: signing needs credentials a
 studio holds, and the open-source ``c2patool`` (github.com/contentauth/c2patool)
 does the signing and embedding. When it is installed and the studio has given
 it credentials, delivery signs each final render into a copy inside the
@@ -74,7 +74,7 @@ def status() -> dict[str, Any]:
 
 
 def definition(manifest: dict[str, Any], version: str) -> tuple[dict[str, Any], str]:
-    """Turn ComfyAudit's manifest into a c2patool definition, plus the --create source type.
+    """Turn Comfy Workflow Tracker's manifest into a c2patool definition, plus the --create source type.
 
     The creation action comes from ``--create``, which c2patool adds itself,
     so it is lifted out of the assertions to avoid a second one.

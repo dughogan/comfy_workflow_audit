@@ -1,6 +1,6 @@
 """Machine-readable data inside the human reports.
 
-Every HTML document ComfyAudit packages is read by people, and may also be
+Every HTML document Comfy Workflow Tracker packages is read by people, and may also be
 read by software: a studio's asset system, or a "legal agent" checking the
 package. Scraping prose and tables for that is fragile, so each page carries
 the data it was drawn from, exactly, in one JSON block:
@@ -22,7 +22,7 @@ from .. import __version__
 
 ELEMENT_ID = "comfyaudit-data"
 DISCLAIMER = ("Produced by an automated tool from the workflow's recorded history and "
-              "ComfyAudit's knowledge bases. It is evidence to take to counsel, not legal advice.")
+              "Comfy Workflow Tracker's knowledge bases. It is evidence to take to counsel, not legal advice.")
 
 
 def stamp(kind: str, data: dict[str, Any], version: int = 1) -> dict[str, Any]:
