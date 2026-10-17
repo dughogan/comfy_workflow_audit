@@ -108,7 +108,7 @@ class Client:
                 return self.call(method, path, body, params, content_type, retry=False)
             raise
 
-    # -- what ComfyAudit needs ---------------------------------------------
+    # -- what Comfy Workflow Tracker needs ---------------------------------------------
     def find_shot(self, value: str) -> dict[str, Any] | None:
         """A shot by numeric id or by code; None if there is no such shot."""
         fields = "code,project,sg_status_list,description"
@@ -187,7 +187,7 @@ def lookup(body: dict[str, Any]) -> dict[str, Any]:
 
 
 def push_review(history: dict[str, Any], label: str, reason: str, who: str) -> dict[str, Any]:
-    """After a legal decision in ComfyAudit Review: a Note on the shot. Never fails the
+    """After a legal decision in Comfy Audit: a Note on the shot. Never fails the
     decision, which is already signed into the history."""
     ref = shot_ref(history)
     if not configured() or not ref:
@@ -201,7 +201,7 @@ def push_review(history: dict[str, Any], label: str, reason: str, who: str) -> d
             return {"error": f"ShotGrid has no shot {ref}; nothing was posted."}
         content = "\n".join([f"Legal review: {label}", f"Reason: {reason}", f"By: {who}",
                              f"History head: {head}"])
-        posted = client.post_delivery(shot, f"ComfyAudit legal review: {label} - {shot['code'] or ref}",
+        posted = client.post_delivery(shot, f"Comfy Audit legal review: {label} - {shot['code'] or ref}",
                                       content, head=head)
         return {"shot": shot, **posted}
     except ShotGridError as exc:
@@ -227,8 +227,8 @@ def push_delivery(history: dict[str, Any], clearance: dict[str, Any], who: str,
         if clearance.get("exception"):
             lines.append(f"Delivered by exception: {clearance['exception']}")
         lines += [f"History head: {head}",
-                  f"Checked with ComfyAudit {clearance.get('audited_with', {}).get('comfyaudit', '')}"]
-        posted = client.post_delivery(shot, f"ComfyAudit delivery: {shot['code'] or ref}",
+                  f"Checked with Comfy Workflow Tracker {clearance.get('audited_with', {}).get('comfyaudit', '')}"]
+        posted = client.post_delivery(shot, f"Comfy Workflow Tracker delivery: {shot['code'] or ref}",
                                       "\n".join(x for x in lines if x), attachment=package, head=head)
         return {"shot": shot, **posted}
     except ShotGridError as exc:

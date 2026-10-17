@@ -1,4 +1,4 @@
-"""The pages of ComfyAudit Review, drawn from the data ``app.Review`` returns.
+"""The pages of Comfy Audit, drawn from the data ``app.Review`` returns.
 
 Written for people who clear shots, not for people who build them: plain
 words, the decision first, nothing that needs ComfyUI to understand. Every
@@ -154,11 +154,11 @@ def layout(title: str, body: str, *, kind: str, data: dict[str, Any], me: dict[s
            (f"<div class='flash err' role='alert'>{e(error)}</div>" if error else "")
     return f"""<!doctype html><html lang='en'><head><meta charset='utf-8'>
 <meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>{e(title)} · ComfyAudit Review</title>
+<title>{e(title)} · Comfy Audit</title>
 <link rel='alternate' type='application/json' href='?format=json'>
 <link rel='icon' type='image/svg+xml' href='{FAVICON}'>
 <style>{CSS}</style></head><body>
-<header class='top'><div class='in'><a class='brand' href='/'>{LOGO}<span class='app'>ComfyAudit Review</span></a>
+<header class='top'><div class='in'><a class='brand' href='/'>{LOGO}<span class='app'>Comfy Audit</span></a>
 <span class='who'>{who}</span></div></header>
 <main>{trail}{note}{body}</main>
 <footer>{e(machine.DISCLAIMER)} This page's data is also available as JSON:
@@ -401,7 +401,7 @@ show or the studio are answered once, and every shot of that show inherits the a
 <details><summary>Every file in the package, checked against its fingerprint</summary>
 <div class='scroll'><table>{others}</table></div>
 <p class='small soft'>Package <code>{e(view['package']['filename'])}</code>, SHA-256 <code>{e(view['package']['sha256'])}</code>,
-made with ComfyAudit {e(view['package']['made_with'])} on {e(_date(view['package']['made_at']))}.
+made with Comfy Workflow Tracker {e(view['package']['made_with'])} on {e(_date(view['package']['made_at']))}.
 History head at packaging <code>{e(i['head_at_packaging'][:16])}</code>.</p></details></section>
 <section class='card'><h2>Recorded here since the package was made</h2>
 {f"<ul>{since}</ul>" if since else "<p class='soft'>Nothing yet.</p>"}</section>"""

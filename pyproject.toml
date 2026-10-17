@@ -22,7 +22,7 @@ Issues = "https://github.com/dughogan/comfyaudit/issues"
 
 [tool.comfy]
 PublisherId = "dughogan"
-DisplayName = "ComfyAudit"
+DisplayName = "Comfy Workflow Tracker"
 Icon = ""
 includes = []
 

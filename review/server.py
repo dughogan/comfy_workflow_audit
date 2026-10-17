@@ -1,4 +1,4 @@
-"""HTTP for ComfyAudit Review: standard library ``http.server``, no JavaScript needed.
+"""HTTP for Comfy Audit: standard library ``http.server``, no JavaScript needed.
 
 Routes (every GET page also answers ``?format=json`` or ``Accept: application/json``
 with the data it is drawn from; every POST also takes a JSON body and answers JSON):

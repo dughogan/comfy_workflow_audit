@@ -71,7 +71,7 @@ def signer(cfg: dict[str, Any], body: dict[str, Any] | None) -> H.Keys:
         return base
     user = str((body or {}).get("_signed_in_user", "") or "")
     if not user:
-        raise ValueError("No signed-in user came with this request. ComfyAudit is set to "
+        raise ValueError("No signed-in user came with this request. Comfy Workflow Tracker is set to "
                          "sign entries per person, so it records nothing it cannot attribute.")
     person = base.for_person(user)
     if person is None:
@@ -350,7 +350,7 @@ def summary(history: dict[str, Any] | None, *, workflow: dict[str, Any] | None =
         "file": H.file_of(history),
         "shot_id": H.chain_shot_id(history),
         "clearance": H.delivery_clearance(history),
-        # Legal's decision, apart from the stage (ComfyAudit Review records it).
+        # Legal's decision, apart from the stage (Comfy Audit records it).
         "legal": H.legal_decision(history),
     }
 

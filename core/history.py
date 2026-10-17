@@ -1125,7 +1125,7 @@ PERSONAL_SCOPE = ("Each entry was signed with the personal key of the person the
                   "person's, as far as that sign-in can be trusted.")
 
 SIGNATURE_SCOPE = ("A signature shows an entry was written through a holder of the "
-                   "studio key - in ComfyUI, this studio's ComfyAudit server - not "
+                   "studio key - in ComfyUI, this studio's Comfy Workflow Tracker server - not "
                    "which person wrote it; names are as each person declared them.")
 
 #: When some entries carry the studio key and others a person's own.
@@ -1697,7 +1697,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
     anon = [p["name"] for p in people if p["name"] in ("unknown", "", "root")]
     if anon:
         gaps.append("Some entries have no meaningful name attached. Set a user name in "
-                    "the ComfyAudit settings so each change is attributable.")
+                    "the Comfy Workflow Tracker settings so each change is attributable.")
 
     # The chain is the authority on what this shot is; the top-level block is a
     # convenience copy that nothing protects.
@@ -1860,7 +1860,7 @@ def delivery_clearance(history: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-#: What legal decided about a shot, as ComfyAudit Review records it: an ``approved``
+#: What legal decided about a shot, as Comfy Audit records it: an ``approved``
 #: or ``rejected`` entry carrying ``data.legal``. Kept apart from the stage, which
 #: only moves forward (sandbox -> production -> cleared -> delivered): an artist's
 #: sign-off delivers the shot; legal's clearance is a separate, signed decision on top.

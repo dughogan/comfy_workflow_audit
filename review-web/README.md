@@ -1,6 +1,6 @@
-# ComfyAudit Review (web)
+# Comfy Audit (web)
 
-The legal team's view of a ComfyAudit delivery package, as a static web page in Comfy's
+The legal team's view of a Comfy Workflow Tracker delivery package, as a static web page in Comfy's
 look. Studio legal and production staff open the `.delivery.zip` that **Package for
 delivery** made in ComfyUI, see what the artist's sign-off decided and what it left for
 legal, answer what is theirs to answer, and clear the shot or send it back.

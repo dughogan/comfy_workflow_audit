@@ -1,4 +1,4 @@
-"""``python -m comfyaudit.review`` - serve ComfyAudit Review. Configured from the environment."""
+"""``python -m comfyaudit.review`` - serve Comfy Audit. Configured from the environment."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def main() -> int:
         signing = "the studio key; reviewers give their name"
     else:
         signing = "NONE - read-only until COMFYAUDIT_HISTORY_KEY_FILE is set"
-    print(f"ComfyAudit Review on http://{host}:{port}/", flush=True)
+    print(f"Comfy Audit on http://{host}:{port}/", flush=True)
     for label, value in (("packages kept in", cfg.root), ("inbox", cfg.inbox or "(none)"),
                          ("signing with", signing),
                          ("ledger", os.environ.get("COMFYAUDIT_HISTORY_LEDGER", "") or "(none)"),

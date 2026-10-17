@@ -1,7 +1,7 @@
 /**
  * comfyaudit - studio profile, knowledge-base status and report exports.
  *
- * The sidebar lives in shothistory.js: one ComfyAudit tab that records a
+ * The sidebar lives in shothistory.js: one Comfy Workflow Tracker tab that records a
  * workflow's life on its own and, when someone chooses "Package for
  * delivery", runs this audit against the studio profile, lists what would make
  * the workflow commercially safe, and packages it for legal. This file holds
@@ -167,7 +167,7 @@ const STUDIO_SETTINGS = PROFILE_FIELDS.map((field) => ({
   type: field.type,
   options: field.options,
   defaultValue: field.defaultValue,
-  category: ["ComfyAudit", "Studio profile", field.name],
+  category: ["Comfy Workflow Tracker", "Studio profile", field.name],
 }));
 
 /**
@@ -186,7 +186,7 @@ const REGISTRY_SETTINGS = [
       + "rejected or parked. Optional.",
     type: "text",
     defaultValue: "",
-    category: ["ComfyAudit", "Registry", "Registry file"],
+    category: ["Comfy Workflow Tracker", "Registry", "Registry file"],
   },
 ];
 
@@ -324,11 +324,11 @@ export async function loadStatus() {
 /* ------------------------------------------------------------------ */
 
 /* The audit used to be its own sidebar tab. These commands now open the one
- * ComfyAudit tab, registered by shothistory.js, at its package flow. */
+ * Comfy Workflow Tracker tab, registered by shothistory.js, at its package flow. */
 const run = (id) => () => app.extensionManager?.command?.execute?.(id);
 
 const COMMANDS = [
-  { id: "comfyaudit.open", label: "Open ComfyAudit", icon: "pi pi-verified", function: run("comfyaudit.history.open") },
+  { id: "comfyaudit.open", label: "Open Comfy Workflow Tracker", icon: "pi pi-verified", function: run("comfyaudit.history.open") },
   { id: "comfyaudit.audit", label: "Package for delivery", icon: "pi pi-verified", function: run("comfyaudit.history.package") },
 ];
 
@@ -336,7 +336,7 @@ app.registerExtension({
   name: "comfyaudit.panel",
   settings: [...STUDIO_SETTINGS, ...REGISTRY_SETTINGS],
   commands: COMMANDS,
-  menuCommands: [{ path: ["Extensions", "ComfyAudit"], commands: COMMANDS.map((c) => c.id) }],
+  menuCommands: [{ path: ["Extensions", "Comfy Workflow Tracker"], commands: COMMANDS.map((c) => c.id) }],
 
   async setup() {
     await loadStatus();

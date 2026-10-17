@@ -290,7 +290,7 @@ class ComfyAuditStudioProfile:
     RETURN_NAMES = ("profile",)
     OUTPUT_TOOLTIPS = ("Feed this into Audit This Workflow to get a determination.",)
     FUNCTION = "build"
-    CATEGORY = "audit"
+    CATEGORY = "Comfy Workflow Tracker"
     DESCRIPTION = ("Describe the facility, so the audit can work out what the "
                    "licences mean for it. Without this the report lists the terms "
                    "but reaches no verdict, because a verdict against an unknown "
@@ -339,7 +339,7 @@ class ComfyAuditWorkflow:
                     "Path to a studio licence file that extends the bundled one."}),
                 "profile": ("AUDIT_PROFILE", {"tooltip":
                     "Optional. Overrides the studio profile set in ComfyUI's "
-                    "settings (Settings -> ComfyAudit), for a show whose "
+                    "settings (Settings -> Comfy Workflow Tracker), for a show whose "
                     "circumstances differ from the facility's. With no profile "
                     "in either place the report describes the licence terms and "
                     "reaches no verdict, which is the default."}),
@@ -351,7 +351,7 @@ class ComfyAuditWorkflow:
     RETURN_NAMES = ("audit", "report_markdown", "report_json",
                     "risk_score", "automation_index", "licence_summary")
     OUTPUT_TOOLTIPS = (
-        "The audit, for the other comfyaudit nodes.",
+        "The audit, for the other Comfy Workflow Tracker nodes.",
         "The full report as Markdown.",
         "The full report as JSON.",
         "Operational risk, 0-100. How much stands between this and running "
@@ -360,7 +360,7 @@ class ComfyAuditWorkflow:
         "A one-line description of the licence composition.",
     )
     FUNCTION = "run"
-    CATEGORY = "audit"
+    CATEGORY = "Comfy Workflow Tracker"
     OUTPUT_NODE = True
     DESCRIPTION = ("Document this workflow: every model with its licence terms and "
                    "where they came from, the prompts, the assets, the custom node "
@@ -469,7 +469,7 @@ class ComfyAuditClaudeReview:
     RETURN_TYPES = ("AUDIT", "STRING", "STRING")
     RETURN_NAMES = ("audit", "review_markdown", "review_json")
     FUNCTION = "run"
-    CATEGORY = "audit"
+    CATEGORY = "Comfy Workflow Tracker"
     OUTPUT_NODE = True
     DESCRIPTION = ("Have Claude investigate the audit: identify models the rules "
                    "could not, review prompts for trademark and likeness risk, and "
@@ -519,7 +519,7 @@ class ComfyAuditGate:
     RETURN_TYPES = ("AUDIT", "STRING")
     RETURN_NAMES = ("audit", "verdict")
     FUNCTION = "run"
-    CATEGORY = "audit"
+    CATEGORY = "Comfy Workflow Tracker"
     DESCRIPTION = ("Stop the queue on conditions you choose, so a workflow that "
                    "fails your own bar never renders. The thresholds are yours to "
                    "set; nothing is enforced by default beyond critical findings.")
@@ -536,7 +536,7 @@ class ComfyAuditGate:
                                      and m.license.commercial_use == "no"})
             if non_commercial:
                 raise RuntimeError(
-                    "comfyaudit gate: stop_on_non_commercial is set and these models' "
+                    "Comfy Workflow Tracker gate: stop_on_non_commercial is set and these models' "
                     f"licences say non-commercial: {', '.join(non_commercial)}. "
                     "Turn the switch off to render anyway."
                 )
@@ -544,7 +544,7 @@ class ComfyAuditGate:
         if tripped:
             listed = "; ".join(f"[{f.severity}] {f.title}" for f in tripped[:5])
             raise RuntimeError(
-                f"comfyaudit gate: {len(tripped)} finding(s) at or above "
+                f"Comfy Workflow Tracker gate: {len(tripped)} finding(s) at or above "
                 f"'{fail_on}'. {listed}"
             )
 
@@ -585,7 +585,7 @@ class ComfyAuditHistoryGate:
             "optional": {
                 "require_legal_clearance": ("BOOLEAN", {"default": False, "tooltip":
                     "Stop unless legal has cleared this exact version of the shot in "
-                    "ComfyAudit Review. A change to the graph since the clearance stops it too."}),
+                    "Comfy Audit. A change to the graph since the clearance stops it too."}),
             },
             "hidden": {"extra_pnginfo": "EXTRA_PNGINFO"},
         }
@@ -593,7 +593,7 @@ class ComfyAuditHistoryGate:
     RETURN_TYPES = ("IMAGE", "STRING")
     RETURN_NAMES = ("images", "verdict")
     FUNCTION = "run"
-    CATEGORY = "audit"
+    CATEGORY = "Comfy Workflow Tracker"
     DESCRIPTION = ("Stop the run before anything is saved if this shot's history is "
                    "missing or altered, the shot has not reached the stage you require, "
                    "or (optionally) a model bars commercial use. Put it between VAE "
@@ -611,8 +611,8 @@ class ComfyAuditHistoryGate:
         if not history:
             if require_history:
                 raise RuntimeError(
-                    "comfyaudit history gate: this workflow carries no shot history, so "
-                    "nothing it renders can be traced. Open it with ComfyAudit's automatic "
+                    "Comfy Workflow Tracker history gate: this workflow carries no shot history, so "
+                    "nothing it renders can be traced. Open it with Comfy Workflow Tracker's automatic "
                     "tracking on, or turn require_history off.")
             return (images, "passed: no history, and none required")
         if stop_if_altered:
@@ -620,36 +620,36 @@ class ComfyAuditHistoryGate:
                          ledger=os.environ.get("COMFYAUDIT_HISTORY_LEDGER", ""))
             if v.assurance == "none":
                 raise RuntimeError(
-                    "comfyaudit history gate: this shot's history has been altered: "
+                    "Comfy Workflow Tracker history gate: this shot's history has been altered: "
                     + "; ".join(v.problems[:3]))
         stage = (history.get("shot") or {}).get("stage", "sandbox")
         order = ["sandbox"] + HISTORY_STAGES[1:]
         if minimum_stage != "any" and order.index(stage) < order.index(minimum_stage):
             raise RuntimeError(
-                f"comfyaudit history gate: the shot is in {stage}, and this gate needs "
-                f"{minimum_stage} or later. Move the shot on in the ComfyAudit panel.")
+                f"Comfy Workflow Tracker history gate: the shot is in {stage}, and this gate needs "
+                f"{minimum_stage} or later. Move the shot on in the Comfy Workflow Tracker panel.")
         if stop_if_not_commercial:
             timeline = H.commercial_timeline(history)
             now = timeline[-1] if timeline else {}
             if now.get("status") == "blocked":
                 models = ", ".join(m["filename"] for m in now.get("models", []))
                 raise RuntimeError(
-                    "comfyaudit history gate: stop_if_not_commercial is set and these "
+                    "Comfy Workflow Tracker history gate: stop_if_not_commercial is set and these "
                     f"models bar commercial use: {models}.")
         if require_legal_clearance:
             legal = H.legal_decision(history)
             if not legal or legal["decision"] != "cleared":
                 raise RuntimeError(
-                    "comfyaudit history gate: require_legal_clearance is set and legal has "
+                    "Comfy Workflow Tracker history gate: require_legal_clearance is set and legal has "
                     + ("sent this shot back: " + legal["reason"] if legal else "not cleared this shot")
-                    + ". Clearance is recorded in ComfyAudit Review.")
+                    + ". Clearance is recorded in Comfy Audit.")
             if not legal["current"]:
                 raise RuntimeError(
-                    "comfyaudit history gate: legal cleared an earlier version of this shot; "
+                    "Comfy Workflow Tracker history gate: legal cleared an earlier version of this shot; "
                     "the graph has changed since. Send it to legal again.")
             if not legal["signed"]:
                 raise RuntimeError(
-                    "comfyaudit history gate: the legal clearance on this shot is unsigned, "
+                    "Comfy Workflow Tracker history gate: the legal clearance on this shot is unsigned, "
                     "so it cannot be relied on.")
             return (images, f"passed: history intact, shot in {stage}, cleared by legal ({legal['by']})")
         return (images, f"passed: history intact, shot in {stage}")
@@ -674,7 +674,7 @@ class ComfyAuditSaveReport:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("paths",)
     FUNCTION = "run"
-    CATEGORY = "audit"
+    CATEGORY = "Comfy Workflow Tracker"
     OUTPUT_NODE = True
     DESCRIPTION = "Write the audit report into the ComfyUI output folder."
 

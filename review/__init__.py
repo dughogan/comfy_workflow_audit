@@ -1,4 +1,4 @@
-"""ComfyAudit Review: a small web app for studio legal and production staff.
+"""Comfy Audit: a small web app for studio legal and production staff.
 
 People who clear shots for delivery do not use ComfyUI or a command line. This
 app lets them open a delivery package in a browser, see what was decided and
