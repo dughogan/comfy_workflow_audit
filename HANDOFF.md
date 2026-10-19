@@ -1,11 +1,11 @@
-# Handoff: ComfyAudit shot history
+# Handoff: Comfy Workflow Tracker shot history
 
 *Written 2026-10-15 at the end of the session that built the `shot-history` branch.
 Read this first, then `README.md` for the user-facing documentation.*
 
 ## 1. What this project is
 
-**ComfyAudit** is a ComfyUI custom node pack, pure Python standard library, that
+**Comfy Workflow Tracker** is a ComfyUI custom node pack, pure Python standard library, that
 documents what is inside a workflow so someone else (a supervisor, a client, a
 legal team) can decide whether it can go on a commercial job. It covers every
 model and what its licence says, prompts, assets, custom node packs, and how
@@ -149,7 +149,7 @@ Environment variables (server and CLI):
 - **Secrets and paths never live in ComfyUI settings.** Any browser that reaches
   the server can write those settings.
 - **Signing scope is stated beside every badge.** A signature proves an entry
-  came through the studio key (in practice the studio's ComfyAudit server), not
+  came through the studio key (in practice the studio's Comfy Workflow Tracker server), not
   which person wrote it. Names are self-declared.
 
 ## 5. What we learned
@@ -217,7 +217,7 @@ run against a live frontend; it was only syntax-checked (`node --check`).
 1. Install the branch into `custom_nodes` (folder named `comfyaudit`) and start
    ComfyUI. Confirm the log line `comfyaudit … loaded (… web routes)` and that a
    **History** tab appears.
-2. Set *Settings → ComfyAudit → Shot history → Your name*.
+2. Set *Settings → Comfy Workflow Tracker → Shot history → Your name*.
 3. Open a workflow, then **Start tracking** with a shot name and ShotGrid ID.
    Check that `app.graph.extra.comfyaudit_history` exists (browser console).
 4. Queue a render. Check that:
@@ -283,7 +283,7 @@ startup, so no phantom shot is witnessed. New sidebar icon (CSS mask, timeline
 ending in a check).
 
 **One tool, and Package for delivery (2026-10-15, Doug's design).** The Audit
-and History tabs are now one **ComfyAudit** tab (`web/shothistory.js`;
+and History tabs are now one **Comfy Workflow Tracker** tab (`web/shothistory.js`;
 `web/comfyaudit.js` keeps only the studio-profile settings, status and
 export helpers). The everyday view is read-only: stage, commercial standing,
 assurance, a dated flag whenever a change makes the shot non-commercial
@@ -458,7 +458,7 @@ package seals the answers it relied on (`clearance.answers_relied_on`, with
 signatures) and lists them in the README and `package.json`. In the panel,
 "What legal will check" is grouped into this shot / the whole show / the studio.
 Live-tested: an answer recorded on one shot of "Pilot" was inherited by another
-shot given "pilot". Legal answers without ComfyUI in **ComfyAudit Review**
+shot given "pilot". Legal answers without ComfyUI in **Comfy Audit**
 (below).
 
 **Desktop, the gate and API exports (2026-10-16).** Tested live in Doug's
@@ -474,7 +474,7 @@ history is missing or altered, the shot is below a minimum stage, or
 the history. **ShotGrid is labelled beta**: built from Autodesk's REST docs and
 tested only against a local stand-in; it needs a run on a real site.
 
-**ComfyAudit Review, legal's own web app (2026-10-16).** `review/`, run with
+**Comfy Audit, legal's own web app (2026-10-16).** `review/`, run with
 `python -m comfyaudit.review` (stdlib `http.server`, no ComfyUI, no JavaScript in
 its own pages) on an internal studio server. Legal and production staff open a
 `.delivery.zip` (upload, or pick from `COMFYAUDIT_REVIEW_INBOX`), read it, answer
@@ -575,7 +575,7 @@ instruction. `review-web/README.md` is the deployment guide.
 - *ComfyUI side:* `COMFYAUDIT_REVIEW_URL` (no default; http(s) only) goes into the
   delivery result, `package.json` (`review_url`) and the package README ("Legal:
   review this package at ..."), and the panel's done step shows "Send to legal:
-  Open ComfyAudit Review and drop in <shot>.delivery.zip" only when it is set.
+  Open Comfy Audit and drop in <shot>.delivery.zip" only when it is set.
   ShotGrid is labelled **(beta)** in the panel (Shot details choice, done-step
   line).
 - *Tested:* pytest (CORS allow/deny, preflight, `/status`, reviewer field,

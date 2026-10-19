@@ -1,5 +1,5 @@
 /**
- * ComfyAudit shot history - the canvas side.
+ * Comfy Workflow Tracker shot history - the canvas side.
  *
  * The history lives inside the workflow (extra.comfyaudit_history), so it has
  * to be written by whoever holds the open graph, which is this page. The
@@ -69,79 +69,79 @@ const SETTINGS = [
   {
     id: "ComfyAudit.History.UserName", name: "Your name", type: "text", defaultValue: "",
     tooltip: "Recorded on every history entry you make. Use the name your legal and production teams know you by.",
-    category: ["ComfyAudit", "Shot history", "Your name"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Your name"],
   },
   {
     id: "ComfyAudit.History.Role", name: "Your role", type: "text", defaultValue: "",
     tooltip: "Compositor, VFX supervisor, legal, client... shown beside your name.",
-    category: ["ComfyAudit", "Shot history", "Your role"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Your role"],
   },
   {
     id: "ComfyAudit.History.Auto", name: "Record history automatically", type: "boolean", defaultValue: true,
     tooltip: "Track every workflow from the moment it is open, add an entry when it is queued with changes, and another when its render finishes. Turn off to start tracking by hand.",
-    category: ["ComfyAudit", "Shot history", "Automatic"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Automatic"],
   },
   {
     id: "ComfyAudit.History.Confidentiality", name: "Prompts in the history", type: "combo",
     options: ["prompts readable", "prompts as fingerprints only", "prompts encrypted"],
     defaultValue: "prompts readable",
     tooltip: "Fingerprints prove which prompt was used without revealing it. Encryption needs the studio key and the 'cryptography' package on the server.",
-    category: ["ComfyAudit", "Shot history", "Confidentiality"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Confidentiality"],
   },
   {
     id: "ComfyAudit.History.DistributeIn", name: "Distributed in", type: "text", defaultValue: "",
     tooltip: "Territory codes where finished work is made available, comma separated (US, EU, GB, CN...). Decides which disclosure rules apply.",
-    category: ["ComfyAudit", "Shot history", "Distribution"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Distribution"],
   },
   {
     id: "ComfyAudit.History.UnionProduction", name: "Union or guild production", type: "boolean", defaultValue: false,
     tooltip: "SAG-AFTRA, DGA or WGA terms apply to this show. Adds their AI provisions to the provenance record's checklist.",
-    category: ["ComfyAudit", "Shot history", "Union production"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Union production"],
   },
   {
     id: "ComfyAudit.History.Advertising", name: "Advertising work", type: "boolean", defaultValue: false,
     tooltip: "Commercials: adds the SAG-AFTRA Commercials, New York synthetic-performer disclosure, FTC and ad-platform rules.",
-    category: ["ComfyAudit", "Shot history", "Advertising"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Advertising"],
   },
   {
     id: "ComfyAudit.History.FeatureFilm", name: "Feature film", type: "boolean", defaultValue: false,
     tooltip: "Adds the Academy's AI disclosure rules for awards eligibility.",
-    category: ["ComfyAudit", "Shot history", "Feature film"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Feature film"],
   },
   {
     id: "ComfyAudit.History.UnionCrew", name: "Union crew (IATSE / Animation Guild)", type: "boolean", defaultValue: false,
     tooltip: "Crew work under IATSE or Animation Guild terms. Adds their AI notice, consultation and scan-consent rules.",
-    category: ["ComfyAudit", "Shot history", "Union crew"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Union crew"],
   },
   {
     id: "ComfyAudit.History.Animation", name: "Animated production", type: "boolean", defaultValue: false,
     tooltip: "An animated production. With union crew, adds the Animation Guild's AI terms.",
-    category: ["ComfyAudit", "Shot history", "Animation"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Animation"],
   },
   {
     id: "ComfyAudit.History.TPNVendor", name: "TPN-assessed vendor", type: "boolean", defaultValue: false,
     tooltip: "Your studio handles MPA member studios' content under TPN content security. Adds the MPA/TPN AI controls: written client approval, an approved-AI inventory and an AI audit log.",
-    category: ["ComfyAudit", "Shot history", "TPN"],
+    category: ["Comfy Workflow Tracker", "Shot history", "TPN"],
   },
   {
     id: "ComfyAudit.History.EOInsurance", name: "E&O insured", type: "boolean", defaultValue: false,
     tooltip: "The production carries errors and omissions insurance. Adds what underwriters ask about AI use.",
-    category: ["ComfyAudit", "Shot history", "E&O insurance"],
+    category: ["Comfy Workflow Tracker", "Shot history", "E&O insurance"],
   },
   {
     id: "ComfyAudit.History.CopyrightClaim", name: "Registering copyright", type: "boolean", defaultValue: false,
     tooltip: "The studio or client will register or enforce copyright in this work. Adds human-authorship rules in more territories.",
-    category: ["ComfyAudit", "Shot history", "Copyright"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Copyright"],
   },
   {
     id: "ComfyAudit.History.Sidecars", name: "Provenance file next to every render", type: "boolean", defaultValue: true,
     tooltip: "Write <render>.provenance.json beside each output, holding the shot's history through the entry that made it and the file's fingerprint. EXR, video and 3D outputs cannot carry the workflow themselves; with this, every output can be verified on its own.",
-    category: ["ComfyAudit", "Shot history", "Sidecars"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Sidecars"],
   },
   {
     id: "ComfyAudit.History.Clients", name: "Clients", type: "text", defaultValue: "",
     tooltip: "Who commissioned the work, comma separated (Netflix, ...). Adds that client's published AI rules for vendors.",
-    category: ["ComfyAudit", "Shot history", "Clients"],
+    category: ["Comfy Workflow Tracker", "Shot history", "Clients"],
   },
 ];
 
@@ -854,7 +854,7 @@ function homeView(s) {
   }
   if (!getSetting("ComfyAudit.History.UserName", "")) {
     wrap.append(h("div", { style: { fontSize: "11.5px", color: TONE.warn, margin: "10px 0", lineHeight: "1.45" } },
-      "Set your name in Settings > ComfyAudit > Shot history, or entries are recorded under your computer account."));
+      "Set your name in Settings > Comfy Workflow Tracker > Shot history, or entries are recorded under your computer account."));
   }
   return wrap;
 }
@@ -1144,7 +1144,7 @@ function signoffStep() {
     "Signing off as ", h("strong", {}, who || "your computer account"), role ? ` (${role})` : "",
     ". The audit runs again on the server and its verdict is sealed into the history with your sign-off."));
   if (!who) wrap.append(h("div", { style: { fontSize: "11.5px", color: TONE.warn, marginBottom: "8px" } },
-    "Set your name in Settings > ComfyAudit > Shot history so legal can see who signed off."));
+    "Set your name in Settings > Comfy Workflow Tracker > Shot history so legal can see who signed off."));
   wrap.append(label("Approved for", input(pkg.note, (v) => { pkg.note = v; }, "e.g. Final delivery, reel 3", true)));
   if (needsException) {
     wrap.append(h("div", { style: { fontSize: "12px", color: TONE.stop, margin: "4px 0 6px", lineHeight: "1.45" } },
@@ -1180,13 +1180,13 @@ function doneStep() {
   }
   wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", marginBottom: "10px" } },
     `Signed off by ${c.by || "you"} and sealed into the history. Save the workflow so the delivered history goes with the file.`));
-  // Where the studio's legal team reviews packages: their own copy of ComfyAudit Review,
+  // Where the studio's legal team reviews packages: their own copy of Comfy Audit,
   // named by the server's COMFYAUDIT_REVIEW_URL. Nothing is shown when it is not set.
   if (/^https?:\/\//i.test(out.review_url || "")) {
     wrap.append(caption("Send to legal"));
     wrap.append(h("div", { style: { fontSize: "12px", lineHeight: "1.5", marginBottom: "10px" } },
       "Open ", h("a", { href: out.review_url, target: "_blank", rel: "noopener noreferrer",
-        style: { color: BRAND.yellow } }, "ComfyAudit Review"),
+        style: { color: BRAND.yellow } }, "Comfy Audit"),
       ` and drop in ${slug}.delivery.zip.`));
   }
   wrap.append(caption("The package"));
@@ -1233,7 +1233,7 @@ function packageView() {
 function startView() {
   const wrap = h("div", {});
   wrap.append(h("p", { style: { color: UI.dim, fontSize: "12px", lineHeight: "1.55", margin: "0 0 12px" } },
-    "Automatic recording is off, so this workflow is not being tracked. Turn on Settings > ComfyAudit > Shot history > Record history automatically, or start this one now."));
+    "Automatic recording is off, so this workflow is not being tracked. Turn on Settings > Comfy Workflow Tracker > Shot history > Record history automatically, or start this one now."));
   wrap.append(btn("Start tracking this workflow", () => act(() => stamp(app.graph?._nodes?.length ? "imported" : "created")), "primary"));
   return wrap;
 }
@@ -1242,7 +1242,7 @@ function draw(el) {
   el.innerHTML = "";
   const root = h("div", { style: { display: "flex", flexDirection: "column", height: "100%", color: UI.fg, font: "13px/1.5 var(--p-font-family, system-ui, sans-serif)" } });
   const head = h("div", { style: { padding: "12px 14px 10px", borderBottom: `1px solid ${UI.line}`, marginBottom: "10px" } },
-    h("strong", { style: { fontSize: "13px" } }, state.view === "package" ? "Package for delivery" : "ComfyAudit"),
+    h("strong", { style: { fontSize: "13px" } }, state.view === "package" ? "Package for delivery" : "Comfy Workflow Tracker"),
     h("div", { style: { fontSize: "11px", color: UI.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, shotName()));
   const s = state.summary;
   if (state.view === "package") {
@@ -1276,7 +1276,7 @@ function draw(el) {
 
 function rerender() { if (mount) draw(mount); }
 
-// Legal's own decision (ComfyAudit Review), shown beside the stage, never as one.
+// Legal's own decision (Comfy Audit), shown beside the stage, never as one.
 function legalPill(legal) {
   if (!legal) return null;
   const when = String(legal.at || "").slice(0, 10);
@@ -1300,7 +1300,7 @@ function openTab() {
 }
 
 const COMMANDS = [
-  { id: "comfyaudit.history.open", label: "ComfyAudit", icon: "pi pi-history", function: openTab },
+  { id: "comfyaudit.history.open", label: "Comfy Workflow Tracker", icon: "pi pi-history", function: openTab },
   { id: "comfyaudit.history.package", label: "Package for delivery", icon: "pi pi-box",
     function: () => { openTab(); if (tracked()) openPackage(); } },
   { id: "comfyaudit.history.record", label: "Open provenance record", icon: "pi pi-file", function: () => tracked() && openRecord() },
@@ -1311,7 +1311,7 @@ app.registerExtension({
   name: "comfyaudit.history",
   settings: SETTINGS,
   commands: COMMANDS,
-  menuCommands: [{ path: ["Extensions", "ComfyAudit"], commands: COMMANDS.map((c) => c.id) }],
+  menuCommands: [{ path: ["Extensions", "Comfy Workflow Tracker"], commands: COMMANDS.map((c) => c.id) }],
   async setup() {
     installIcon();
     if (!wrapQueue()) console.warn("[comfyaudit] could not hook the queue; history will only record manual entries");
@@ -1320,8 +1320,8 @@ app.registerExtension({
     const manager = app.extensionManager;
     if (typeof manager?.registerSidebarTab === "function") {
       manager.registerSidebarTab({
-        id: SIDEBAR_ID, icon: ICON_CLASS, title: "ComfyAudit",
-        tooltip: "ComfyAudit - the shot's life, recorded as it happens, and packaging it for delivery",
+        id: SIDEBAR_ID, icon: ICON_CLASS, title: "Comfy Workflow Tracker",
+        tooltip: "Comfy Workflow Tracker - the shot's life, recorded as it happens, and packaging it for delivery",
         type: "custom",
         render: (el) => { mount = el; draw(el); refresh(); flushPending().then(refresh); },
         destroy: () => { mount = null; },

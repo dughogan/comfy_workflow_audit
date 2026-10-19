@@ -1,5 +1,5 @@
 /**
- * ComfyAudit: a warning before "Export (API Format)" on a tracked shot.
+ * Comfy Workflow Tracker: a warning before "Export (API Format)" on a tracked shot.
  *
  * The API format is ComfyUI's prompt format: nodes and inputs only, with no
  * room for `extra`, where the shot history lives. Exporting a tracked shot

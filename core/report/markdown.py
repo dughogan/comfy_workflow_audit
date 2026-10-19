@@ -44,7 +44,7 @@ def render(report: AuditReport) -> str:
     w(f"# ComfyUI workflow audit - {src.get('name', 'workflow')}")
     w("")
     w(f"*Generated {_dt.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M %Z')} "
-      f"by comfyaudit {__version__}.*")
+      f"by Comfy Workflow Tracker {__version__}.*")
     w("")
 
     # -- verdict -----------------------------------------------------------

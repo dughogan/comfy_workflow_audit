@@ -1,4 +1,4 @@
-"""ComfyAudit Review: legal opens a delivery package, answers, and clears or sends back."""
+"""Comfy Audit: legal opens a delivery package, answers, and clears or sends back."""
 
 from __future__ import annotations
 
@@ -147,7 +147,7 @@ def test_a_shot_answer_is_a_signed_note_in_the_shots_own_history(studio):
     last = hist["entries"][-1]
     assert last["event"] == "note" and last["data"] == {"evidence": SHOT_TAG}
     assert last["actor"]["name"] == "Sam Okafor" and last["actor"]["role"] == "legal"
-    assert last["actor"]["declared_by"] == "declared in ComfyAudit Review"
+    assert last["actor"]["declared_by"] == "declared in Comfy Audit"
     v = H.verify(studio.workflow(pid), keys=H.Keys.from_environment(),
                  ledger=os.environ["COMFYAUDIT_HISTORY_LEDGER"])
     assert v.assurance == "witnessed", v.problems

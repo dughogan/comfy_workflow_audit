@@ -378,7 +378,7 @@ def _body(report: AuditReport) -> str:
       f"{len(report.prompts)} prompts &middot; "
       f"{len([p for p in report.packs if p.identified])} custom packs</dd>")
     w(f"<dt>Audited</dt><dd>{_dt.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M %Z')} "
-      f"&middot; comfyaudit {__version__}</dd>")
+      f"&middot; Comfy Workflow Tracker {__version__}</dd>")
     w("</dl></div>")
     if report.clearance.determined:
         w(_stamp(report.clearance))
