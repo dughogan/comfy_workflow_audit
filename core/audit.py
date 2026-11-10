@@ -45,6 +45,11 @@ class AuditOptions:
     #: Path to the facility's decision record. With one, the report leads with
     #: what is new rather than restating what was cleared months ago.
     registry_path: str = ""
+    #: The shot's client, for registry entries cleared only for some clients.
+    client: str = ""
+    #: ``hash_of(model) -> sha256`` for files the audit did not hash itself, so
+    #: the registry can still tell a renamed or retrained file apart.
+    hash_of: Any = None
 
 
 @dataclass
@@ -135,6 +140,26 @@ def run(path: str, options: AuditOptions | None = None) -> AuditReport:
     return run_workflow(wf, opts)
 
 
+def check_registry(report: AuditReport, wf: graph.Workflow, opts: AuditOptions, *,
+                   models: list[ModelRef] | None = None, packs: list[PackRef] | None = None,
+                   api_types: list[str] | None = None) -> str:
+    """Measure the workflow against the facility's registry; the error, if unreadable."""
+    if not opts.registry_path:
+        return ""
+    try:
+        report.registry = registry_mod.Registry.load(opts.registry_path).check(
+            report.models if models is None else models,
+            report.packs if packs is None else packs,
+            report.api_node_types if api_types is None else api_types,
+            client=opts.client, hash_of=opts.hash_of, workflow=wf)
+        return ""
+    except (OSError, ValueError, TypeError) as exc:
+        # An unreadable registry is worth saying out loud, but it must not
+        # cost the reader the rest of the report.
+        report.registry = registry_mod.RegistryCheck(path=opts.registry_path)
+        return str(exc)
+
+
 def run_workflow(wf: graph.Workflow, opts: AuditOptions) -> AuditReport:
     report = AuditReport()
 
@@ -209,16 +234,8 @@ def run_workflow(wf: graph.Workflow, opts: AuditOptions) -> AuditReport:
         missing_models=report.missing_models,
     )
     report.licensing = licensing_mod.summarise(models, api_types)
-    registry_error = ""
-    if opts.registry_path:
-        try:
-            report.registry = registry_mod.Registry.load(
-                opts.registry_path).check(models, packs)
-        except (OSError, ValueError) as exc:
-            # An unreadable registry is worth saying out loud, but it must not
-            # cost the reader the rest of the report.
-            registry_error = str(exc)
-            report.registry = registry_mod.RegistryCheck(path=opts.registry_path)
+    registry_error = check_registry(report, wf, opts, models=models, packs=packs,
+                                    api_types=api_types)
 
     report.clearance = clearance_mod.determine(
         models, packs=packs, profile=opts.profile, api_node_types=api_types,

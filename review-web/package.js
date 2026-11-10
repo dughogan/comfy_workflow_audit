@@ -308,7 +308,8 @@ export function buildView(pkg, rules, answers = []) {
     decision: sealed ? { verdict: sealed.verdict || "", verdict_label: sealed.verdict_label || "", headline: sealed.headline || "",
       checked_as: sealed.profile || "", signed_off_by: sealed.by, role: sealed.role, signed_off_at: sealed.at, note: sealed.note,
       exception: sealed.exception || "", blockers: sealed.blockers || [], conditions: sealed.conditions || [],
-      outstanding: sealed.outstanding || [], index_agrees: (pkg.index.decision || {}).verdict === sealed.verdict } : null,
+      outstanding: sealed.outstanding || [], registry: sealed.registry || null, rights: sealed.rights || [],
+      index_agrees: (pkg.index.decision || {}).verdict === sealed.verdict } : null,
     integrity: {
       assurance,
       label: chainOk ? "Chain intact" : "Altered",

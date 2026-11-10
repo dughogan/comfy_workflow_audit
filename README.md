@@ -295,6 +295,85 @@ the one identifier a rename can't break.
 Nothing is ever written automatically. A registry that fills itself in is an
 expensive way of approving everything.
 
+### What an entry can say
+
+Beyond approved / rejected / pending, who and when, an entry can narrow what
+it covers. Every field is optional; one left out is left out of the file too.
+
+| Field | Applies to | What happens |
+|---|---|---|
+| `expires` | anything | After this date the entry reads **expired**, not cleared |
+| `clients` | anything | Cleared only for these clients. A shot for another client, or with no client recorded, reads **not cleared for this client** |
+| `owner` | anything | Who answers for the entry day to day |
+| `provider`, `version`, `client_data`, `retention`, `training` | hosted API models (`--kind api`, keyed by node type) | The service's terms. `client_data: not allowed` means a shot with a client is not covered |
+| `production_version`, `security_review` | node packs | Any other installed version reads **changed**: it isn't the code that was reviewed |
+
+```bash
+comfyaudit registry set studio-cleared.json dreamshaper_8.safetensors \
+    --clients "Northlight Pictures" --expires 2027-06-30 --owner "Pipeline TD"
+comfyaudit registry set studio-cleared.json OpenAIGPTImage1 --kind api \
+    --provider OpenAI --client-data "not allowed" --retention "30 days"
+comfyaudit registry set studio-cleared.json https://github.com/ltdrdata/ComfyUI-Impact-Pack \
+    --kind pack --production-version 8.1.0 --security-review "2026-09, internal"
+```
+
+`set` changes only the fields it names, so a later `--retention` keeps the provider.
+
+### Approved workflows
+
+Register a workflow as a template and every shot made from it is recognised,
+whatever prompts, seeds or files were typed into it and whatever its node IDs:
+
+```bash
+comfyaudit registry add-workflow studio-cleared.json lighthouse_img2img.json \
+    --name "Lighthouse img2img" --version 2 --by "Priya Rao" \
+    --param steps=8..20 --param sampler_name=euler,dpmpp_2m --qc-required
+```
+
+The template records the graph's *structure* (node types and how they're wired,
+not their values), and the models and packs it uses become the ones a shot made
+from it may use (`--any-model` lifts that). A shot is then one of:
+
+- **approved**: the template, unmodified;
+- **modified**: closest to a template but changed since, with the nodes added and removed listed;
+- **unregistered**: not close to any template (only reported when the registry holds templates).
+
+A model or pack outside the template, or a setting outside a `--param` range,
+is listed against it. `--qc-required` means the shot won't deliver without a
+passing QC on its final render.
+
+### Where the registry is enforced
+
+- **Package for delivery** shows the registry's verdict next to the licence
+  verdict. Anything not cleared (new, rejected, pending, expired, changed, not for
+  this client, or outside its template) holds the delivery until someone fixes it or records
+  why it ships anyway. The verdict is sealed into the sign-off, and the legal report, the package
+  index and Comfy Audit show it.
+- **Comfy Workflow Tracker Gate** has `stop_on_registry`: the queue stops unless
+  everything is cleared. It also stops if no registry is set, so it can't pass quietly when
+  misconfigured.
+- The client the registry checks against is the one sealed in the shot's history.
+  Model files are matched by their cached SHA-256 as well as their name.
+
+## Rights on source material
+
+A plate a client supplied or a stock clip you licensed comes with terms.
+When an artist declares a source as **client** or **licensed**, the panel asks
+for them: rights holder, licence start and end, territory, media, likeness
+restrictions, and whether the material may be used for **AI generation**, as
+an **AI reference**, and for **AI training**. They're sealed into the source
+declaration like everything else.
+
+Every source is an input to the graph, so:
+
+- a licence that has ended or hasn't started, or "not allowed" for AI
+  generation or reference, **blocks** delivery unless someone records why it ships anyway;
+- a licence ending within 30 days, or "not allowed" for training, is a
+  **condition** carried into the package, since rendering isn't training;
+- client or licensed material with no rights recorded is a gap in the record.
+
+The Shot History Gate's `stop_on_rights` stops a render on the blocking cases.
+
 ## Keeping the licence knowledge current
 
 The knowledge base is hand-curated and accurate as of a date, and licences move:
@@ -552,7 +631,7 @@ changed:
 | **Prompts** | Each prompt's text (or only its SHA-256, or encrypted) and **who first wrote it** |
 | **Nodes** | Core, custom (with pack, pinned version, and the version and git commit actually installed) and hosted-API nodes |
 | **Runtime** | The ComfyUI, Python, torch and CUDA versions and the GPU each entry ran on; a change between renders is flagged |
-| **Source media** | Every supplied image, plate or clip, fingerprinted, with a declared origin and the studio's own asset ID |
+| **Source media** | Every supplied image, plate or clip, fingerprinted, with a declared origin and the studio's own asset ID. Client and licensed material also carries its rights: owner, licence start and end, territory, media, likeness restrictions, and whether AI generation, AI reference and AI training are allowed (see [Rights on source material](#rights-on-source-material)) |
 | **Settings** | Seeds, steps, CFG, sampler, resolution, bypassed branches |
 | **Outputs** | Rendered files, fingerprinted, with the ComfyUI job ID (`prompt_id`) of the render, so a delivered frame can be traced to the entry and the job that made it. At sign-off each can be mapped to the studio's own asset ID |
 | **QC** | The studio's technical check (pass or fail, what was checked), recorded apart from the creative sign-off and legal clearance. A shot at production or later with no QC on its final render shows it as a gap |

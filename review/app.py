@@ -520,6 +520,7 @@ class Review:
                 "exception": sealed.get("exception", ""),
                 "blockers": sealed.get("blockers", []), "conditions": sealed.get("conditions", []),
                 "outstanding": sealed.get("outstanding", []), "entry": sealed.get("entry"),
+                "registry": sealed.get("registry"), "rights": sealed.get("rights", []),
                 "index_agrees": (index.get("decision") or {}).get("verdict") == sealed.get("verdict"),
             },
             "integrity": {

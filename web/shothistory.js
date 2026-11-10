@@ -408,28 +408,33 @@ function onWorkflowShown() {
   }, 150);
 }
 
-/** In flight, by workflow key, so a burst of load events starts one history. */
-const starting = new Set();
+/** In flight, by workflow key, so a burst of load events starts one history and
+ *  a queue that lands mid-start can wait for it. */
+const starting = new Map();
 
-/** Track every open workflow from the moment it is open. */
-async function autoStart() {
-  if (!app.graph || tracked() || !getSetting("ComfyAudit.History.Auto", true)) return;
+/** Track every open workflow from the moment it is open. Resolves once the
+ *  history has started (or could not), so a caller can wait on it. */
+function autoStart() {
+  if (!app.graph || tracked() || !getSetting("ComfyAudit.History.Auto", true)) return Promise.resolve();
   // At startup the frontend shows a placeholder graph before it restores the
   // open tabs; starting a history on that would witness a shot that never was.
   const active = app.extensionManager?.workflow?.activeWorkflow;
-  if (!active || active.isLoading) return;
+  if (!active || active.isLoading) return Promise.resolve();
   const key = workflowKey();
-  if (starting.has(key)) return;
-  starting.add(key);
-  try {
-    const nodes = app.graph._nodes?.length ?? app.graph.nodes?.length ?? 0;
-    await stamp(nodes ? "imported" : "created", {}, { quiet: true });
-  } catch (e) {
-    console.warn("[comfyaudit] could not start the history", e);
-  } finally {
-    starting.delete(key);
-  }
-  rerender();
+  if (starting.has(key)) return starting.get(key);
+  const run = (async () => {
+    try {
+      const nodes = app.graph._nodes?.length ?? app.graph.nodes?.length ?? 0;
+      await stamp(nodes ? "imported" : "created", {}, { quiet: true });
+    } catch (e) {
+      console.warn("[comfyaudit] could not start the history", e);
+    } finally {
+      starting.delete(key);
+    }
+    rerender();
+  })();
+  starting.set(key, run);
+  return run;
 }
 
 async function refresh() {
@@ -480,6 +485,10 @@ function wrapQueue() {
   const original = app.queuePrompt?.bind(app);
   if (!original) return false;
   app.queuePrompt = async function (...args) {
+    // A workflow queued straight after it was opened may still be starting its
+    // history; deciding "untracked" now would drop this render. Wait for the
+    // start (or begin it) first.
+    if (!tracked()) await autoStart();
     const ctx = { key: shotKey(), tracked: tracked(), at: Date.now() };
     await beforeQueue();
     queueContext = ctx;
@@ -1019,19 +1028,99 @@ function nodeLabel(id) {
   return `${node?.title || node?.type || "node"} ${id}${file ? ` - ${file}` : ""}`;
 }
 
+/* Material that arrives under someone else's terms: its rights are recorded per source. */
+const RIGHTS_ORIGINS = ["client", "licensed"];
+const AI_FLAGS = [["ai_generation", "AI generation"], ["ai_reference", "AI reference"], ["ai_training", "AI training"]];
+
 function sourceRow(src) {
   const key = `src:${src.node}`;
-  const f = pkg.open[key] || (pkg.open[key] = { origin: "photographed", asset_id: src.asset_id || "" });
+  const r0 = src.rights || {};
+  const f = pkg.open[key] || (pkg.open[key] = {
+    origin: src.origin && src.origin !== "unknown" ? src.origin : "photographed",
+    asset_id: src.asset_id || "", owner: src.owner || "",
+    rights: { licence_start: "", licence_end: "", territory: "", media: "", likeness: "",
+      ai_generation: "unknown", ai_reference: "unknown", ai_training: "unknown", ...r0 } });
   const origins = Object.entries(state.summary?.origins || {}).filter(([k]) => k !== "unknown");
-  return h("div", { style: { border: `1px solid ${UI.line}`, borderRadius: "5px", padding: "8px 10px", margin: "0 0 8px", fontSize: "12px" } },
-    h("div", { style: { marginBottom: "6px" } }, nodeLabel(src.node)),
+  const box = h("div", { style: { border: `1px solid ${UI.line}`, borderRadius: "5px", padding: "8px 10px", margin: "0 0 8px", fontSize: "12px" } },
+    h("div", { style: { marginBottom: "6px" } }, nodeLabel(src.node),
+      (src.missing || []).includes("origin") ? null : h("span", { style: { color: TONE.warn, fontSize: "11px" } }, " - rights not recorded")),
     h("div", { style: { display: "flex", gap: "6px", marginBottom: "6px" } },
-      choose(origins.map(([k, v]) => [k, typeof v === "string" ? v : k]), f.origin, (v) => { f.origin = v; }),
-      input(f.asset_id, (v) => { f.asset_id = v; }, "Asset ID (optional)")),
-    btn("Record origin", () => act(async () => {
-      await stamp("sourced", { data: { node: src.node, origin: f.origin, asset_id: f.asset_id || "" } });
-      await runCheck();
-    })));
+      choose(origins.map(([k, v]) => [k, typeof v === "string" ? v : k]), f.origin, (v) => { f.origin = v; rerender(); }),
+      input(f.asset_id, (v) => { f.asset_id = v; }, "Asset ID (optional)")));
+  const rights = RIGHTS_ORIGINS.includes(f.origin);
+  if (rights) {
+    // As the contract or licence says. The license window and the AI flags are
+    // what the record checks; the rest is carried for legal.
+    const r = f.rights;
+    const date = (k) => { const el = input(r[k], (v) => { r[k] = v; }); el.type = "date"; return el; };
+    box.append(input(f.owner, (v) => { f.owner = v; }, "Rights holder / copyright owner"));
+    box.append(h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", margin: "6px 0" } },
+      label("Licence starts", date("licence_start")), label("Licence ends", date("licence_end"))));
+    box.append(input(r.territory, (v) => { r.territory = v; }, "Territory, e.g. worldwide"));
+    box.append(input(r.media, (v) => { r.media = v; }, "Media / usage, e.g. theatrical, streaming"));
+    box.append(input(r.likeness, (v) => { r.likeness = v; }, "Talent or likeness restrictions (if any)"));
+    // One row per permission: the sidebar is too narrow for three side by side.
+    box.append(h("div", { style: { margin: "6px 0" } },
+      AI_FLAGS.map(([k, l]) => h("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" } },
+        h("span", { style: { flex: "1", fontSize: "12px" } }, l),
+        h("span", { style: { flex: "0 0 130px" } }, choose([["unknown", "Not stated"], ["yes", "Allowed"], ["no", "Not allowed"]], r[k], (v) => { r[k] = v; }))))));
+  }
+  box.append(btn(rights ? "Record origin and rights" : "Record origin", () => act(async () => {
+    const data = { node: src.node, origin: f.origin, asset_id: f.asset_id || "" };
+    if (rights) {
+      data.owner = f.owner || "";
+      data.rights = Object.fromEntries(Object.entries(f.rights).filter(([, v]) => v && v !== "unknown"));
+    }
+    await stamp("sourced", { data });
+    await runCheck();
+  })));
+  return box;
+}
+
+const REG_STATE = {
+  new: ["not in the registry", TONE.warn], changed: ["changed since cleared", TONE.stop],
+  rejected: ["rejected", TONE.stop], pending: ["awaiting a decision", TONE.warn],
+  expired: ["approval lapsed", TONE.stop], "not-for-client": ["not cleared for this client", TONE.stop],
+  modified: ["changed from the template", TONE.warn], unregistered: ["not an approved workflow", TONE.warn],
+  approved: ["approved workflow", TONE.ok],
+};
+
+/* What the facility's registry says. Nothing here is fixed by the artist: a
+ * supervisor records the decision, or the shot is delivered as an exception. */
+function registryBlock(reg) {
+  const wrap = h("div", {});
+  if (!reg?.loaded) return wrap;
+  const items = reg.matches || [];
+  const wf = reg.workflow;
+  wrap.append(caption(reg.clean ? "Registry: all cleared" : `Registry (${items.length + (wf && (wf.state !== "approved" || wf.violations.length) ? 1 : 0)} to resolve)`));
+  wrap.append(h("div", { style: { fontSize: "11.5px", color: reg.clean ? TONE.ok : UI.dim, marginBottom: "8px", lineHeight: "1.45" } }, reg.headline));
+  const card = (title, st, detail, extra) => {
+    const [l, t] = REG_STATE[st] || [st, TONE.flat];
+    return h("div", { style: { border: `1px solid ${UI.line}`, borderLeft: `3px solid ${t}`, borderRadius: "5px", padding: "8px 10px", margin: "0 0 8px", fontSize: "12px", lineHeight: "1.5" } },
+      h("div", { style: { display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginBottom: "3px" } }, pill(l, t),
+        h("span", { style: { font: "11px/1.4 ui-monospace, monospace", wordBreak: "break-all" } }, title)),
+      h("div", {}, detail), extra || null);
+  };
+  if (wf) {
+    wrap.append(card(wf.template ? `${wf.template}${wf.version ? ` v${wf.version}` : ""}` : "this workflow", wf.state, wf.detail,
+      (wf.violations || []).length ? h("ul", { style: { margin: "4px 0 0", paddingLeft: "16px" } }, wf.violations.map((v) => h("li", {}, v))) : null));
+  }
+  for (const m of items) wrap.append(card(m.subject, m.state, m.detail));
+  if (!reg.clean) wrap.append(h("div", { style: { fontSize: "11px", color: UI.dim, marginBottom: "8px" } },
+    "A supervisor records these decisions in the registry. Until then, delivery needs a recorded reason."));
+  return wrap;
+}
+
+function rightsBlock(issues) {
+  const wrap = h("div", {});
+  if (!(issues || []).length) return wrap;
+  wrap.append(caption(`Source rights (${issues.length})`));
+  for (const i of issues) {
+    const t = i.severity === "block" ? TONE.stop : TONE.warn;
+    wrap.append(h("div", { style: { border: `1px solid ${UI.line}`, borderLeft: `3px solid ${t}`, borderRadius: "5px", padding: "8px 10px", margin: "0 0 8px", fontSize: "12px", lineHeight: "1.5" } },
+      pill(i.severity === "block" ? "blocks delivery" : "condition", t), " ", nodeLabel(i.node), h("div", {}, i.problem.charAt(0).toUpperCase() + i.problem.slice(1))));
+  }
+  return wrap;
 }
 
 /* One rule legal will check. Read-only for the artist; whoever holds the
@@ -1093,6 +1182,8 @@ function fixStep() {
   const fixes = r.fixes || [];
   wrap.append(caption(fixes.length ? `To make it commercially safe (${fixes.length})` : "Nothing to fix in the licences"));
   for (const f of fixes) wrap.append(fixCard(f));
+  wrap.append(registryBlock(r.registry));
+  wrap.append(rightsBlock(r.rights));
   if ((r.sources || []).length) {
     wrap.append(caption("Where did these inputs come from?"));
     wrap.append(h("div", { style: { fontSize: "11.5px", color: UI.dim, marginBottom: "8px", lineHeight: "1.45" } },
@@ -1151,7 +1242,8 @@ function fixStep() {
 
 function signoffStep() {
   const r = pkg.result || {};
-  const needsException = r.verdict === "no-go" || r.verdict === "unknown";
+  const holds = r.holds || [];
+  const needsException = holds.length > 0;
   const wrap = h("div", {});
   wrap.append(verdictBox(r));
   const who = getSetting("ComfyAudit.History.UserName", "");
@@ -1166,9 +1258,9 @@ function signoffStep() {
   wrap.append(assetFields(r));
   if (needsException) {
     wrap.append(h("div", { style: { fontSize: "12px", color: TONE.stop, margin: "4px 0 6px", lineHeight: "1.45" } },
-      r.verdict === "no-go"
-        ? "The audit says this cannot be used commercially as it stands. To deliver anyway, record why. The reason is sealed with your sign-off and shown to legal."
-        : "The audit could not reach a verdict. To deliver anyway, record why. The reason is sealed with your sign-off and shown to legal."));
+      "This can't be delivered cleanly as it stands:",
+      h("ul", { style: { margin: "4px 0", paddingLeft: "16px" } }, holds.map((x) => h("li", {}, x))),
+      "To deliver anyway, record why. The reason is sealed with your sign-off and shown to legal."));
     wrap.append(label("Reason for delivering anyway", input(pkg.exception, (v) => { pkg.exception = v; }, "", true)));
   }
   if (pkg.error) wrap.append(h("div", { style: { color: TONE.stop, fontSize: "12px", margin: "6px 0" } }, pkg.error));
@@ -1193,8 +1285,9 @@ function qcFields(r) {
     wrap.append(label("What was checked", input(pkg.qcChecks, (v) => { pkg.qcChecks = v; }, "e.g. 4K res, no artefacts, colour matched to plate")));
     if (pkg.qc === "fail") wrap.append(label("What failed", input(pkg.qcNote, (v) => { pkg.qcNote = v; }, "", true)));
   } else if (!prior?.covers_final) {
-    wrap.append(h("div", { style: { fontSize: "11px", color: TONE.warn, margin: "-6px 0 8px" } },
-      "No QC on the final render. It will show as a gap in the record until one is recorded."));
+    wrap.append(h("div", { style: { fontSize: "11px", color: r.qc_required ? TONE.stop : TONE.warn, margin: "-6px 0 8px" } },
+      r.qc_required ? "This shot's approved workflow requires a passing QC on the final render before delivery."
+        : "No QC on the final render. It will show as a gap in the record until one is recorded."));
   }
   return wrap;
 }

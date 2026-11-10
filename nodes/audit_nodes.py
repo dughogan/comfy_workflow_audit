@@ -73,6 +73,8 @@ def run_audit(workflow_doc: dict[str, Any], *, online: bool = False,
               registry_path: str = "",
               use_settings_profile: bool = True,
               name: str = "",
+              client: str | None = None,
+              hash_blocking: bool = False,
               ) -> audit_mod.AuditReport:
     """Audit a workflow document using whatever the live ComfyUI can tell us.
 
@@ -91,7 +93,24 @@ def run_audit(workflow_doc: dict[str, Any], *, online: bool = False,
     if not registry_path and use_settings_profile:
         registry_path = settings_mod.registry_path()
 
+    if client is None:
+        # The shot's own client, sealed in its history, decides which registry
+        # entries cover it.
+        try:
+            client = str(((H.read(workflow_doc) or {}).get("shot") or {}).get("client", "") or "")
+        except Exception:  # noqa: BLE001
+            client = ""
+    hasher = live.model_hasher()
+
+    def hash_of(model) -> str:
+        # Cached hashes are free; a render or sign-off has usually filled the
+        # cache already. Blocking is for sign-off, where a missing hash matters.
+        path = live._model_path(model.folder, model.filename)  # noqa: SLF001
+        return hasher.hash_path(path, hash_blocking) if hasher and path else ""
+
     options = audit_mod.AuditOptions(
+        client=client,
+        hash_of=hash_of,
         online=online,
         sources=parse_sources(sources),
         licences_path=licences_path.strip(),
@@ -114,6 +133,12 @@ def run_audit(workflow_doc: dict[str, Any], *, online: bool = False,
     checked = _apply_local_models(report) if check_local_models else False
     if resolved_packs or checked:
         _recompute_risk(report, models_dir_checked=checked)
+    if resolved_packs and registry_path:
+        # Installed versions are what the registry's production versions are
+        # measured against, and they are only known now.
+        err = audit_mod.check_registry(report, wf, options)
+        if err:
+            report.diagnostics["registry_error"] = err
 
     report.diagnostics["environment"] = live.environment()
     return report
@@ -514,6 +539,15 @@ class ComfyAuditGate:
                     "non-commercial. Off by default, because whether that matters "
                     "depends on the job."}),
             },
+            # Optional, so workflows saved before it existed load unchanged.
+            "optional": {
+                "stop_on_registry": ("BOOLEAN", {"default": False, "tooltip":
+                    "Abort unless everything this workflow uses is cleared in the "
+                    "facility's registry (Settings > Comfy Workflow Tracker): nothing new, "
+                    "rejected, lapsed, changed or not cleared for the shot's client, and, "
+                    "when the registry holds approved workflows, this is one of them "
+                    "within its allowed models and settings."}),
+            },
         }
 
     RETURN_TYPES = ("AUDIT", "STRING")
@@ -524,8 +558,21 @@ class ComfyAuditGate:
                    "fails your own bar never renders. The thresholds are yours to "
                    "set; nothing is enforced by default beyond critical findings.")
 
-    def run(self, audit, fail_on, stop_on_non_commercial=False):
+    def run(self, audit, fail_on, stop_on_non_commercial=False, stop_on_registry=False):
         threshold = SEVERITIES.index(fail_on)
+        if stop_on_registry:
+            reg = audit.registry
+            if not reg.loaded:
+                raise RuntimeError(
+                    "Comfy Workflow Tracker gate: stop_on_registry is set but no registry is "
+                    "loaded. Set its path in Settings > Comfy Workflow Tracker, or turn the "
+                    "switch off.")
+            if not reg.clean:
+                problems = reg.problems()
+                raise RuntimeError(
+                    "Comfy Workflow Tracker gate: not cleared in the registry. "
+                    + " | ".join(problems[:6])
+                    + (f" (and {len(problems) - 6} more)" if len(problems) > 6 else ""))
         tripped = [f for f in audit.risk.findings
                    if f.severity in SEVERITIES
                    and SEVERITIES.index(f.severity) <= threshold]
@@ -586,6 +633,10 @@ class ComfyAuditHistoryGate:
                 "require_legal_clearance": ("BOOLEAN", {"default": False, "tooltip":
                     "Stop unless legal has cleared this exact version of the shot in "
                     "Comfy Audit. A change to the graph since the clearance stops it too."}),
+                "stop_on_rights": ("BOOLEAN", {"default": False, "tooltip":
+                    "Stop while a source input's recorded rights rule this out: its licence "
+                    "has ended or not started, or AI generation or reference use is not "
+                    "allowed."}),
             },
             "hidden": {"extra_pnginfo": "EXTRA_PNGINFO"},
         }
@@ -605,7 +656,8 @@ class ComfyAuditHistoryGate:
         return float("nan")
 
     def run(self, images, require_history=True, stop_if_altered=True, minimum_stage="any",
-            stop_if_not_commercial=False, require_legal_clearance=False, extra_pnginfo=None):
+            stop_if_not_commercial=False, require_legal_clearance=False, stop_on_rights=False,
+            extra_pnginfo=None):
         workflow = (extra_pnginfo or {}).get("workflow") if isinstance(extra_pnginfo, dict) else None
         history = H.read(workflow) if isinstance(workflow, dict) else None
         if not history:
@@ -636,6 +688,13 @@ class ComfyAuditHistoryGate:
                 raise RuntimeError(
                     "Comfy Workflow Tracker history gate: stop_if_not_commercial is set and these "
                     f"models bar commercial use: {models}.")
+        if stop_on_rights:
+            blocks = [i for i in H.lineage(history).get("rights_issues", [])
+                      if i["severity"] == "block"]
+            if blocks:
+                raise RuntimeError(
+                    "Comfy Workflow Tracker history gate: source rights rule this out: "
+                    + "; ".join(f"node {i['node']}: {i['problem']}" for i in blocks[:4]))
         if require_legal_clearance:
             legal = H.legal_decision(history)
             if not legal or legal["decision"] != "cleared":

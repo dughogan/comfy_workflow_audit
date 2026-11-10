@@ -467,6 +467,7 @@ async function shotPage(id, studioOnly) {
     band,
     card("Signed off in ComfyUI", ...signoff),
     view.final_render ? shippedCard(view.final_render) : null,
+    d ? governanceCard(d) : null,
     card("Documents", docs, h("p", { class: "small dim", text: "They open as they were packaged, in a sandbox that cannot reach this page or your studio server." })),
     card(`Left for legal${view.open_count ? ` · ${view.open_count} open` : ""}`,
       h("p", { class: "small dim", style: { marginTop: 0 }, text: "Production facts the record cannot prove itself. Items for a whole show or the studio are answered once, and every shot of that show inherits the answer." }),
@@ -502,6 +503,23 @@ function shippedCard(f) {
       h("dt", { text: "QC" }), h("dd", {}, qc ? pill(qcText, qc.result === "pass" && qc.covers_final ? "ok" : "warn") : pill("Not recorded", "warn"))),
     (f.outputs || []).length ? table(["File", "Studio asset ID", "SHA-256"], f.outputs.map((o) => [
       h("span", { class: "mono", text: o.file || "" }), o.asset_id || "—", h("span", { class: "mono small", text: String(o.sha256 || "").slice(0, 16) })])) : null);
+}
+/** What the facility's registry and the sources' rights said at sign-off, as sealed. */
+function governanceCard(d) {
+  const reg = d.registry, rights = d.rights || [];
+  if (!reg && !rights.length) return null;
+  const tone = (st) => (["known", "approved"].includes(st) ? "ok" : ["new", "pending", "modified", "unregistered"].includes(st) ? "warn" : "stop");
+  const wf = reg?.workflow;
+  const rows = [
+    ...(wf ? [["workflow", `${wf.template || "this workflow"}${wf.version ? ` v${wf.version}` : ""}`, wf.state, [wf.detail, ...(wf.violations || [])].join(" ")]] : []),
+    ...((reg?.items) || []).map((i) => [i.kind, i.subject, i.state, i.detail])];
+  return card("Registry and rights at sign-off",
+    reg ? [h("p", {}, pill(reg.clean ? "All cleared" : "Not all cleared", reg.clean ? "ok" : "stop", reg.path || "registry"), " ", reg.headline || ""),
+      reg.client ? h("p", { class: "small dim", text: `Checked for client ${reg.client}.` }) : null,
+      rows.length ? table(["Kind", "Item", "Registry", "Detail"], rows.map(([k, s, st, det]) => [
+        h("span", { class: "small", text: k }), h("span", { class: "mono", text: s }), pill(st, tone(st)), det])) : null] : null,
+    rights.length ? [h("h3", { style: { marginTop: "14px" }, text: "Source rights" }),
+      h("ul", {}, rights.map((r) => h("li", {}, pill(r.severity === "block" ? "Blocking" : "Condition", r.severity === "block" ? "stop" : "warn"), ` Source node ${r.node}: ${r.problem}`)))] : null);
 }
 const download2 = (blob, name) => download(blob, `${name || "shot"}.json`);
 

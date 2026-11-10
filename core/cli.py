@@ -14,7 +14,8 @@ from .knowledge import licences as licences_mod
 from .audit import AuditOptions, AuditReport, run
 from .report import markdown as md_report
 from .records import Finding
-from .registry import Entry, Registry, STATUSES as REG_STATUSES, entries_from_report
+from .registry import (Entry, KINDS as REG_KINDS, Registry, STATUSES as REG_STATUSES,
+                       entries_from_report, workflow_entry)
 from .score import clearance
 
 SEVERITY_ORDER = ["critical", "high", "medium", "low", "info"]
@@ -169,20 +170,72 @@ def build_parser() -> argparse.ArgumentParser:
                          help="re-record entries that already exist, rather than "
                               "only what is new")
 
-    reg_set = reg_sub.add_parser("set", help="record a decision about one item")
+    reg_set = reg_sub.add_parser(
+        "set", help="record a decision about one item",
+        description="Fields left out keep what the entry already says.")
     reg_set.add_argument("path")
-    reg_set.add_argument("key", help="a model filename, or a pack repository")
-    reg_set.add_argument("--kind", default="model", choices=["model", "pack"])
-    reg_set.add_argument("--status", default="approved", choices=sorted(REG_STATUSES))
-    reg_set.add_argument("--by", default="", metavar="NAME")
-    reg_set.add_argument("--note", default="")
-    reg_set.add_argument("--reference", default="", metavar="REF")
-    reg_set.add_argument("--licence", "--license", dest="licence", default="")
+    reg_set.add_argument("key", help="a model filename, a pack repository, an API node "
+                                     "type, or a workflow template's name")
+    reg_set.add_argument("--kind", default="model", choices=list(REG_KINDS))
+    reg_set.add_argument("--status", default=None, choices=sorted(REG_STATUSES))
+    reg_set.add_argument("--by", default=None, metavar="NAME")
+    reg_set.add_argument("--note", default=None)
+    reg_set.add_argument("--reference", default=None, metavar="REF")
+    reg_set.add_argument("--licence", "--license", dest="licence", default=None)
+    reg_set.add_argument("--expires", default=None, metavar="YYYY-MM-DD",
+                         help="the decision lapses on this date")
+    reg_set.add_argument("--clients", default=None, metavar="A,B",
+                         help="cleared only for these clients (comma-separated); "
+                              "an empty string clears the restriction")
+    reg_set.add_argument("--owner", default=None, help="who answers for this entry")
+    reg_set.add_argument("--provider", default=None, help="API models: the service")
+    reg_set.add_argument("--version", default=None,
+                         help="API models: the model version cleared; workflows: the "
+                              "template version")
+    reg_set.add_argument("--client-data", dest="client_data", default=None,
+                         choices=["allowed", "not allowed"],
+                         help="API models: may client material be sent to the service")
+    reg_set.add_argument("--retention", default=None,
+                         help="API models: how long the service keeps inputs")
+    reg_set.add_argument("--training", default=None,
+                         help="API models: whether the service trains on inputs")
+    reg_set.add_argument("--security-review", dest="security_review", default=None,
+                         help="packs: when and how the code was reviewed")
+    reg_set.add_argument("--production-version", dest="production_version", default=None,
+                         help="packs: the version production must run")
+    reg_set.add_argument("--qc-required", dest="qc_required", default=None,
+                         choices=["yes", "no"],
+                         help="workflows: delivery needs a passing QC on the final render")
+
+    reg_wf = reg_sub.add_parser(
+        "add-workflow", help="register an approved workflow template",
+        description="Records the workflow's structure (nodes and wiring, not values) "
+                    "and, unless widened, the models and packs it uses as the ones a "
+                    "shot made from it may use. Shots are then matched to it, and "
+                    "anything changed or outside it is reported.")
+    reg_wf.add_argument("path")
+    reg_wf.add_argument("workflow")
+    reg_wf.add_argument("--name", required=True, help="the template's name")
+    reg_wf.add_argument("--version", default="", help="its version, e.g. 3")
+    reg_wf.add_argument("--status", default="approved", choices=sorted(REG_STATUSES))
+    reg_wf.add_argument("--by", default="", metavar="NAME")
+    reg_wf.add_argument("--note", default="")
+    reg_wf.add_argument("--reference", default="", metavar="REF")
+    reg_wf.add_argument("--owner", default="")
+    reg_wf.add_argument("--expires", default="", metavar="YYYY-MM-DD")
+    reg_wf.add_argument("--clients", default="", metavar="A,B")
+    reg_wf.add_argument("--any-model", action="store_true",
+                        help="do not restrict models to the ones it uses now")
+    reg_wf.add_argument("--param", action="append", default=[], metavar="WIDGET=RULE",
+                        help="an allowed setting: steps=20..40 for a range, or "
+                             "sampler_name=euler,dpmpp_2m for a list; repeatable")
+    reg_wf.add_argument("--qc-required", dest="qc_required", action="store_true",
+                        help="delivery needs a passing QC on the final render")
 
     reg_rm = reg_sub.add_parser("remove", help="drop a decision")
     reg_rm.add_argument("path")
     reg_rm.add_argument("key")
-    reg_rm.add_argument("--kind", default="model", choices=["model", "pack"])
+    reg_rm.add_argument("--kind", default="model", choices=list(REG_KINDS))
 
     from . import history_cli
     history_cli.add_parsers(sub)
@@ -380,6 +433,8 @@ def _cmd_registry(args) -> int:
         return _registry_add(args)
     if args.registry_command == "set":
         return _registry_set(args)
+    if args.registry_command == "add-workflow":
+        return _registry_add_workflow(args)
     return _registry_remove(args)
 
 
@@ -424,14 +479,76 @@ def _registry_add(args) -> int:
     return 0
 
 
+def _clients(value: str) -> list[str]:
+    return [c.strip() for c in (value or "").split(",") if c.strip()]
+
+
+def _num(v: str) -> int | float:
+    v = v.strip()
+    return int(v) if v.lstrip("-").isdigit() else float(v)
+
+
+def _param_rule(text: str) -> tuple[str, list]:
+    name, _, rule = text.partition("=")
+    if not name.strip() or not rule.strip():
+        raise ValueError(f"--param {text!r}: expected WIDGET=MIN..MAX or WIDGET=A,B")
+    if ".." in rule:
+        lo, _, hi = rule.partition("..")
+        return name.strip(), [_num(lo), _num(hi)]
+    return name.strip(), [v.strip() for v in rule.split(",") if v.strip()]
+
+
 def _registry_set(args) -> int:
     registry = Registry.load(args.path)
-    registry.record(Entry(
-        key=args.key, kind=args.kind, status=args.status, decided_by=args.by,
-        note=args.note, reference=args.reference, licence=args.licence,
-    ))
+    entry = registry.get(args.key, args.kind) or Entry(key=args.key, kind=args.kind)
+    changes = {k: getattr(args, k) for k in (
+        "status", "note", "reference", "licence", "expires", "owner", "provider", "version",
+        "client_data", "retention", "training", "security_review", "production_version")
+        if getattr(args, k) is not None}
+    if args.by is not None:
+        changes["decided_by"] = args.by
+    if args.clients is not None:
+        changes["clients"] = _clients(args.clients)
+    if args.qc_required is not None:
+        changes["qc_required"] = args.qc_required == "yes"
+    if "status" in changes or "decided_by" in changes:
+        entry.decided_on = ""     # a new decision is dated today
+    for k, v in changes.items():
+        setattr(entry, k, v)
+    try:
+        registry.record(entry)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     registry.save(args.path)
-    print(f"{args.status}: {args.key}")
+    print(f"{entry.status}: {entry.kind} {args.key}")
+    return 0
+
+
+def _registry_add_workflow(args) -> int:
+    from . import graph as graph_mod
+    registry = Registry.load(args.path)
+    wf = graph_mod.load(args.workflow)
+    report = run(args.workflow, AuditOptions())
+    try:
+        params = dict(_param_rule(p) for p in args.param)
+        entry = workflow_entry(
+            wf, report.models, report.packs, name=args.name, version=args.version,
+            status=args.status, decided_by=args.by, note=args.note,
+            reference=args.reference, owner=args.owner, expires=args.expires,
+            clients=_clients(args.clients), params=params, qc_required=args.qc_required)
+        if args.any_model:
+            entry.models_allowed = []
+        registry.record(entry)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    registry.save(args.path)
+    print(f"{entry.status}: workflow {entry.key}"
+          + (f" v{entry.version}" if entry.version else "")
+          + f" ({len(entry.nodes)} nodes, structure {entry.structure[:12]})")
+    if entry.models_allowed:
+        print("  models allowed: " + ", ".join(entry.models_allowed))
     return 0
 
 
