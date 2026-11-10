@@ -83,7 +83,12 @@ EVENTS = {
     "promoted": "Moved to a new production stage",
     "forked": "Branched into a new record from a copy of the shot",
     "moved": "Workflow file moved, renamed or opened elsewhere",
+    "qc": "Quality check recorded",
 }
+
+#: What a quality check can conclude. QC is the studio's own technical check
+#: (resolution, artefacts, colour, continuity); it is not legal clearance.
+QC_RESULTS = {"pass": "Passed QC", "fail": "Failed QC"}
 
 #: Where a shot sits. Work in ``sandbox`` is exploration and never ships;
 #: crossing into ``production`` is the moment legal clearance has to start.
@@ -110,11 +115,11 @@ SOURCE_KINDS = {"image", "video", "audio", "url"}
 
 #: Events a person performs by definition. ``rendered`` is the machine step.
 HUMAN_EVENTS = {"created", "imported", "edited", "reviewed", "approved",
-                "rejected", "note", "handoff", "sourced", "promoted"}
+                "rejected", "note", "handoff", "sourced", "promoted", "qc"}
 
 #: Events that record a person's decision or declaration - what a forger most
 #: wants on file, so verify names them when they sit before the studio key.
-_DECISION_EVENTS = {"reviewed", "approved", "rejected", "sourced", "promoted", "handoff"}
+_DECISION_EVENTS = {"reviewed", "approved", "rejected", "sourced", "promoted", "handoff", "qc"}
 
 #: Widgets that are generation settings worth recording per entry.
 _PARAM_WIDGETS = {"seed", "noise_seed", "steps", "cfg", "sampler_name",
@@ -139,12 +144,30 @@ BREAKPOINT_KINDS = {
     "note": "Recorded intent or a decision",
     "sourcing": "Declared where source material came from",
     "stage": "Moved the shot to a new production stage",
+    "qc": "Ran a quality check",
 }
 
 
 # ---------------------------------------------------------------------------
 # small helpers
 # ---------------------------------------------------------------------------
+
+#: What this machine is running: ComfyUI, Python, torch, CUDA, GPU. Set by the
+#: plugin layer (core stays ComfyUI-free); ``None`` outside ComfyUI.
+_runtime_provider: Any = None
+#: Maps a node pack's node types to what is installed: ``{"installed", "commit"}``.
+_pack_provider: Any = None
+
+
+def set_runtime_provider(provider: Any) -> None:
+    global _runtime_provider
+    _runtime_provider = provider
+
+
+def set_pack_provider(provider: Any) -> None:
+    global _pack_provider
+    _pack_provider = provider
+
 
 def canonical(obj: Any) -> bytes:
     """Deterministic JSON bytes: the thing every hash is taken over."""
@@ -456,7 +479,7 @@ def topology(data: dict[str, Any], keys: Keys | None = None) -> dict[str, Any]:
 
 def snapshot(data: dict[str, Any], keys: Keys | None = None,
              matcher: licences_mod.LicenceMatcher | None = None,
-             resolve: Any = None) -> dict[str, Any]:
+             resolve: Any = None, model_hash: Any = None) -> dict[str, Any]:
     """Everything a legal review needs to know about the workflow right now.
 
     ``resolve`` maps an input widget's value (``"plate.exr"``, ``"x.png
@@ -464,6 +487,10 @@ def snapshot(data: dict[str, Any], keys: Keys | None = None,
     carries a fingerprint of its contents, which is what lets the history see
     a render being brought back in as an input - a selection - however its
     name is protected.
+
+    ``model_hash(folder, filename)`` returns a model file's SHA-256, or "".
+    A filename says which model was meant; the hash says which file ran, so a
+    renamed checkpoint or a LoRA retrained under the same name shows up.
     """
     keys = keys or Keys()
     wf = graph.from_dict(copy.deepcopy(data))
@@ -491,11 +518,18 @@ def snapshot(data: dict[str, Any], keys: Keys | None = None,
         name = m.filename
         if name in hidden:
             name = "protected:" + fingerprint(name, keys).split(":")[-1][:16]
+        digest = ""
+        if model_hash and name == m.filename:
+            try:
+                digest = model_hash(m.folder, m.filename) or ""
+            except Exception:  # noqa: BLE001 - a missing file is "not hashed", not a failure
+                digest = ""
         model_rows.append({
             "filename": name, "folder": m.folder, "role": m.role,
             "node": str(m.node_id), "enabled": m.enabled,
             "strength": m.strength,
             "licence": lic.name, "commercial_use": lic.commercial_use,
+            **({"sha256": digest} if digest else {}),
             **({"conflict": lic.conflicts[0].get("summary", "")} if lic.conflicts else {}),
         })
 
@@ -530,9 +564,27 @@ def snapshot(data: dict[str, Any], keys: Keys | None = None,
 
     custom = []
     for pack in packs:
-        custom.append({"pack": pack.title or pack.repo or pack.registry_id or "unidentified",
-                       "version": pack.pinned_version or "",
-                       "nodes": sorted(set(pack.node_types))})
+        row = {"pack": pack.title or pack.repo or pack.registry_id or "unidentified",
+               "version": pack.pinned_version or "",
+               "nodes": sorted(set(pack.node_types))}
+        if _pack_provider:
+            # What is installed here, which is what ran - the workflow's own
+            # pin is only what it was saved with.
+            try:
+                inst = _pack_provider(row["nodes"]) or {}
+            except Exception:  # noqa: BLE001
+                inst = {}
+            for k in ("installed", "commit"):
+                if inst.get(k):
+                    row[k] = str(inst[k])
+        custom.append(row)
+
+    runtime: dict[str, Any] = {}
+    if _runtime_provider:
+        try:
+            runtime = dict(_runtime_provider() or {})
+        except Exception:  # noqa: BLE001
+            runtime = {}
 
     return {
         "graph_sha256": graph_fingerprint(data),
@@ -550,6 +602,7 @@ def snapshot(data: dict[str, Any], keys: Keys | None = None,
         "seeds": seeds,
         "bypassed": modes,
         "comfyui_catalog": catalog.comfyui_version(),
+        **({"runtime": runtime} if runtime else {}),
         "topology": topology(data, keys),
     }
 
@@ -596,6 +649,12 @@ def diff(before: dict[str, Any] | None, after: dict[str, Any]) -> dict[str, Any]
            if a_models[k]["licence"] != b_models[k]["licence"]]
     if lic:
         out["licence_changed"] = sorted(lic)
+    # Same name, different file: only when both sides were hashed.
+    swapped = sorted(a_models[k]["filename"] for k in a_models.keys() & b_models.keys()
+                     if a_models[k].get("sha256") and b_models[k].get("sha256")
+                     and a_models[k]["sha256"] != b_models[k]["sha256"])
+    if swapped:
+        out["model_files_changed"] = swapped
 
     def keyed(rows, key):
         return {(r["node"], r.get(key, "")): r for r in rows}
@@ -626,8 +685,16 @@ def diff(before: dict[str, Any] | None, after: dict[str, Any]) -> dict[str, Any]
         out["packs_removed"] = sorted(bc.keys() - ac.keys())
     ver = [f"{p}: {bc[p]['version'] or 'unpinned'} -> {ac[p]['version'] or 'unpinned'}"
            for p in ac.keys() & bc.keys() if ac[p]["version"] != bc[p]["version"]]
+    for p in ac.keys() & bc.keys():
+        for k in ("installed", "commit"):
+            if ac[p].get(k) and bc[p].get(k) and ac[p][k] != bc[p][k]:
+                ver.append(f"{p} {k}: {bc[p][k]} -> {ac[p][k]}")
     if ver:
-        out["pack_versions_changed"] = sorted(ver)
+        out["pack_versions_changed"] = sorted(set(ver))
+    br, ar = before.get("runtime") or {}, after.get("runtime") or {}
+    rt = [f"{k}: {br[k]} -> {ar[k]}" for k in sorted(ar.keys() & br.keys()) if ar[k] != br[k]]
+    if rt:
+        out["runtime_changed"] = rt
     for kind in ("core", "api"):
         plus = sorted(set(after["nodes"][kind]) - set(before["nodes"][kind]))
         minus = sorted(set(before["nodes"][kind]) - set(after["nodes"][kind]))
@@ -718,6 +785,8 @@ def breakpoints_for(event: str, changes: dict[str, Any], note: str = "",
         kinds.append("sourcing")
     if event == "promoted":
         kinds.append("stage")
+    if event == "qc":
+        kinds.append("qc")
     seen: list[str] = []
     for k in kinds:
         if k not in seen:
@@ -730,13 +799,14 @@ def breakpoints_for(event: str, changes: dict[str, Any], note: str = "",
 # ---------------------------------------------------------------------------
 
 def empty(name: str = "", project: str = "",
-          external_ids: dict[str, str] | None = None) -> dict[str, Any]:
+          external_ids: dict[str, str] | None = None, client: str = "") -> dict[str, Any]:
     """A new history. ``external_ids`` ties it to the studio's own tracking -
     the ShotGrid or other tracking-system entity the asset was born as - so provenance starts
     where the studio says it starts, not where ComfyUI first saw it."""
     return {
         "schema": SCHEMA,
         "shot": {"id": str(uuid.uuid4()), "name": name, "project": project,
+                 **({"client": client} if client else {}),
                  "started": now(), "external_ids": dict(external_ids or {}),
                  "stage": "sandbox"},
         "entries": [],
@@ -771,6 +841,12 @@ def write(data: dict[str, Any], history: dict[str, Any]) -> dict[str, Any]:
 def sidecar_path(workflow_path: str) -> str:
     base, _ = os.path.splitext(workflow_path)
     return base + ".history.json"
+
+
+#: The shot details every entry seals. ``client`` is newer and only sealed once
+#: set, so records made before it existed hash exactly as they always did.
+SHOT_SEALED = ("id", "name", "project", "client", "external_ids")
+OPTIONAL_SHOT = ("client",)
 
 
 def snapshot_of(entries: list[dict[str, Any]], entry: dict[str, Any]) -> dict[str, Any]:
@@ -836,7 +912,8 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
            keys: Keys | None = None, force: bool = False,
            data_payload: dict[str, Any] | None = None,
            matcher: licences_mod.LicenceMatcher | None = None,
-           resolve: Any = None, path: str | None = None) -> dict[str, Any] | None:
+           resolve: Any = None, path: str | None = None,
+           model_hash: Any = None) -> dict[str, Any] | None:
     """Add one entry. Returns it, or None when nothing substantive changed.
 
     An ``edited`` stamp on an unchanged graph is skipped: a save that changed
@@ -849,7 +926,7 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
     keys = keys or Keys()
     actor = actor or Actor.current()
     entries = history.setdefault("entries", [])
-    snap = snapshot(data, keys, matcher, resolve=resolve)
+    snap = snapshot(data, keys, matcher, resolve=resolve, model_hash=model_hash)
     prev = entries[-1] if entries else None
     prev_snap = snapshot_of(entries, prev) if prev else None
 
@@ -884,8 +961,8 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         # ShotGrid link is covered by the chain rather than sitting beside it.
         # A copy, not a reference: adding an ID later must not reach back
         # into what this entry sealed.
-        "shot": copy.deepcopy({k: history.get("shot", {}).get(k) for k in
-                               ("id", "name", "project", "external_ids")}),
+        "shot": copy.deepcopy({k: history.get("shot", {}).get(k) for k in SHOT_SEALED
+                               if k not in OPTIONAL_SHOT or history.get("shot", {}).get(k)}),
         "snapshot": snap,
         "snapshot_sha256": snap_hash,
         "changes": changes,
@@ -1019,7 +1096,8 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
           data_payload: dict[str, Any] | None = None,
           history: dict[str, Any] | None = None,
           force: bool = False, rename: bool = False, resolve: Any = None,
-          path: str | None = None) -> StampResult:
+          path: str | None = None, client: str = "",
+          model_hash: Any = None) -> StampResult:
     """One call for callers: read, append, write back, witness. Pure on ``data``.
 
     ``history`` is for API-format workflows, whose history lives in a sidecar
@@ -1040,8 +1118,10 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
                              f"{check.problems[0]}. Export the provenance record for "
                              "review and start a new history.")
     history = copy.deepcopy(existing) \
-        or empty(name=name, project=project, external_ids=external_ids)
+        or empty(name=name, project=project, external_ids=external_ids, client=client)
     shot = history["shot"]
+    if client and (rename or not shot.get("client")):
+        shot["client"] = client
     if name and (rename or not shot.get("name")):
         shot["name"] = name
     if project and (rename or not shot.get("project")):
@@ -1060,9 +1140,17 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
             raise ValueError(f"origin must be one of {', '.join(ORIGINS)}")
         if not payload.get("node"):
             raise ValueError("a source declaration names the input node it is about")
+    if event == "qc" and payload.get("result") not in QC_RESULTS:
+        raise ValueError(f"a QC result is one of {', '.join(QC_RESULTS)}")
+    if "final_asset_id" in payload and not isinstance(payload["final_asset_id"], str):
+        raise ValueError("final_asset_id is text")
+    if "output_asset_ids" in payload and not (
+            isinstance(payload["output_asset_ids"], dict)
+            and all(isinstance(v, str) for v in payload["output_asset_ids"].values())):
+        raise ValueError("output_asset_ids maps each output file to its studio asset ID")
     entry = append(history, data, event=event, actor=actor, note=note,
                    outputs=outputs, keys=keys, force=force, data_payload=payload,
-                   resolve=resolve, path=path)
+                   resolve=resolve, path=path, model_hash=model_hash)
     if entry and event == "promoted":
         shot["stage"] = payload["stage"]
     if entry and ledger:
@@ -1314,11 +1402,11 @@ def verify(data: dict[str, Any], keys: Keys | None = None, ledger: str = "",
     shot_top = history.get("shot") or {}
     shot_chain = entries[-1].get("shot") if entries and isinstance(entries[-1], dict) else None
     if isinstance(shot_chain, dict):
-        for k in ("id", "name", "project", "external_ids"):
+        for k in SHOT_SEALED:
             top, sealed = shot_top.get(k), shot_chain.get(k)
             if k == "external_ids":
                 top, sealed = top or {}, sealed or {}
-            if top != sealed and not (k in ("name", "project") and not top and not sealed):
+            if top != sealed and not (k in ("name", "project", "client") and not top and not sealed):
                 v.problems.append(f"the shot's {k.replace('_', ' ')} outside the entries "
                                   "does not match what the entries record")
 
@@ -1690,6 +1778,25 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
     if any(p.get("pre_existing") for p in prompts.values()):
         gaps.append("Some prompts were already in the graph when tracking began; who "
                     "wrote them is not recorded.")
+    # QC covers the output it was run on: one before the final render does not.
+    qc_entry = next((e for e in reversed(entries) if e["event"] == "qc"), None)
+    qc = None
+    if qc_entry is not None:
+        d = qc_entry.get("data") or {}
+        qc = {"seq": qc_entry["seq"], "result": d.get("result", ""),
+              "label": QC_RESULTS.get(d.get("result", ""), ""),
+              "checks": d.get("checks", ""), "by": qc_entry["actor"].get("name", ""),
+              "role": qc_entry["actor"].get("role", ""), "at": qc_entry["at"],
+              "note": qc_entry.get("note", ""),
+              "covers_final": final_render is None or qc_entry["seq"] > final_render["seq"]}
+    if stage in ("production", "cleared", "delivered") and renders:
+        if qc is None or not qc["covers_final"]:
+            gaps.append("No quality check is recorded on the final render. Record a QC "
+                        "result so the technical sign-off is on file with the creative one.")
+        elif qc["result"] == "fail":
+            gaps.append(f"The final render failed QC at entry {qc['seq']}"
+                        + (f": {qc['note']}" if qc["note"] else ".")
+                        + " Fix it and check again, or record why it ships anyway.")
     if stage == "sandbox" and approved:
         gaps.append("An output was approved while the shot is still marked sandbox. "
                     "Promote it to production so the clearance trail starts at the "
@@ -1706,13 +1813,28 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
         sealed = entries[-1]["shot"]
         shot = {"id": sealed.get("id", ""), "name": sealed.get("name", ""),
                 "project": sealed.get("project", ""),
+                "client": sealed.get("client", ""),
                 "external_ids": dict(sealed.get("external_ids") or {}),
                 "started": entries[0].get("at", "")}
     else:
         shot = {"id": top.get("id", ""), "name": top.get("name", ""),
-                "project": top.get("project", ""), "external_ids": {},
+                "project": top.get("project", ""), "client": top.get("client", ""),
+                "external_ids": {},
                 "started": top.get("started", "")}
     shot["stage"] = stage
+
+    # Studio asset IDs for what shipped, given at sign-off. They map the
+    # fingerprinted final outputs to the studio's own asset records.
+    approval_data = (approved or {}).get("data") or {}
+    asset_ids = dict(approval_data.get("output_asset_ids") or {})
+    final_assets = [{**o, **({"asset_id": asset_ids[o["file"]]} if o.get("file") in asset_ids else {})}
+                    for o in (final_render.get("outputs", []) if final_render else [])]
+    # What the final render ran on: ComfyUI, Python, torch and the GPU, and
+    # whether each model file was fingerprinted, which is what a re-render
+    # would have to match.
+    final_snap = snapshot_of(entries, final_render) if final_render else {}
+    ran_on = dict(final_snap.get("runtime") or {})
+    models_hashed = sum(1 for m in final_snap.get("models", []) if m.get("sha256"))
     if entries and entries[0].get("event") == "forked":
         link = (entries[0].get("data") or {}).get("parent") or {}
         shot["parent"] = {**link, "reason": (entries[0].get("data") or {}).get("reason", "")}
@@ -1732,11 +1854,18 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
         "iterations": {"renders": renders, "setting_changes": param_changes,
                        "prompt_versions": len(prompts)},
         "final_render": final_render["seq"] if final_render else None,
-        "final_outputs": final_render.get("outputs", []) if final_render else [],
+        "final_outputs": final_assets,
+        "final_job_id": ((final_render or {}).get("data") or {}).get("prompt_id", ""),
+        "final_asset_id": approval_data.get("final_asset_id", ""),
+        "ran_on": ran_on,
+        "models_hashed": [models_hashed, len(final_snap.get("models", []))],
+        "qc": qc,
         "final_reviewed": reviewed_final,
         "approved": ({"seq": approved["seq"], "by": approved["actor"].get("name", ""),
                       "role": approved["actor"].get("role", ""),
-                      "at": approved["at"], "note": approved.get("note", "")}
+                      "at": approved["at"], "note": approved.get("note", ""),
+                      **({"final_asset_id": approval_data["final_asset_id"]}
+                         if approval_data.get("final_asset_id") else {})}
                      if approved else None),
         "gaps": gaps,
     }
@@ -1841,6 +1970,17 @@ def commercial_timeline(history: dict[str, Any]) -> list[dict[str, Any]]:
         })
         prev = status
     return out
+
+
+def final_render(history: dict[str, Any]) -> dict[str, Any]:
+    """What shipped and what it ran on, from the lineage: the final render's job
+    ID, its files with their studio asset IDs, the runtime, how many model files
+    were fingerprinted, and the QC on it. For packages and review pages."""
+    lin = lineage(history)
+    hashed, total = lin.get("models_hashed") or [0, 0]
+    return {"job_id": lin.get("final_job_id", ""), "final_asset_id": lin.get("final_asset_id", ""),
+            "outputs": lin.get("final_outputs", []), "ran_on": lin.get("ran_on", {}),
+            "models_fingerprinted": [hashed, total], "qc": lin.get("qc")}
 
 
 def delivery_clearance(history: dict[str, Any]) -> dict[str, Any] | None:

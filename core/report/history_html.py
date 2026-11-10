@@ -152,6 +152,48 @@ def render(history: dict[str, Any], *, data: dict[str, Any] | None = None,
             f"<link rel='stylesheet' href='{FONTS}'>{style}</head><body>{body}</body></html>")
 
 
+def _shipped(w, lin) -> None:
+    """The final render: its job, its files and asset IDs, what it ran on, and QC."""
+    outs = lin.get("final_outputs") or []
+    if not outs and not lin.get("final_job_id"):
+        return
+    w("<h2 class='sec'>What shipped<small>the final render</small></h2><dl class='slate'>")
+    if lin.get("final_asset_id"):
+        w(f"<dt>Final asset ID</dt><dd>{_e(lin['final_asset_id'])}</dd>")
+    if lin.get("final_job_id"):
+        w(f"<dt>ComfyUI job</dt><dd><code>{_e(lin['final_job_id'])}</code></dd>")
+    ran = lin.get("ran_on") or {}
+    if ran:
+        names = {"comfyui": "ComfyUI", "python": "Python", "torch": "torch", "cuda": "CUDA",
+                 "gpu": "GPU"}
+        w("<dt>Ran on</dt><dd>" + " &middot; ".join(
+            f"{_e(names.get(k, k))} {_e(v)}" for k, v in ran.items()) + "</dd>")
+    hashed, total = lin.get("models_hashed") or [0, 0]
+    if total:
+        tone = "ok" if hashed == total else "warn"
+        w(f"<dt>Model files</dt><dd><span class='pill {tone}'>{hashed} of {total} fingerprinted"
+          "</span> (SHA-256 of the file that ran, not just its name)</dd>")
+    qc = lin.get("qc")
+    if qc:
+        tone = "ok" if qc["result"] == "pass" and qc["covers_final"] else "warn"
+        what = qc["label"] or qc["result"]
+        if not qc["covers_final"]:
+            what += ", before the final render"
+        w(f"<dt>QC</dt><dd><span class='pill {tone}'>{_e(what)}</span> by {_e(qc['by'])} on "
+          f"{_e(qc['at'][:10])}" + (f": {_e(qc['checks'])}" if qc.get("checks") else "")
+          + (f" &middot; {_e(qc['note'])}" if qc.get("note") else "") + "</dd>")
+    else:
+        w("<dt>QC</dt><dd><span class='pill warn'>not recorded</span></dd>")
+    w("</dl>")
+    if outs:
+        w("<table class='log'><thead><tr><th>File</th><th>Studio asset ID</th><th>SHA-256</th>"
+          "</tr></thead><tbody>")
+        for o in outs:
+            w(f"<tr><td>{_e(o.get('file', ''))}</td><td>{_e(o.get('asset_id', '')) or '&mdash;'}</td>"
+              f"<td class='mono'>{_e(str(o.get('sha256', ''))[:16])}</td></tr>")
+        w("</tbody></table>")
+
+
 def _body(history, lin, rows, v, checks) -> str:
     shot = lin["shot"]
     out: list[str] = []
@@ -164,6 +206,8 @@ def _body(history, lin, rows, v, checks) -> str:
     w(f"<h1>{_e(shot.get('name') or 'Untitled shot')}</h1><dl class='slate'>")
     if shot.get("project"):
         w(f"<dt>Project</dt><dd>{_e(shot['project'])}</dd>")
+    if shot.get("client"):
+        w(f"<dt>Client</dt><dd>{_e(shot['client'])}</dd>")
     ext = shot.get("external_ids") or {}
     w("<dt>Studio IDs</dt><dd>" + (", ".join(f"{_e(k)} {_e(val)}" for k, val in ext.items())
                                   or "<span style='color:var(--warn)'>not linked</span>")
@@ -354,6 +398,7 @@ def _body(history, lin, rows, v, checks) -> str:
         w(f"<p class='intro'><strong>Approved</strong> by {_e(a['by'])}"
           + (f" ({_e(a['role'])})" if a.get("role") else "")
           + f" on {_e(a['at'][:10])}" + (f": {_e(a['note'])}" if a.get("note") else "") + "</p>")
+    _shipped(w, lin)
 
     # -- compliance -----------------------------------------------------------
     w("<h2 class='sec'>Rules this shot may need to meet<small>"

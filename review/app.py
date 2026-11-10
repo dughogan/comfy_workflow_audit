@@ -536,6 +536,7 @@ class Review:
             "since_packaging": since,
             "documents": docs, "other_files": other,
             "content_credentials": index.get("content_credentials", []),
+            "final_render": H.final_render(history),
             "shotgrid": {"configured": shotgrid.configured(), "posts": meta.get("shotgrid", [])},
             "writable": writable,
             "old_copy": old_copy,

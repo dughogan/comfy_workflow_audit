@@ -548,14 +548,20 @@ changed:
 | Captured | Detail |
 |---|---|
 | **Who** | Name and role as set in *Settings → Comfy Workflow Tracker → Shot history*, the machine, and the tool |
-| **Models** | Every weight, with its licence reading at that moment. Additions, removals and LoRA strength changes are diffed per entry |
+| **Models** | Every weight, with its licence reading at that moment and the SHA-256 of the file that actually ran, so a checkpoint renamed or retrained under the same name shows up. Additions, removals and LoRA strength changes are diffed per entry |
 | **Prompts** | Each prompt's text (or only its SHA-256, or encrypted) and **who first wrote it** |
-| **Nodes** | Core, custom (with pack and pinned version) and hosted-API nodes |
+| **Nodes** | Core, custom (with pack, pinned version, and the version and git commit actually installed) and hosted-API nodes |
+| **Runtime** | The ComfyUI, Python, torch and CUDA versions and the GPU each entry ran on; a change between renders is flagged |
 | **Source media** | Every supplied image, plate or clip, fingerprinted, with a declared origin and the studio's own asset ID |
 | **Settings** | Seeds, steps, CFG, sampler, resolution, bypassed branches |
-| **Outputs** | Rendered files, fingerprinted, so a delivered frame can be traced to the entry that made it |
+| **Outputs** | Rendered files, fingerprinted, with the ComfyUI job ID (`prompt_id`) of the render, so a delivered frame can be traced to the entry and the job that made it. At sign-off each can be mapped to the studio's own asset ID |
+| **QC** | The studio's technical check (pass or fail, what was checked), recorded apart from the creative sign-off and legal clearance. A shot at production or later with no QC on its final render shows it as a gap |
 | **Stage** | `sandbox → production → cleared → delivered`. Sandbox work never ships; promotion is where clearance starts |
-| **Studio IDs** | The ShotGrid, ftrack or other tracking-system entity the asset was born as, so provenance starts there and not in ComfyUI |
+| **Studio IDs** | The ShotGrid, ftrack or other tracking-system entity the asset was born as, so provenance starts there and not in ComfyUI, plus the client the work is for |
+
+Model files are hashed once and cached by path, size and modified time. A
+render or a decision waits for the hash; an ordinary edit never does, and the
+hash is computed in the background so it is usually ready by the next render.
 
 Laying out nodes, panning and resizing are not changes; a save that changed
 nothing adds nothing. Renders, reviews and approvals always record, because

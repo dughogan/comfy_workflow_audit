@@ -236,9 +236,17 @@ function shotKey() {
   return app.graph?.extra?.[EXTRA_KEY]?.entries?.[0]?.shot?.id || workflowKey();
 }
 
-function hold(key, outs) {
+function hold(key, outs, promptId = "") {
   const prev = pending.get(key);
-  pending.set(key, { at: Date.now(), renders: [...(prev?.renders || []), outs] });
+  const render = promptId ? { outputs: outs, prompt_id: promptId } : outs;
+  pending.set(key, { at: Date.now(), renders: [...(prev?.renders || []), render] });
+}
+
+/** A render's stamp: its outputs and, when ComfyUI gave one, its job ID, so the
+ *  entry can be matched to the server's own record of the job. */
+function renderStamp(outs, promptId = "") {
+  return promptId && promptId !== "current"
+    ? { outputs: outs, data: { prompt_id: String(promptId) } } : { outputs: outs };
 }
 
 function workflowKey() {
@@ -457,9 +465,12 @@ async function flushPending() {
   const list = pending.get(key)?.renders;
   if (!list?.length || !tracked()) return;
   pending.delete(key);
-  for (const outs of list) {
+  for (const r of list) {
+    // Held before job IDs were kept: a bare list of outputs.
+    const outs = Array.isArray(r) ? r : r.outputs || [];
+    const id = Array.isArray(r) ? "" : r.prompt_id || "";
     try {
-      if (!(await stamp("rendered", { outputs: outs }))) hold(key, outs);
+      if (!(await stamp("rendered", renderStamp(outs, id)))) hold(key, outs, id);
     } catch (e) { console.warn(e); }
   }
   if (!pending.size) state.notice = "";
@@ -512,7 +523,7 @@ function listen() {
     if (!success || !job?.tracked || !getSetting("ComfyAudit.History.Auto", true)) return;
     if (job.key === shotKey() && tracked()) {
       try {
-        if (!(await stamp("rendered", { outputs: outs }))) hold(job.key, outs);
+        if (!(await stamp("rendered", renderStamp(outs, id)))) hold(job.key, outs, id);
         rerender();
       } catch (e) {
         console.warn("[comfyaudit] render entry failed", e);
@@ -520,7 +531,7 @@ function listen() {
         rerender();
       }
     } else {
-      hold(job.key, outs);
+      hold(job.key, outs, id);
       state.notice = "A render finished while another workflow was open. It will be recorded "
         + "when you return to that workflow.";
       rerender();
@@ -746,6 +757,7 @@ function detailsForm() {
   const ids = Object.entries(shot.external_ids || {});
   if (f.name === undefined) f.name = shot.name || "";
   if (f.project === undefined) f.project = shot.project || "";
+  if (f.client === undefined) f.client = shot.client || "";
   if (f.system === undefined) f.system = ids[0]?.[0] || "shotgrid";
   if (f.asset === undefined) f.asset = ids[0]?.[1] || "";
   const submit = () => act(async () => {
@@ -759,7 +771,7 @@ function detailsForm() {
       if (found.shot && !f.project) f.project = found.shot.project?.name || "";
     }
     await stamp("note", { note: "Shot details updated", name: f.name || shotDefaultName(),
-      project: f.project || "", external_ids: extIds, rename: true });
+      project: f.project || "", client: (f.client || "").trim(), external_ids: extIds, rename: true });
   });
   return h("div", { style: { border: `1px solid ${UI.line}`, borderRadius: "6px", padding: "12px", margin: "10px 0" } },
     h("div", { style: { fontWeight: "600", marginBottom: "4px" } }, "Shot details"),
@@ -767,6 +779,7 @@ function detailsForm() {
       "Tracking started under the file name. Name the shot and link it to your tracking system; earlier entries keep what they sealed."),
     label("Shot name", input(f.name, (v) => { f.name = v; })),
     label("Project / show", input(f.project, (v) => { f.project = v; }, "optional")),
+    label("Client", input(f.client, (v) => { f.client = v; }, "who the work is for (optional)")),
     label("Studio asset ID", h("div", { style: { display: "flex", gap: "6px" } },
       choose([["shotgrid", "ShotGrid (beta)"], ["ftrack", "ftrack"], ["other", "Other"]], f.system, (v) => { f.system = v; }),
       input(f.asset, (v) => { f.asset = v; }, "e.g. Shot 4411"))),
@@ -866,7 +879,8 @@ function homeView(s) {
 /* Check -> make it safe -> sign off -> deliver. The audit runs on the server,
  * and runs again at sign-off, so the verdict sealed into the history is never
  * one the browser supplied. */
-const pkg = { step: "profile", result: null, error: "", note: "", exception: "", out: null, open: {}, legalOpen: false };
+const pkg = { step: "profile", result: null, error: "", note: "", exception: "", out: null, open: {}, legalOpen: false,
+  qc: "", qcChecks: "", qcNote: "", finalAsset: "", assets: {} };
 
 /* Production facts the rules turn on, asked once alongside the studio profile. */
 const DELIVERY_FACTS = [
@@ -915,7 +929,9 @@ async function deliverNow() {
   const owner = graph.extra;
   try {
     const out = await post("deliver", { workflow: graph.serialize(), name: shotName(),
-      note: pkg.note, exception: pkg.exception });
+      note: pkg.note, exception: pkg.exception,
+      qc: pkg.qc ? { result: pkg.qc, checks: pkg.qcChecks, note: pkg.qcNote } : null,
+      final_asset_id: pkg.finalAsset, output_asset_ids: pkg.assets });
     if (app.graph === graph && graph.extra === owner) {
       owner[EXTRA_KEY] = out.history;
       markDirty();
@@ -1146,6 +1162,8 @@ function signoffStep() {
   if (!who) wrap.append(h("div", { style: { fontSize: "11.5px", color: TONE.warn, marginBottom: "8px" } },
     "Set your name in Settings > Comfy Workflow Tracker > Shot history so legal can see who signed off."));
   wrap.append(label("Approved for", input(pkg.note, (v) => { pkg.note = v; }, "e.g. Final delivery, reel 3", true)));
+  wrap.append(qcFields(r));
+  wrap.append(assetFields(r));
   if (needsException) {
     wrap.append(h("div", { style: { fontSize: "12px", color: TONE.stop, margin: "4px 0 6px", lineHeight: "1.45" } },
       r.verdict === "no-go"
@@ -1157,6 +1175,45 @@ function signoffStep() {
   wrap.append(h("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" } },
     btn("Sign off and package", deliverNow, "primary"),
     btn("Back", () => { pkg.step = "fix"; rerender(); })));
+  return wrap;
+}
+
+/* QC is the studio's technical check (resolution, artefacts, colour,
+ * continuity), recorded apart from the creative sign-off and legal clearance. */
+function qcFields(r) {
+  const prior = r.qc;
+  const wrap = h("div", { style: { margin: "4px 0 6px" } });
+  if (prior?.covers_final && !pkg.qc) {
+    wrap.append(h("div", { style: { fontSize: "11.5px", color: prior.result === "pass" ? UI.dim : TONE.warn, marginBottom: "8px" } },
+      `${prior.label || prior.result} at entry ${prior.seq}${prior.by ? ` by ${prior.by}` : ""}. Record a new check below to replace it.`));
+  }
+  wrap.append(label("Quality check", choose([["", prior?.covers_final ? "Keep the recorded check" : "Not checked"],
+    ["pass", "Passed QC"], ["fail", "Failed QC"]], pkg.qc, (v) => { pkg.qc = v; rerender(); })));
+  if (pkg.qc) {
+    wrap.append(label("What was checked", input(pkg.qcChecks, (v) => { pkg.qcChecks = v; }, "e.g. 4K res, no artefacts, colour matched to plate")));
+    if (pkg.qc === "fail") wrap.append(label("What failed", input(pkg.qcNote, (v) => { pkg.qcNote = v; }, "", true)));
+  } else if (!prior?.covers_final) {
+    wrap.append(h("div", { style: { fontSize: "11px", color: TONE.warn, margin: "-6px 0 8px" } },
+      "No QC on the final render. It will show as a gap in the record until one is recorded."));
+  }
+  return wrap;
+}
+
+/* The studio's own asset IDs for what ships, so the fingerprinted files map
+ * to its asset records. Both optional. */
+function assetFields(r) {
+  const wrap = h("div", {});
+  wrap.append(label("Final asset ID", input(pkg.finalAsset, (v) => { pkg.finalAsset = v; }, "the studio's ID for the delivered shot (optional)")));
+  const outs = r.final_outputs || [];
+  // One output is the final asset; several each get their own ID.
+  if (outs.length > 1) {
+    wrap.append(h("div", { style: { fontSize: "12px", marginBottom: "4px" } }, "Asset ID for each output"));
+    for (const o of outs) {
+      wrap.append(h("div", { style: { display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px" } },
+        h("div", { style: { fontSize: "11px", color: UI.dim, flex: "1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, title: o.file }, o.file),
+        input(pkg.assets[o.file], (v) => { pkg.assets[o.file] = v; }, "optional")));
+    }
+  }
   return wrap;
 }
 
