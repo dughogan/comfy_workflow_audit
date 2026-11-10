@@ -463,9 +463,10 @@ async function shotPage(id, studioOnly) {
   const crumbs = h("div", { class: "crumbs" }, h("a", { href: "#/", text: "Start" }), " › ",
     s.production ? h("a", { href: `#/show/${s.production}`, text: s.project || "Show" }) : "No show", " › ", s.name || "Shot");
   return [crumbs, h("h1", { text: s.name || "Unnamed shot" }),
-    h("p", { class: "lede", text: [s.project || "No show given", ids, `stage: ${s.stage}`].filter(Boolean).join(" · ") }),
+    h("p", { class: "lede", text: [s.project || "No show given", s.client ? `client: ${s.client}` : "", ids, `stage: ${s.stage}`].filter(Boolean).join(" · ") }),
     band,
     card("Signed off in ComfyUI", ...signoff),
+    view.final_render ? shippedCard(view.final_render) : null,
     card("Documents", docs, h("p", { class: "small dim", text: "They open as they were packaged, in a sandbox that cannot reach this page or your studio server." })),
     card(`Left for legal${view.open_count ? ` · ${view.open_count} open` : ""}`,
       h("p", { class: "small dim", style: { marginTop: 0 }, text: "Production facts the record cannot prove itself. Items for a whole show or the studio are answered once, and every shot of that show inherits the answer." }),
@@ -485,6 +486,22 @@ async function shotPage(id, studioOnly) {
       ? h("ul", {}, view.since_packaging.map((r) => h("li", {}, h("strong", { text: r.label }),
         ` - ${r.who}${r.role ? ` (${r.role})` : ""}, ${date(r.at)}${r.note ? `: “${r.note}”` : ""}${r.demo ? " (demo)" : ""}`)))
       : h("p", { class: "dim", text: "Nothing yet." }))];
+}
+/** The final render: its ComfyUI job, files and studio asset IDs, what it ran on, QC. */
+function shippedCard(f) {
+  const ran = Object.entries(f.ran_on || {}).map(([k, v]) => `${{ comfyui: "ComfyUI", python: "Python", cuda: "CUDA", gpu: "GPU" }[k] || k} ${v}`).join(" · ");
+  const [hashed, total] = f.models_fingerprinted || [0, 0];
+  const qc = f.qc;
+  const qcText = qc ? `${qc.label || qc.result}${qc.covers_final ? "" : ", before the final render"} - ${qc.by}, ${date(qc.at)}${qc.checks ? `: ${qc.checks}` : ""}${qc.note ? ` (${qc.note})` : ""}` : "";
+  return card("What shipped",
+    h("dl", { class: "facts" },
+      f.final_asset_id ? [h("dt", { text: "Final asset ID" }), h("dd", { text: f.final_asset_id })] : null,
+      f.job_id ? [h("dt", { text: "ComfyUI job" }), h("dd", {}, h("span", { class: "mono", text: f.job_id }))] : null,
+      ran ? [h("dt", { text: "Ran on" }), h("dd", { text: ran })] : null,
+      total ? [h("dt", { text: "Model files" }), h("dd", {}, pill(`${hashed} of ${total} fingerprinted`, hashed === total ? "ok" : "warn"))] : null,
+      h("dt", { text: "QC" }), h("dd", {}, qc ? pill(qcText, qc.result === "pass" && qc.covers_final ? "ok" : "warn") : pill("Not recorded", "warn"))),
+    (f.outputs || []).length ? table(["File", "Studio asset ID", "SHA-256"], f.outputs.map((o) => [
+      h("span", { class: "mono", text: o.file || "" }), o.asset_id || "—", h("span", { class: "mono small", text: String(o.sha256 || "").slice(0, 16) })])) : null);
 }
 const download2 = (blob, name) => download(blob, `${name || "shot"}.json`);
 

@@ -15,7 +15,7 @@ export const EVENTS = {
   rendered: "Output generated", reviewed: "Output reviewed by a person", approved: "Output approved for use",
   rejected: "Output rejected", note: "Note recorded", handoff: "Handed to another person or vendor",
   sourced: "Source asset declared", promoted: "Moved to a new production stage",
-  forked: "Branched into a new record from a copy of the shot", moved: "Workflow file moved, renamed or opened elsewhere",
+  qc: "Quality check recorded", forked: "Branched into a new record from a copy of the shot", moved: "Workflow file moved, renamed or opened elsewhere",
 };
 export const STATES = { cleared: "Cleared by legal", "sent-back": "Sent back", awaiting: "Waiting for legal review" };
 const DOC_ROLES = ["legal-report", "licence-audit", "life-of-the-shot"];
@@ -302,7 +302,7 @@ export function buildView(pkg, rules, answers = []) {
     source: "browser",
     package: { id: pkg.id, filename: pkg.filename, sha256: pkg.sha256, opened_at: pkg.openedAt,
       made_with: pkg.index.comfyaudit_version || "", made_at: pkg.index.generated_at || "", index: pkg.indexName },
-    shot: { id: top.id || "", name: top.name || "", project, stage, external_ids: top.external_ids || {},
+    shot: { id: top.id || "", name: top.name || "", project, client: top.client || "", stage, external_ids: top.external_ids || {},
       production: prod, shotgrid: String(top.external_ids?.shotgrid || "") },
     legal_state: state, legal_state_label: STATES[state],
     decision: sealed ? { verdict: sealed.verdict || "", verdict_label: sealed.verdict_label || "", headline: sealed.headline || "",
@@ -325,6 +325,9 @@ export function buildView(pkg, rules, answers = []) {
     documents: pkg.files.filter((f) => DOC_ROLES.includes(f.role)),
     other_files: pkg.files.filter((f) => !DOC_ROLES.includes(f.role)),
     content_credentials: pkg.index.content_credentials || [],
+    // From the index: the browser does not rebuild the lineage. The studio
+    // server's view derives the same block from the history itself.
+    final_render: pkg.index.final_render || null,
     writable: chainOk && pkg.problems.length === 0,
     why_not_writable: chainOk && pkg.problems.length === 0 ? "" :
       "The package or its history does not check out, so nothing can be recorded against it: " +

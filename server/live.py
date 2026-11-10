@@ -190,6 +190,11 @@ def install() -> bool:
     if not comfy_available():
         return False
     catalog.set_live_provider(live_schema)
+    # The shot history records what each entry ran on. Core stays free of
+    # ComfyUI, so the running server hands it these.
+    from ..core import history as history_mod
+    history_mod.set_runtime_provider(runtime_info)
+    history_mod.set_pack_provider(pack_info)
     return True
 
 
@@ -334,3 +339,207 @@ def environment() -> dict[str, Any]:
     except Exception:
         pass
     return info
+
+
+# --------------------------------------------------------------------------
+# What a render ran on: runtime, installed packs, model file hashes
+# --------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=1)
+def runtime_info() -> dict[str, str]:
+    """ComfyUI, Python, torch, CUDA and the GPU this process renders on.
+
+    Cached: none of it changes without a restart. Empty values are left out,
+    so a CPU-only or test machine records only what it actually has.
+    """
+    info: dict[str, str] = {"python": sys.version.split()[0]}
+    try:
+        import comfyui_version
+        info["comfyui"] = str(getattr(comfyui_version, "__version__", "") or "")
+    except Exception:  # noqa: BLE001
+        pass
+    if "torch" in sys.modules or comfy_available():
+        try:
+            import torch
+            info["torch"] = str(torch.__version__)
+            if getattr(torch.version, "cuda", None):
+                info["cuda"] = str(torch.version.cuda)
+            if torch.cuda.is_available():
+                info["gpu"] = str(torch.cuda.get_device_name(torch.cuda.current_device()))
+        except Exception:  # noqa: BLE001
+            pass
+    return {k: v for k, v in info.items() if v}
+
+
+def _pack_commit(pack_dir: str) -> str:
+    """The git commit an installed pack is checked out at, or ""."""
+    git = os.path.join(pack_dir, ".git")
+    head = os.path.join(git, "HEAD")
+    if not os.path.isfile(head):
+        return ""
+    try:
+        with open(head, encoding="utf-8") as fh:
+            ref = fh.read().strip()
+        if not ref.startswith("ref: "):
+            return ref[:40]
+        ref_path = os.path.join(git, ref[5:])
+        if os.path.isfile(ref_path):
+            with open(ref_path, encoding="utf-8") as fh:
+                return fh.read().strip()[:40]
+        packed = os.path.join(git, "packed-refs")
+        if os.path.isfile(packed):
+            with open(packed, encoding="utf-8") as fh:
+                for line in fh:
+                    sha, _, name = line.strip().partition(" ")
+                    if name == ref[5:]:
+                        return sha[:40]
+    except OSError:
+        return ""
+    return ""
+
+
+_PACKS: dict[str, dict[str, Any]] | None = None
+
+
+def pack_info(node_types: list[str]) -> dict[str, str]:
+    """What is installed here for the pack that provides these node types.
+
+    ``{"installed": version, "commit": sha}``, either may be missing. The
+    class-to-pack map is built once per process; packs load at startup.
+    """
+    global _PACKS
+    if _PACKS is None:
+        _PACKS = installed_packs()
+    for t in node_types:
+        hit = _PACKS.get(t)
+        if hit:
+            out = {"installed": hit.get("version", ""), "commit": _pack_commit(hit["path"])}
+            return {k: v for k, v in out.items() if v}
+    return {}
+
+
+class ModelHasher:
+    """SHA-256 of model files, cached on disk by path, size and modified time.
+
+    Hashing a 20 GB checkpoint takes seconds, so a file is only read when it
+    is new or has changed, and only when ``blocking`` is on (renders and
+    decisions). Other edits get what is cached and queue the rest in the
+    background, so the hash is usually ready by the time the shot renders.
+    """
+
+    def __init__(self, cache_path: str):
+        self.cache_path = cache_path
+        self._lock = __import__("threading").Lock()
+        self._cache: dict[str, dict[str, Any]] | None = None
+        self._pending: set[str] = set()
+
+    def _load(self) -> dict[str, dict[str, Any]]:
+        if self._cache is None:
+            try:
+                with open(self.cache_path, encoding="utf-8") as fh:
+                    self._cache = dict(__import__("json").load(fh))
+            except (OSError, ValueError):
+                self._cache = {}
+        return self._cache
+
+    def _save(self) -> None:
+        import json
+        try:
+            os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
+            tmp = self.cache_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(self._cache or {}, fh)
+            os.replace(tmp, self.cache_path)
+        except OSError:
+            pass
+
+    @staticmethod
+    def _key(path: str) -> tuple[str, int, int] | None:
+        try:
+            st = os.stat(path)
+        except OSError:
+            return None
+        return os.path.normcase(os.path.realpath(path)), st.st_size, st.st_mtime_ns
+
+    def cached(self, path: str) -> str:
+        key = self._key(path)
+        if key is None:
+            return ""
+        with self._lock:
+            row = self._load().get(key[0])
+        return row["sha256"] if row and row.get("size") == key[1] \
+            and row.get("mtime_ns") == key[2] else ""
+
+    def compute(self, path: str) -> str:
+        import hashlib
+        key = self._key(path)
+        if key is None:
+            return ""
+        h = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for block in iter(lambda: fh.read(8 << 20), b""):
+                h.update(block)
+        digest = h.hexdigest()
+        with self._lock:
+            self._load()[key[0]] = {"sha256": digest, "size": key[1], "mtime_ns": key[2]}
+            self._save()
+        return digest
+
+    def _background(self, path: str) -> None:
+        import threading
+        with self._lock:
+            if path in self._pending:
+                return
+            self._pending.add(path)
+
+        def run() -> None:
+            try:
+                self.compute(path)
+            except OSError:
+                pass
+            finally:
+                with self._lock:
+                    self._pending.discard(path)
+        threading.Thread(target=run, name="comfyaudit-hash", daemon=True).start()
+
+    def hash_path(self, path: str, blocking: bool) -> str:
+        if not path or not os.path.isfile(path):
+            return ""
+        got = self.cached(path)
+        if got:
+            return got
+        if blocking:
+            return self.compute(path)
+        self._background(path)
+        return ""
+
+    def provider(self, blocking: bool):
+        """A ``model_hash(folder, filename)`` callable for ``history.snapshot``."""
+        def model_hash(folder: str, filename: str) -> str:
+            return self.hash_path(_model_path(folder, filename), blocking)
+        return model_hash
+
+
+def _model_path(folder: str, filename: str) -> str:
+    try:
+        import folder_paths
+        return folder_paths.get_full_path(folder, filename) or ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+_HASHER: ModelHasher | None = None
+
+
+def model_hasher() -> ModelHasher | None:
+    """The process-wide hasher, its cache in ComfyUI's user folder; None outside ComfyUI."""
+    global _HASHER
+    if _HASHER is None:
+        try:
+            import folder_paths
+            root = folder_paths.get_user_directory()
+        except Exception:  # noqa: BLE001
+            return None
+        _HASHER = ModelHasher(os.path.join(root, "default", "comfyaudit", "model_hashes.json"))
+    return _HASHER

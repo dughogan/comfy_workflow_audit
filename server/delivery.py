@@ -154,6 +154,11 @@ def _assess(body: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
         "models": [{"filename": d.subject, "licence": d.licence, "verdict": d.verdict}
                    for d in result.determinations if d.kind == "model"],
         "risk": {"score": report.risk.score, "band": report.risk.band},
+        # The final render's files, so the sign-off can map each to the
+        # studio's own asset ID, and the QC already on it, if any.
+        "final_outputs": [{"file": o.get("file", ""), "sha256": o.get("sha256", "")}
+                          for o in (lin or {}).get("final_outputs", []) if o.get("file")],
+        "qc": (lin or {}).get("qc"),
         "versions": _versions(),
     }
     return report, out
@@ -212,9 +217,27 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
     ledger = cfg.get("ledger", "")
     who = history_service.actor(cfg, body)
     name = str(body.get("name", "") or "")
-    approved = H.stamp(body["workflow"], event="approved", actor=who, keys=keys, ledger=ledger,
+    workflow = body["workflow"]
+    # The studio's own technical check, recorded as its own entry before the
+    # sign-off so the record shows QC and the creative decision apart.
+    qc = body.get("qc") or {}
+    if isinstance(qc, dict) and qc.get("result"):
+        checked = H.stamp(workflow, event="qc", actor=who, keys=keys, ledger=ledger, name=name,
+                          note=str(qc.get("note", "") or ""),
+                          data_payload={"result": str(qc["result"]),
+                                        **({"checks": str(qc["checks"])} if qc.get("checks") else {})})
+        workflow = checked.workflow
+    signoff: dict[str, Any] = {"clearance": clearance}
+    final_asset = str(body.get("final_asset_id", "") or "").strip()
+    if final_asset:
+        signoff["final_asset_id"] = final_asset
+    asset_ids = {str(k): str(v).strip() for k, v in (body.get("output_asset_ids") or {}).items()
+                 if str(v or "").strip()}
+    if asset_ids:
+        signoff["output_asset_ids"] = asset_ids
+    approved = H.stamp(workflow, event="approved", actor=who, keys=keys, ledger=ledger,
                        name=name, note=str(body.get("note", "") or "Approved for delivery"),
-                       data_payload={"clearance": clearance})
+                       data_payload=signoff)
     shot = approved.history["shot"].get("name") or name or "shot"
     slug = _slug(shot)
     # The renders are signed against the history as signed off, and what was
@@ -321,8 +344,11 @@ def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
     return machine.stamp("delivery-package", {
         "about": ("Index of a Comfy Workflow Tracker delivery package; start here. Each HTML file embeds the "
                   "data it shows as JSON in <script id='comfyaudit-data'>."),
-        "shot": {k: history.get("shot", {}).get(k) for k in ("id", "name", "project", "stage",
-                                                             "external_ids")},
+        "shot": {k: history.get("shot", {}).get(k) for k in ("id", "name", "project", "client",
+                                                             "stage", "external_ids")},
+        # What shipped and what it ran on: the final render's job, its files
+        # with their studio asset IDs, the runtime, the hashed models and QC.
+        "final_render": H.final_render(history),
         "decision": {
             "verdict": clearance.get("verdict"), "verdict_label": clearance.get("verdict_label"),
             "headline": clearance.get("headline"), "checked_as": clearance.get("profile"),

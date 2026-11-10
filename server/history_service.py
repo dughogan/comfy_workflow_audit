@@ -147,6 +147,17 @@ def _path(body: dict[str, Any]) -> str | None:
     return str(body.get("path") or "") if body.get("persisted", True) else ""
 
 
+#: Events worth waiting on a model file's hash for: what was rendered, and
+#: what somebody decided about. Edits use what is cached and queue the rest.
+HASH_BLOCKING = {"rendered", "reviewed", "approved", "rejected", "promoted", "qc"}
+
+
+def model_hash(event: str) -> Any:
+    from . import live
+    hasher = live.model_hasher()
+    return hasher.provider(blocking=event in HASH_BLOCKING) if hasher else None
+
+
 def stamp(body: dict[str, Any]) -> dict[str, Any]:
     cfg = settings_mod.history_settings()
     workflow = body["workflow"]
@@ -180,11 +191,13 @@ def stamp(body: dict[str, Any]) -> dict[str, Any]:
         workflow, event=str(body.get("event", "edited")), actor=who,
         note=str(body.get("note", "") or ""), outputs=outputs, keys=k,
         name=str(body.get("name", "") or ""), project=str(body.get("project", "") or ""),
+        client=str(body.get("client", "") or ""),
         ledger=ledger,
         external_ids={kk: str(v) for kk, v in (body.get("external_ids") or {}).items() if v},
         data_payload=body.get("data") or None,
         force=bool(body.get("force")), rename=bool(body.get("rename")),
-        resolve=input_path, path=_path(body))
+        resolve=input_path, path=_path(body),
+        model_hash=model_hash(str(body.get("event", "edited"))))
     if result.entry and result.entry["event"] == "rendered" and cfg.get("sidecars", True):
         for path, row in files:
             # An input is somebody's source, not this render's output.
@@ -222,7 +235,7 @@ def write_sidecar(path: str, row: dict[str, Any], history: dict[str, Any],
         "entry": entry["seq"],
         "entry_hash": entry["hash"],
         "at": entry["at"],
-        "shot": {k: shot.get(k) for k in ("id", "name", "project", "external_ids")},
+        "shot": {k: shot.get(k) for k in ("id", "name", "project", "client", "external_ids") if k != "client" or shot.get(k)},
         "verify": f"comfyaudit history verify-file {os.path.basename(path)}",
         "history": history,
     }
