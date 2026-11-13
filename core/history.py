@@ -109,6 +109,25 @@ ORIGINS = {
 #: honest declaration but not human authorship; "unknown" is not a declaration.
 HUMAN_ORIGINS = {"artist", "client", "licensed", "photographed"}
 
+#: Origins whose material arrives under someone else's terms, so its rights
+#: (licence window, territory, AI permissions) need recording per source.
+#: Work the production made itself is the studio's own.
+RIGHTS_ORIGINS = {"client", "licensed"}
+
+#: What the rights holder allows a source to be used for with AI, each
+#: recorded as "yes", "no" or "unknown", as the contract or licence says.
+RIGHTS_FLAGS = {
+    "ai_generation": "used as an input to AI generation",
+    "ai_reference": "used as a reference for AI (style, likeness, layout)",
+    "ai_training": "used to train or fine-tune models",
+}
+RIGHTS_ANSWERS = ("yes", "no", "unknown")
+#: Free-text rights terms, as the contract states them.
+RIGHTS_TEXT = ("territory", "media", "likeness", "contract")
+RIGHTS_DATES = ("licence_start", "licence_end")
+#: A licence ending this soon is worth saying out loud before delivery.
+RIGHTS_WARN_DAYS = 30
+
 #: Input kinds that are media going into the shot, however they are supplied:
 #: an upload widget, a path baked into a loader, or a URL fetched at run time.
 SOURCE_KINDS = {"image", "video", "audio", "url"}
@@ -444,6 +463,25 @@ def _js_number(value: Any) -> int | float:
     except (TypeError, ValueError):
         return 0
     return int(v) if v.is_integer() else v
+
+
+def _js_safe(value: Any) -> Any:
+    """Entry data as the browser will write it back: whole-number floats as ints.
+
+    The canvas stores the history and JavaScript has one number type, so 1.0
+    comes back as 1, which changes the entry's bytes and reads as tampering.
+    Anything a server-side step seals (an audit's verdict, a score) goes
+    through here first.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else value
+    if isinstance(value, dict):
+        return {k: _js_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_js_safe(v) for v in value]
+    return value
 
 
 def topology(data: dict[str, Any], keys: Keys | None = None) -> dict[str, Any]:
@@ -956,7 +994,7 @@ def append(history: dict[str, Any], data: dict[str, Any], *, event: str = "edite
         "actor": actor.as_dict(),
         "note": note,
         "outputs": [_protect_output(_output_row(o), keys) for o in outputs],
-        "data": data_payload or {},
+        "data": _js_safe(data_payload or {}),
         # The shot's identity and external IDs ride inside every entry, so the
         # ShotGrid link is covered by the chain rather than sitting beside it.
         # A copy, not a reference: adding an ID later must not reach back
@@ -1140,6 +1178,8 @@ def stamp(data: dict[str, Any], *, event: str = "edited", actor: Actor | None = 
             raise ValueError(f"origin must be one of {', '.join(ORIGINS)}")
         if not payload.get("node"):
             raise ValueError("a source declaration names the input node it is about")
+        if "rights" in payload:
+            payload["rights"] = clean_rights(payload["rights"])
     if event == "qc" and payload.get("result") not in QC_RESULTS:
         raise ValueError(f"a QC result is one of {', '.join(QC_RESULTS)}")
     if "final_asset_id" in payload and not isinstance(payload["final_asset_id"], str):
@@ -1674,12 +1714,12 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
             rec = sources.setdefault(inp["node"], {
                 "node": inp["node"], "kind": inp["kind"], "sha256": inp["sha256"],
                 "value": inp.get("text"), "origin": "", "asset_id": "", "owner": "",
-                "declared_by": "", "note": "", "first_seq": e["seq"]})
+                "rights": {}, "declared_by": "", "note": "", "first_seq": e["seq"]})
             if rec["sha256"] != inp["sha256"]:
                 # A different file in the same slot is a different source; an
                 # earlier declaration does not carry over to it.
                 rec.update({"sha256": inp["sha256"], "value": inp.get("text"),
-                            "origin": "", "asset_id": "", "owner": "",
+                            "origin": "", "asset_id": "", "owner": "", "rights": {},
                             "declared_by": "", "note": ""})
             picked = next((x for x in (e.get("changes") or {}).get("selected", [])
                            if x.get("node") == inp["node"]), None)
@@ -1696,6 +1736,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
                 "first_seq": e["seq"]})
             rec.update({"origin": d.get("origin", "unknown"),
                         "asset_id": d.get("asset_id", ""), "owner": d.get("owner", ""),
+                        "rights": dict(d.get("rights") or {}),
                         "declared_by": who, "note": e.get("note", "")})
 
         if e["event"] == "promoted":
@@ -1768,6 +1809,18 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
     if unsupervised_runs:
         gaps.append(f"{unsupervised_runs} render(s) followed another render with no "
                     "recorded human step in between.")
+    for s in sources.values():
+        s.setdefault("rights", {})
+    rights = rights_issues(sources.values())
+    for issue in rights:
+        if issue["severity"] == "block":
+            gaps.append(f"Source node {issue['node']}: {issue['problem']}")
+    no_rights = [s["node"] for s in sources.values()
+                 if s.get("origin") in RIGHTS_ORIGINS and not s.get("rights")]
+    if no_rights:
+        gaps.append(f"{len(no_rights)} client or licensed source(s) have no rights recorded "
+                    f"(node {', '.join(no_rights)}): licence dates, territory and whether "
+                    "AI use is allowed.")
     human_made = [s for s in sources.values() if s.get("origin") in HUMAN_ORIGINS]
     if not human_made:
         gaps.append("No human-made source material is recorded (an artist's plate, "
@@ -1846,6 +1899,7 @@ def lineage(history: dict[str, Any]) -> dict[str, Any]:
         "models": sorted(models.values(), key=lambda r: (r["introduced"], r["filename"])),
         "prompts": sorted(prompts.values(), key=lambda r: r["first_seq"]),
         "sources": sorted(sources.values(), key=lambda r: str(r["node"])),
+        "rights_issues": rights,
         "stages": stages,
         "breakpoints": breakpoints,
         "human_steps": human_steps,
@@ -1969,6 +2023,84 @@ def commercial_timeline(history: dict[str, Any]) -> list[dict[str, Any]]:
             "removed": list(changes.get("models_removed", []) or []),
         })
         prev = status
+    return out
+
+
+def clean_rights(rights: Any) -> dict[str, Any]:
+    """Validate a source's rights as declared, keeping only what was given."""
+    if not isinstance(rights, dict):
+        raise ValueError("rights is an object of licence terms")
+    out: dict[str, Any] = {}
+    for k in RIGHTS_DATES:
+        v = str(rights.get(k, "") or "").strip()
+        if v:
+            try:
+                _dt.date.fromisoformat(v[:10])
+            except ValueError:
+                raise ValueError(f"{k} is a date, YYYY-MM-DD") from None
+            out[k] = v[:10]
+    if out.get("licence_start") and out.get("licence_end") \
+            and out["licence_end"] < out["licence_start"]:
+        raise ValueError("the licence ends before it starts")
+    for k in RIGHTS_FLAGS:
+        v = str(rights.get(k, "") or "").strip().lower()
+        if v:
+            if v not in RIGHTS_ANSWERS:
+                raise ValueError(f"{k} is one of {', '.join(RIGHTS_ANSWERS)}")
+            out[k] = v
+    for k in RIGHTS_TEXT:
+        v = str(rights.get(k, "") or "").strip()
+        if v:
+            out[k] = v
+    if rights.get("client_owned"):
+        out["client_owned"] = True
+    return out
+
+
+def _iso_date(value: Any) -> _dt.date | None:
+    try:
+        return _dt.date.fromisoformat(str(value or "")[:10]) if value else None
+    except ValueError:
+        return None
+
+
+def rights_issues(sources: Iterable[dict[str, Any]],
+                  today: _dt.date | None = None) -> list[dict[str, Any]]:
+    """What the declared rights of each source say about using it in this shot.
+
+    Every source here is an input to a generative graph, so a source the rights
+    holder has not allowed to be used for AI generation or as an AI reference
+    blocks, as does a licence outside its window. A ban on training is a
+    condition to carry forward, not a block: rendering is not training.
+    """
+    today = today or _dt.date.today()
+    out: list[dict[str, Any]] = []
+    for s in sources:
+        r = s.get("rights") or {}
+        node = str(s.get("node", ""))
+        end, start = r.get("licence_end", ""), r.get("licence_start", "")
+        end_d, start_d = _iso_date(end), _iso_date(start)
+        if end_d and end_d < today:
+            out.append({"node": node, "severity": "block", "kind": "expired",
+                        "problem": f"its licence ended on {end}."})
+        elif end_d:
+            left = (end_d - today).days
+            if left <= RIGHTS_WARN_DAYS:
+                out.append({"node": node, "severity": "condition", "kind": "expiring",
+                            "problem": f"its licence ends on {end}, {left} day(s) from now."})
+        if start_d and start_d > today:
+            out.append({"node": node, "severity": "block", "kind": "not-started",
+                        "problem": f"its licence does not start until {start}."})
+        for flag in ("ai_generation", "ai_reference"):
+            if r.get(flag) == "no":
+                out.append({"node": node, "severity": "block", "kind": flag,
+                            "problem": "the rights recorded for it do not allow it to be "
+                                       f"{RIGHTS_FLAGS[flag]}, and it is an input to this graph."})
+        if r.get("ai_training") == "no":
+            out.append({"node": node, "severity": "condition", "kind": "ai_training",
+                        "problem": "the rights recorded for it do not allow it to be "
+                                   f"{RIGHTS_FLAGS['ai_training']}; keep it and this shot's "
+                                   "outputs out of training sets."})
     return out
 
 

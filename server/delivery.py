@@ -50,6 +50,8 @@ def _audit(workflow: dict[str, Any], body: dict[str, Any]):
         check_local_models=bool(options.get("check_local_models", True)),
         hash_models=bool(options.get("hash_models")),
         name=str(body.get("name", "") or ""),
+        # A sign-off is a decision: fingerprint every model the registry needs.
+        hash_blocking=True,
     )
 
 
@@ -103,9 +105,35 @@ def fixes(result: clearance_mod.ClearanceResult,
 
 
 def _sources(lin: dict[str, Any]) -> list[dict[str, Any]]:
-    """Supplied inputs whose origin nobody has declared yet."""
-    return [{"node": s["node"], "origin": s.get("origin", ""), "asset_id": s.get("asset_id", "")}
-            for s in lin["sources"] if not s.get("origin") or s["origin"] == "unknown"]
+    """Supplied inputs whose origin nobody has declared yet, and client or licensed
+    ones whose rights nobody has recorded."""
+    out = []
+    for s in lin["sources"]:
+        origin = s.get("origin", "")
+        missing = (["origin"] if not origin or origin == "unknown" else []) +             (["rights"] if origin in H.RIGHTS_ORIGINS and not s.get("rights") else [])
+        if missing:
+            out.append({"node": s["node"], "origin": origin, "asset_id": s.get("asset_id", ""),
+                        "owner": s.get("owner", ""), "rights": s.get("rights") or {},
+                        "missing": missing})
+    return out
+
+
+def holds(assessed: dict[str, Any]) -> list[str]:
+    """What has to be fixed, or delivered as a recorded exception: the licence
+    verdict, the facility's registry, and the rights on the source material."""
+    out = []
+    if assessed["verdict"] == "no-go":
+        out.append("The licence audit says no-go.")
+    elif assessed["verdict"] == "unknown":
+        out.append("The licence audit could not reach a verdict.")
+    reg = assessed.get("registry") or {}
+    if reg.get("loaded") and not reg.get("clean"):
+        out.append("Not everything is cleared in the facility's registry: "
+                   + reg.get("headline", ""))
+    for issue in assessed.get("rights") or []:
+        if issue["severity"] == "block":
+            out.append(f"Source node {issue['node']}: {issue['problem']}")
+    return out
 
 
 def _confirmations(lin, history, cfg) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -159,8 +187,12 @@ def _assess(body: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
         "final_outputs": [{"file": o.get("file", ""), "sha256": o.get("sha256", "")}
                           for o in (lin or {}).get("final_outputs", []) if o.get("file")],
         "qc": (lin or {}).get("qc"),
+        "registry": report.registry.as_dict(),
+        "rights": (lin or {}).get("rights_issues", []),
         "versions": _versions(),
     }
+    out["qc_required"] = bool((out["registry"].get("workflow") or {}).get("qc_required"))
+    out["holds"] = holds(out)
     return report, out
 
 
@@ -186,11 +218,17 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
     cfg = settings_mod.history_settings()
     report, assessed = _assess(body)
     exception = str(body.get("exception", "") or "").strip()
-    if assessed["verdict"] in ("no-go", "unknown") and not exception:
-        why = ("The audit says no-go" if assessed["verdict"] == "no-go"
-               else "The audit could not reach a verdict")
-        return {"error": f"{why}. Fix what it lists, or record why this is being "
-                         "delivered anyway; that reason is sealed with the sign-off."}
+    if assessed["holds"] and not exception:
+        return {"error": " ".join(assessed["holds"]) + " Fix what it lists, or record why "
+                         "this is being delivered anyway; that reason is sealed with the "
+                         "sign-off."}
+    qc_body = body.get("qc") or {}
+    if assessed["qc_required"]:
+        on_file = assessed.get("qc") or {}
+        passed_now = isinstance(qc_body, dict) and qc_body.get("result") == "pass"
+        if not passed_now and not (on_file.get("result") == "pass" and on_file.get("covers_final")):
+            return {"error": "This shot's approved workflow requires a passing quality check "
+                             "on the final render before it is delivered. Record one."}
 
     clearance = {k: assessed[k] for k in ("verdict", "verdict_label", "headline",
                                           "profile", "blockers", "conditions")}
@@ -198,6 +236,12 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
                                  "subjects": f["subjects"]} for f in assessed["fixes"]]
     clearance["exception"] = exception
     clearance["audited_with"] = assessed["versions"]
+    # What the facility's registry said about every model, pack, service and
+    # the workflow itself at the moment of sign-off.
+    if report.registry.loaded:
+        clearance["registry"] = report.registry.sealed()
+    if assessed["rights"]:
+        clearance["rights"] = assessed["rights"]
     # What the sign-off leaves for legal: production facts no one in the
     # workflow has attested yet. Sealed, so legal sees exactly what was open.
     clearance["for_legal"] = [{"rule": c["rule"], "title": c["title"],
@@ -220,7 +264,7 @@ def deliver(body: dict[str, Any]) -> dict[str, Any]:
     workflow = body["workflow"]
     # The studio's own technical check, recorded as its own entry before the
     # sign-off so the record shows QC and the creative decision apart.
-    qc = body.get("qc") or {}
+    qc = qc_body
     if isinstance(qc, dict) and qc.get("result"):
         checked = H.stamp(workflow, event="qc", actor=who, keys=keys, ledger=ledger, name=name,
                           note=str(qc.get("note", "") or ""),
@@ -357,6 +401,8 @@ def _index(slug: str, history: dict[str, Any], clearance: dict[str, Any],
             "delivered_as_exception": bool(clearance.get("exception")),
             "exception_reason": clearance.get("exception", ""),
             "blockers": clearance.get("blockers", []), "conditions": clearance.get("conditions", []),
+            "registry": clearance.get("registry"),
+            "rights": clearance.get("rights", []),
         },
         # Legal's own decision (Comfy Audit), if one was recorded before this
         # package was made: a shot sent back and delivered again carries it.

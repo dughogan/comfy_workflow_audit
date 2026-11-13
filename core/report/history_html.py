@@ -152,6 +152,24 @@ def render(history: dict[str, Any], *, data: dict[str, Any] | None = None,
             f"<link rel='stylesheet' href='{FONTS}'>{style}</head><body>{body}</body></html>")
 
 
+def _rights_cell(r: dict, origin: str) -> str:
+    """A source's recorded rights in a table cell."""
+    if not r:
+        return "<span class='pill warn'>not recorded</span>" if origin in H.RIGHTS_ORIGINS else ""
+    bits = []
+    if r.get("licence_start") or r.get("licence_end"):
+        bits.append(f"{_e(r.get('licence_start') or '…')} to {_e(r.get('licence_end') or 'open')}")
+    for k in ("territory", "media", "likeness", "contract"):
+        if r.get(k):
+            bits.append(_e(r[k]))
+    flags = [f"{label}: {'allowed' if r[k] == 'yes' else 'not allowed' if r[k] == 'no' else 'not stated'}"
+             for k, label in (("ai_generation", "AI generation"), ("ai_reference", "AI reference"),
+                              ("ai_training", "AI training")) if r.get(k)]
+    if flags:
+        bits.append(_e("; ".join(flags)))
+    return "<br>".join(bits)
+
+
 def _shipped(w, lin) -> None:
     """The final render: its job, its files and asset IDs, what it ran on, and QC."""
     outs = lin.get("final_outputs") or []
@@ -251,7 +269,8 @@ def _body(history, lin, rows, v, checks) -> str:
             w(f"<p style='margin-top:6px;color:var(--ink-2)'>Assessed for: {_e(clearance['profile'])}</p>")
         if clearance.get("exception"):
             despite = ("a no-go" if clearance.get("verdict") == "no-go"
-                       else "no verdict being reached")
+                       else "no verdict being reached" if clearance.get("verdict") == "unknown"
+                       else "the registry and rights findings below")
             w("<p style='margin-top:8px;color:var(--stop)'><strong>Delivered as an exception "
               f"despite {despite}:</strong> {_e(clearance['exception'])}</p>")
         w("</div></div>")
@@ -266,6 +285,34 @@ def _body(history, lin, rows, v, checks) -> str:
               "<ul class='gaps'>" + "".join(
                   f"<li>{_e(o.get('problem', ''))}" + (f" <em>{_e(o['remedy'])}</em>" if o.get("remedy") else "")
                   + "</li>" for o in outstanding) + "</ul>")
+        reg = clearance.get("registry")
+        if reg:
+            w("<p class='intro' style='margin-top:12px'><strong>Facility registry at sign-off</strong>"
+              f" ({_e(reg.get('path', ''))}"
+              + (f", client {_e(reg['client'])}" if reg.get("client") else "") + ")</p>"
+              f"<p class='intro'>{_e(reg.get('headline', ''))}</p>")
+            wf = reg.get("workflow")
+            reg_rows = ([("workflow", wf.get("template") or "this workflow", wf.get("state", ""),
+                      wf.get("detail", "") + "".join(" " + v for v in wf.get("violations") or []))]
+                    if wf else []) + \
+                [(i.get("kind", ""), i.get("subject", ""), i.get("state", ""), i.get("detail", ""))
+                 for i in reg.get("items") or []]
+            if reg_rows:
+                w("<table class='log'><thead><tr><th>Kind</th><th>Item</th><th>Registry</th>"
+                  "<th>Detail</th></tr></thead><tbody>")
+                for kind, subject, state, detail in reg_rows:
+                    tone = "ok" if state in ("known", "approved") else \
+                        "warn" if state in ("new", "pending", "modified", "unregistered") else "stop"
+                    w(f"<tr><td>{_e(kind)}</td><td class='mono'>{_e(subject)}</td>"
+                      f"<td><span class='pill {tone}'>{_e(state)}</span></td><td>{_e(detail)}</td></tr>")
+                w("</tbody></table>")
+        rights = clearance.get("rights") or []
+        if rights:
+            w("<p class='intro' style='margin-top:12px'><strong>Source rights at sign-off</strong></p>"
+              "<ul class='gaps'>" + "".join(
+                  f"<li>{'Blocking' if r.get('severity') == 'block' else 'Condition'}: "
+                  f"source node {_e(r.get('node', ''))}: {_e(r.get('problem', ''))}</li>"
+                  for r in rights) + "</ul>")
         audited = clearance.get("audited_with") or {}
         if audited:
             w(f"<p class='intro' style='font-size:12.5px'>Audited with comfyaudit {_e(audited.get('comfyaudit', ''))}, "
@@ -368,16 +415,22 @@ def _body(history, lin, rows, v, checks) -> str:
       "where it came from. An undeclared source is the first question legal will ask.</p>")
     if lin["sources"]:
         w("<table class='log'><thead><tr><th>Input node</th><th>Origin</th><th>Asset ID</th>"
-          "<th>Owner</th><th>Declared by</th><th>Fingerprint</th></tr></thead><tbody>")
+          "<th>Owner</th><th>Rights</th><th>Declared by</th><th>Fingerprint</th></tr></thead><tbody>")
         for s in lin["sources"]:
             origin = s.get("origin") or ""
             tone = "warn" if not origin or origin in ("unknown", "generated") else "ok"
             w(f"<tr><td class='mono'>{_e(s['node'])}</td>"
               f"<td><span class='pill {tone}'>{_e(H.ORIGINS.get(origin, 'not declared') if origin else 'not declared')}</span></td>"
               f"<td class='mono'>{_e(s.get('asset_id', ''))}</td><td>{_e(s.get('owner', ''))}</td>"
+              f"<td>{_rights_cell(s.get('rights') or {}, origin)}</td>"
               f"<td>{_e(s.get('declared_by', ''))}</td>"
               f"<td class='mono'>{_e((s.get('sha256') or '')[:12])}</td></tr>")
         w("</tbody></table>")
+        issues = lin.get("rights_issues") or []
+        if issues:
+            w("<ul class='gaps'>" + "".join(
+                f"<li>{'Blocking' if i['severity'] == 'block' else 'Condition'}: source node "
+                f"{_e(i['node'])}: {_e(i['problem'])}</li>" for i in issues) + "</ul>")
     else:
         w("<p class='intro'>No supplied inputs: the shot was generated from prompts alone.</p>")
 
