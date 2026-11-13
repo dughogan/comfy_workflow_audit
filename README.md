@@ -1,5 +1,10 @@
 # Comfy Workflow Tracker
 
+> **This tool now lives in [DUGCO Tools](https://github.com/dughogan/DUGCO_Tools).**
+> New versions are published there, in one pack with my other ComfyUI tools: see [its guide](https://github.com/dughogan/DUGCO_Tools/blob/main/docs/workflow_tracker.md).
+> This repository stays up so existing installs and links keep working, but it is no longer updated.
+> If you install DUGCO Tools, remove this standalone folder first: the two register the same nodes and the same web routes.
+
 **Every ComfyUI workflow's life, recorded as it happens, and packaged for legal.**
 Built for studios putting ComfyUI in final pixels.
 
